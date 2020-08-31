@@ -30,9 +30,10 @@ import lombok.Builder;
 
 /**
  * 
+ * This model is used for human facial
+ * 68 key points detection
  * 
- * 
- * @author wenfengxu
+ * @author wenfengxu wechatId:italybaby
  *
  */
 @AllArgsConstructor
