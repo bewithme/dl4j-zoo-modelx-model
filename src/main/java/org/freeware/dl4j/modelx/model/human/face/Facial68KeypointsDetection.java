@@ -76,7 +76,6 @@ public class Facial68KeypointsDetection extends ZooModel {
         
         ComputationGraphConfiguration.GraphBuilder graph = graphBuilder("input",moduleName);
         
-     
         graph.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
                          
                         .addLayer("outputLayer",
@@ -172,17 +171,11 @@ public class Facial68KeypointsDetection extends ZooModel {
                         .inferenceWorkspaceMode(workspaceMode)
                         .convolutionMode(ConvolutionMode.Same).graphBuilder();
         
-       
-        
-     
-        
         convBlock(graph, moduleName, 1, input, new int[] {5,5}, new int[] {1,1}, inputShape[0],32, ConvolutionMode.Same);
          
         MaxPooling2D(graph, moduleName, 2,  createLayerName(moduleName,"activation-layer",1),  new int[] {2,2},  new int[] {2,2}, ConvolutionMode.Same);
         
         dropout(graph, moduleName, 3, createLayerName(moduleName,"max-pooling",2), 0.1);
-        
-        
         
         convBlock(graph, moduleName, 4, createLayerName(moduleName,"dropout",3), new int[] {3,3}, new int[] {1,1}, 64, ConvolutionMode.Same);
         
