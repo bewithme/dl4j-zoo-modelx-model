@@ -84,6 +84,8 @@ public class InceptionV4 extends ZooModel {
 
 		 input=createLayerName("inception-A",mergeVertexLayerName,3,9);
 
+		 input=createLayerName("reduction-A",mergeVertexLayerName,0,4);
+
         graph.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
 
 
@@ -132,12 +134,12 @@ public class InceptionV4 extends ZooModel {
 
         graph = buildBatchInceptionA(graph, inceptionAInput, inceptionAModuleName, inceptionABatchSize);
 
-      /** String reductionAInput=createLayerName(inceptionAModuleName,"merge-vertex-0",inceptionABatchSize-1);
+        String reductionAInput=createLayerName("inception-A",mergeVertexLayerName,3,9);
 
-       graph=buildReductionA(graph, reductionAInput, 0) ;
+        graph=buildReductionA(graph, reductionAInput, 0) ;
 
-
-       //inceptionB input is the reductionA output
+		/**
+		 //inceptionB input is the reductionA output
        String inceptionBInput=createLayerName("reduction-A","merge-vertex-0",0);
 
        String inceptionBModuleName="inception-B";
@@ -315,11 +317,24 @@ public class InceptionV4 extends ZooModel {
 	private ComputationGraphConfiguration.GraphBuilder buildReductionA(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
 
 		String moduleName="reduction-A";
+        //start branch 1
+		convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2},  384, ConvolutionMode.Truncate);
+
+		//start branch 2
+		convBlock(graph, moduleName, moduleIndex,1,input, new int[] {1,1}, 192);
+
+		convBlock(graph, moduleName, moduleIndex,2,createLayerName(moduleName,activationLayerName,moduleIndex,1), new int[] {3,3}, 224);
+
+		convBlock(graph, moduleName, moduleIndex,3, createLayerName(moduleName,activationLayerName,moduleIndex,2), new int[] {3,3},new int[] {2,2},  256, ConvolutionMode.Truncate);
+
+		//start branch 3
+		MaxPooling2D(graph,moduleName,moduleIndex,4,input,new int[] {3,3},new int[] {2,2},ConvolutionMode.Truncate);
 
 
+        //merge 3 branches
+		graph.addVertex(createLayerName(moduleName,mergeVertexLayerName,moduleIndex,4), new MergeVertex(), new String[]{createLayerName(moduleName,activationLayerName,moduleIndex,0),createLayerName(moduleName,activationLayerName,moduleIndex,3),createLayerName(moduleName,maxPoolingLayerName,moduleIndex,4)});
 
-
-		return null;
+		return graph;
 	}
 
 
@@ -327,7 +342,7 @@ public class InceptionV4 extends ZooModel {
 
 		String moduleName="inception-C";
 
-		return null;
+		return graph;
 
 	}
 
@@ -337,7 +352,7 @@ public class InceptionV4 extends ZooModel {
 		String moduleName="reduction-B";
 
 
-		return null;
+		return graph;
 	}
 
 
