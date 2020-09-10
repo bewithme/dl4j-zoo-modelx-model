@@ -17,6 +17,7 @@ import org.deeplearning4j.zoo.PretrainedType;
 import org.deeplearning4j.zoo.ZooModel;
 import org.deeplearning4j.zoo.ZooType;
 import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.IUpdater;
 import org.nd4j.linalg.learning.config.RmsProp;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
@@ -27,9 +28,9 @@ import lombok.extern.slf4j.Slf4j;
 
 
 /**
- * 
+ * This is dl4j implement of InceptionV4
  * https://arxiv.org/pdf/1602.07261v1.pdf
- * @author wenfengxu
+ * @author wenfengxu  wechatid:italybaby
  *
  */
 @AllArgsConstructor
@@ -40,7 +41,7 @@ public class InceptionV4 extends ZooModel {
     @Builder.Default private long seed = 1234;
     @Builder.Default private int[] inputShape = new int[] {3, 299, 299};
     @Builder.Default private int numClasses = 0;
-    @Builder.Default private IUpdater updater = new RmsProp(0.1, 0.96, 0.001);
+    @Builder.Default private IUpdater updater = new Adam(0.001);
     @Builder.Default private CacheMode cacheMode = CacheMode.NONE;
     @Builder.Default private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
     @Builder.Default private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
@@ -54,10 +55,7 @@ public class InceptionV4 extends ZooModel {
 
    private static String AVG_POOLING ="avg-pooling";
    
-   
-   
-    
-    private InceptionV4() {}
+   private InceptionV4() {}
 
     @Override
     public String pretrainedUrl(PretrainedType pretrainedType) {
@@ -77,39 +75,25 @@ public class InceptionV4 extends ZooModel {
     @SuppressWarnings("unchecked")
 	@Override
     public ComputationGraph init() {
-      
-    	int embeddingSize = 128;
+
         
         ComputationGraphConfiguration.GraphBuilder graph = graphBuilder("input");
-        
-        String input=createLayerName("stem", MERGE_VERTEX,0,16);
 
-		 input=createLayerName("inception-A", MERGE_VERTEX,3,9);
-
-		 input=createLayerName("reduction-A", MERGE_VERTEX,0,4);
-
-		 input=createLayerName("inception-B", MERGE_VERTEX,6,11);
-
-		 input=createLayerName("reduction-B", MERGE_VERTEX,0,7);
-
-		 input=createLayerName("inception-C", MERGE_VERTEX,2,13);
 
         graph.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
 
-
-
-
-
 				.addLayer("outputLayer",new OutputLayer.Builder().nOut(numClasses)
 								.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-								.activation(Activation.SOFTMAX).build()
-
+								.activation(Activation.SOFTMAX)
+								.build()
 						,
-						input)
+						"drop_out_layer")
                         .setOutputs("outputLayer");
 
         ComputationGraphConfiguration conf = graph.build();
+
         ComputationGraph model = new ComputationGraph(conf);
+
         model.init();
 
         return model;
@@ -153,7 +137,12 @@ public class InceptionV4 extends ZooModel {
 		int inceptionCBatchSize=3;
 		graph =buildBatchInceptionC(graph, inceptionCInput,  inceptionCBatchSize);
 
+		String maxPoolingInput=createLayerName("inception-C", MERGE_VERTEX,2,13);
 
+		MaxPooling2D(graph,"max-pooling",0,0, maxPoolingInput, new int[] {8, 8}, new int[] {8, 8}, ConvolutionMode.Truncate);
+
+        graph.addLayer("drop_out_layer",new DropoutLayer.Builder(0.8)
+				.build(),createLayerName("max-pooling", MAX_POOLING,0,0));
 
 		return graph;
 	}
@@ -199,12 +188,6 @@ public class InceptionV4 extends ZooModel {
 		}
 		return graph;
 	}
-
-
-
-
-
-
 
 
 	/**
@@ -420,17 +403,10 @@ public class InceptionV4 extends ZooModel {
 	}
 
 
-
-
-
-
 	private String createLayerName(String moduleName, String leyerName,Integer moduleIndex,Integer blockIndex) {
 		String newLayerName=moduleName.concat("-").concat(leyerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
 		return newLayerName;
 	}
-
-
-
 
 	private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int in,int out,ConvolutionMode convolutionMode) {
 
