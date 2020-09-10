@@ -52,6 +52,8 @@ public class InceptionV4 extends ZooModel {
    private static String mergeVertexLayerName="merge-vertex";
     
    private static String maxPoolingLayerName="max-pooling";
+
+   private static String avgPoolingLayerName="avg-pooling";
     
     private InceptionV4() {}
 
@@ -78,7 +80,9 @@ public class InceptionV4 extends ZooModel {
         
         ComputationGraphConfiguration.GraphBuilder graph = graphBuilder("input");
         
-        String inceptionAInput=createLayerName("stem",mergeVertexLayerName,0,16);
+        String input=createLayerName("stem",mergeVertexLayerName,0,16);
+
+		 input=createLayerName("inception-A",mergeVertexLayerName,3,9);
 
         graph.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
 
@@ -91,7 +95,7 @@ public class InceptionV4 extends ZooModel {
 								.activation(Activation.SOFTMAX).build()
 
 						,
-						inceptionAInput)
+						input)
                         .setOutputs("outputLayer");
 
         ComputationGraphConfiguration conf = graph.build();
@@ -100,185 +104,117 @@ public class InceptionV4 extends ZooModel {
 
         return model;
     }
-    
-    
-  
-    
-    
-   private String createLayerName(String moduleName, String leyerName,Integer moduleIndex,Integer blockIndex) {
-	    String newLayerName=moduleName.concat("-").concat(leyerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
-     	return newLayerName;
-   }
-   
 
-    
-   
-   private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int in,int out,ConvolutionMode convolutionMode) {
-	   
-	   ConvolutionLayer.Builder builder=new ConvolutionLayer.Builder(
-    		   kernelSize, 
-    		   stride);
-       if(in>0){
-    	   builder.nIn(in);
-       }
-	   
-	   graph.addLayer(createLayerName(moduleName,"cnn",moduleIndex,blockIndex),
-   			            builder
-                       .nOut(out)
-                       .convolutionMode(convolutionMode)
-                       .cudnnAlgoMode(cudnnAlgoMode)
-                       .build(),
-               input);
 
-	   batchNormAndActivation(graph, moduleName,moduleIndex, blockIndex, out);
+	public ComputationGraphConfiguration.GraphBuilder graphBuilder(String input) {
 
-	   return graph;
-   }
+		ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
+				.activation(Activation.RELU)
+				.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
+				.updater(updater)
+				.weightInit(new TruncatedNormalDistribution(0.0, 0.5))
+				.l2(5e-5)
+				.miniBatch(true)
+				.cacheMode(cacheMode)
+				.trainingWorkspaceMode(workspaceMode)
+				.inferenceWorkspaceMode(workspaceMode)
+				.convolutionMode(ConvolutionMode.Truncate).graphBuilder();
 
-	private void batchNormAndActivation(ComputationGraphConfiguration.GraphBuilder graph, String moduleName,int moduleIndex,int blockIndex, int out) {
-		graph.addLayer(createLayerName(moduleName,"batch",moduleIndex,blockIndex),
-					new BatchNormalization.Builder(false)
-				   .decay(0.99)
-				   .eps(0.001)
-				   .nOut(out)
-				   .build(),
-				   createLayerName(moduleName,"cnn",moduleIndex,blockIndex));
-		graph.addLayer(createLayerName(moduleName,"activation-layer",moduleIndex,blockIndex),
-					 new ActivationLayer.Builder()
-					 .activation(Activation.RELU)
-					 .build(), createLayerName(moduleName,"batch",moduleIndex,blockIndex));
+
+		graph=buildInceptionStem(graph, input);
+
+		String inceptionAInput=createLayerName("stem",mergeVertexLayerName,0,16);
+
+
+		String inceptionAModuleName="inception-A";
+
+        int inceptionABatchSize=4;
+
+        graph = buildBatchInceptionA(graph, inceptionAInput, inceptionAModuleName, inceptionABatchSize);
+
+      /** String reductionAInput=createLayerName(inceptionAModuleName,"merge-vertex-0",inceptionABatchSize-1);
+
+       graph=buildReductionA(graph, reductionAInput, 0) ;
+
+
+       //inceptionB input is the reductionA output
+       String inceptionBInput=createLayerName("reduction-A","merge-vertex-0",0);
+
+       String inceptionBModuleName="inception-B";
+
+       int inceptionBBatchSize=7;
+
+       graph=buildBatchInceptionB(graph, inceptionBInput, inceptionBModuleName, inceptionBBatchSize);
+
+       String reductionBInput=createLayerName(inceptionBModuleName,"merge-vertex-0",inceptionBBatchSize-1);
+
+       graph=buildReductionB(graph, reductionBInput, 0) ;
+
+
+
+       //inceptionC input is the reductionA output
+       String inceptionCInput=createLayerName("reduction-B","merge-vertex-0",0);
+
+       String inceptionCModuleName="inception-C";
+
+       int inceptionCBatchSize=3;
+
+       graph=buildBatchInceptionC(graph, inceptionCInput, inceptionCModuleName, inceptionCBatchSize);
+       */
+
+		return graph;
 	}
 
-	private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int out,ConvolutionMode convolutionMode) {
-	   int in=0;
-	   return convBlock(graph, moduleName, moduleIndex,blockIndex, input, kernelSize, stride,in, out, convolutionMode);
-   }
-   
-   private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize,int out,ConvolutionMode convolutionMode) {
-	   int in=0;
-	   int[] stride= {1,1};
-	   return convBlock(graph, moduleName,moduleIndex, blockIndex, input, kernelSize, stride,in, out, convolutionMode);
-   }
-   private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize,int out) {
-	   int in=0;
-	   int[] stride= {1,1};
-	   ConvolutionMode convolutionMode=ConvolutionMode.Same;
-	   return convBlock(graph, moduleName,moduleIndex, blockIndex, input, kernelSize, stride,in, out, convolutionMode);
-   }
-    
-   private ComputationGraphConfiguration.GraphBuilder MaxPooling2D(ComputationGraphConfiguration.GraphBuilder graph,int[] kernelSize, int[] stride,ConvolutionMode convolutionMode, String moduleName, Integer moduleIndex, Integer blockIndex,String input) {
-	   
-	   graph
-   
- 	    .addLayer(createLayerName(moduleName,"max-pooling",moduleIndex,blockIndex),
-				  new SubsamplingLayer.Builder(
-				  SubsamplingLayer.PoolingType.MAX,
-				  kernelSize, 
-				  stride)
-				  .convolutionMode(convolutionMode)
-				  .build(),
-				  input);
-	   return graph;
-   }
-   
-   private ComputationGraphConfiguration.GraphBuilder AveragePooling2D(ComputationGraphConfiguration.GraphBuilder graph,int[] kernelSize, int[] stride,ConvolutionMode convolutionMode, String moduleName, Integer moduleIndex, Integer blockIndex,String input) {
-	   
-	   graph
-   
- 	    .addLayer(createLayerName(moduleName,"avg-pooling",moduleIndex,blockIndex),
-				  new SubsamplingLayer.Builder(
-				  SubsamplingLayer.PoolingType.AVG,
-				  kernelSize, 
-				  stride)
-				  .convolutionMode(convolutionMode)
-				  .build(),
-				  input);
-	   return graph;
-   }
-   
- private ComputationGraphConfiguration.GraphBuilder MaxPooling2D(ComputationGraphConfiguration.GraphBuilder graph, String moduleName,Integer moduleIndex,Integer blockIndex,String input,int[] kernelSize, int[] stride,ConvolutionMode convolutionMode) {
-	   
-	   graph
-   
- 	    .addLayer(createLayerName(moduleName,"max-pooling",moduleIndex,blockIndex),
-				  new SubsamplingLayer.Builder(
-				  SubsamplingLayer.PoolingType.MAX,
-				  kernelSize, 
-				  stride)
-				  .convolutionMode(convolutionMode)
-				  .build(),
-				  input);
-	   return graph;
-   }
-   
-   private ComputationGraphConfiguration.GraphBuilder AveragePooling2D(ComputationGraphConfiguration.GraphBuilder graph, String moduleName, Integer moduleIndex,Integer blockIndex,String input,int[] kernelSize, int[] stride,ConvolutionMode convolutionMode) {
-	   
-	   graph
-   
- 	    .addLayer(createLayerName(moduleName,"avg-pooling",moduleIndex,blockIndex),
-				  new SubsamplingLayer.Builder(
-				  SubsamplingLayer.PoolingType.AVG,
-				  kernelSize, 
-				  stride)
-				  .convolutionMode(convolutionMode)
-				  .build(),
-				  input);
-	   return graph;
-   }
-    
-    
-    /**
-     * build InceptionA
-     * @param graph
-     * @param input
-     * @param moduleIndex
-     * @return
-     */
-   private ComputationGraphConfiguration.GraphBuilder buildInceptionA(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
-    	
-    	String moduleName="inception-A";
+	private ComputationGraphConfiguration.GraphBuilder buildBatchInceptionA(ComputationGraphConfiguration.GraphBuilder graph,String input, String moduleName, int batchSize) {
 
+		for(int i=0;i<batchSize;i++) {
 
-    //	batchNormAndActivation();
-	  // convBlock(graph, moduleName, 1, input, new int[] {3,3},new int[] {2,2}, 32, ConvolutionMode.Truncate);
+			if(i>0) {
+				input=createLayerName(moduleName,mergeVertexLayerName,i-1,9);
+			}
 
+			graph=buildInceptionA(graph, input, i);
 
-	   return graph;
-    	
-    }
-    
-    
-   private ComputationGraphConfiguration.GraphBuilder buildReductionA(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
-    	
-    	String moduleName="reduction-A";
+		}
+		return graph;
+	}
+
+	private ComputationGraphConfiguration.GraphBuilder buildBatchInceptionB(ComputationGraphConfiguration.GraphBuilder graph,String input, String moduleName, int batchSize) {
+
+		for(int i=0;i<batchSize;i++) {
+
+			if(i>0) {
+				input=createLayerName(moduleName,"merge-vertex-0",0,i-1);
+			}
+
+			// 	graph=buildInceptionB(graph, input, i);
+
+		}
+		return graph;
+	}
+
+	private ComputationGraphConfiguration.GraphBuilder buildBatchInceptionC(ComputationGraphConfiguration.GraphBuilder graph,String input, String moduleName, int batchSize) {
+
+		for(int i=0;i<batchSize;i++) {
+
+			if(i>0) {
+				input=createLayerName(moduleName,"merge-vertex-0",0,i-1);
+			}
+
+			graph=buildInceptionC(graph, input, i);
+
+		}
+		return graph;
+	}
 
 
 
 
-	   return null;
-    }
-    
- 
-   private ComputationGraphConfiguration.GraphBuilder buildInceptionC(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
-    	
-    	String moduleName="inception-C";
 
-       	return null;
-    	
-    }
-    
-    
-   private ComputationGraphConfiguration.GraphBuilder buildReductionB(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
-    	
-    	String moduleName="reduction-B";
-    	
 
-    return null;
-    }
-    
-    
-    
-    /**
+
+
+	/**
      * build stem for model
      * 
      * @param graph
@@ -328,109 +264,208 @@ public class InceptionV4 extends ZooModel {
        	return graph;
     }
 
-    public ComputationGraphConfiguration.GraphBuilder graphBuilder(String input) {
 
-        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
-                        .activation(Activation.RELU)
-                        .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                        .updater(updater)
-                        .weightInit(new TruncatedNormalDistribution(0.0, 0.5))
-                        .l2(5e-5)
-                        .miniBatch(true)
-                        .cacheMode(cacheMode)
-                        .trainingWorkspaceMode(workspaceMode)
-                        .inferenceWorkspaceMode(workspaceMode)
-                        .convolutionMode(ConvolutionMode.Truncate).graphBuilder();
+	/**
+	 * build InceptionA
+	 * @param graph
+	 * @param input
+	 * @param moduleIndex
+	 * @return
+	 */
+	private ComputationGraphConfiguration.GraphBuilder buildInceptionA(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
+
+		String moduleName="inception-A";
+
+		batchNormAndActivation(graph,input,moduleName,moduleIndex,0);
+
+		//update input name to batchNormAndActivation layer name
+		input=createLayerName(moduleName,activationLayerName,moduleIndex,0);
+
+		//branch 1 start
+		convBlock(graph, moduleName, moduleIndex,1,input, new int[] {1,1}, 96);
+
+		//branch 2 start
+		convBlock(graph, moduleName, moduleIndex,2,input, new int[] {1,1}, 64);
+
+		convBlock(graph, moduleName, moduleIndex,3,createLayerName(moduleName,activationLayerName,moduleIndex,2), new int[] {3,3}, 96);
+
+		//branch 3 start
+		convBlock(graph, moduleName, moduleIndex,4,input, new int[] {1,1}, 64);
+
+		convBlock(graph, moduleName, moduleIndex,5,createLayerName(moduleName,activationLayerName,moduleIndex,4), new int[] {3,3}, 96);
+
+		convBlock(graph, moduleName, moduleIndex,6,createLayerName(moduleName,activationLayerName,moduleIndex,5), new int[] {3,3}, 96);
 
 
-       graph=buildInceptionStem(graph, input);
-      
-       
-       //inceptionA input is the stem output
-      /* String inceptionAInput=createLayerName("stem",mergeVertexLayerName,16); 
-       
-       String inceptionAModuleName="inception-A";
-        
-       int inceptionABatchSize=4;
-       
-       graph = buildBatchInceptionA(graph, inceptionAInput, inceptionAModuleName, inceptionABatchSize);
-        
-       String reductionAInput=createLayerName(inceptionAModuleName,"merge-vertex-0",inceptionABatchSize-1); 
-       
-       graph=buildReductionA(graph, reductionAInput, 0) ;
-       
-       
-       //inceptionB input is the reductionA output
-       String inceptionBInput=createLayerName("reduction-A","merge-vertex-0",0); 
-       
-       String inceptionBModuleName="inception-B";
-        
-       int inceptionBBatchSize=7;
-       
-       graph=buildBatchInceptionB(graph, inceptionBInput, inceptionBModuleName, inceptionBBatchSize);
-       
-       String reductionBInput=createLayerName(inceptionBModuleName,"merge-vertex-0",inceptionBBatchSize-1); 
-    	
-       graph=buildReductionB(graph, reductionBInput, 0) ;
-       
-       
+		//branch 4 start
 
-       //inceptionC input is the reductionA output
-       String inceptionCInput=createLayerName("reduction-B","merge-vertex-0",0); 
-       
-       String inceptionCModuleName="inception-C";
-        
-       int inceptionCBatchSize=3;
-       
-       graph=buildBatchInceptionC(graph, inceptionCInput, inceptionCModuleName, inceptionCBatchSize);
-       */
-    		   
-       return graph;
-    }
+		AveragePooling2D(graph,moduleName,moduleIndex,7,input,new int[] {3,3},new int[] {1,1},ConvolutionMode.Same);
 
-	private ComputationGraphConfiguration.GraphBuilder buildBatchInceptionA(ComputationGraphConfiguration.GraphBuilder graph,String input, String moduleName, int batchSize) {
-		
-		for(int i=0;i<batchSize;i++) {
-		    
-		       	if(i>0) {
-		           input=createLayerName(moduleName,"merge-vertex-0",0,i-1);
-		       	}
-   
-		       	graph=buildInceptionA(graph, input, i);
-		    	
-		   }
+		convBlock(graph, moduleName, moduleIndex,8,createLayerName(moduleName,avgPoolingLayerName,moduleIndex,7), new int[] {1,1}, 96);
+
+
+		//merge 4 branches
+		graph.addVertex(createLayerName(moduleName,mergeVertexLayerName,moduleIndex,9), new MergeVertex(), new String[]{createLayerName(moduleName,activationLayerName,moduleIndex,1),createLayerName(moduleName,activationLayerName,moduleIndex,3),createLayerName(moduleName,activationLayerName,moduleIndex,6),createLayerName(moduleName,activationLayerName,moduleIndex,8)});
+
 		return graph;
-	}
-	
-	private ComputationGraphConfiguration.GraphBuilder buildBatchInceptionB(ComputationGraphConfiguration.GraphBuilder graph,String input, String moduleName, int batchSize) {
-		
-		for(int i=0;i<batchSize;i++) {
-		    
-		       	if(i>0) {
-		           input=createLayerName(moduleName,"merge-vertex-0",0,i-1);
-		       	}
-   
-		      // 	graph=buildInceptionB(graph, input, i);
-		    	
-		   }
-		return graph;
-	}
-	
-   private ComputationGraphConfiguration.GraphBuilder buildBatchInceptionC(ComputationGraphConfiguration.GraphBuilder graph,String input, String moduleName, int batchSize) {
-		
-		for(int i=0;i<batchSize;i++) {
-		    
-		       	if(i>0) {
-		           input=createLayerName(moduleName,"merge-vertex-0",0,i-1);
-		       	}
-   
-		       	graph=buildInceptionC(graph, input, i);
-		    	
-		 }
-		return graph;
+
 	}
 
-    @Override
+
+	private ComputationGraphConfiguration.GraphBuilder buildReductionA(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
+
+		String moduleName="reduction-A";
+
+
+
+
+		return null;
+	}
+
+
+	private ComputationGraphConfiguration.GraphBuilder buildInceptionC(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
+
+		String moduleName="inception-C";
+
+		return null;
+
+	}
+
+
+	private ComputationGraphConfiguration.GraphBuilder buildReductionB(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
+
+		String moduleName="reduction-B";
+
+
+		return null;
+	}
+
+
+
+
+	private String createLayerName(String moduleName, String leyerName,Integer moduleIndex,Integer blockIndex) {
+		String newLayerName=moduleName.concat("-").concat(leyerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
+		return newLayerName;
+	}
+
+
+
+
+	private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int in,int out,ConvolutionMode convolutionMode) {
+
+		ConvolutionLayer.Builder builder=new ConvolutionLayer.Builder(
+				kernelSize,
+				stride);
+		if(in>0){
+			builder.nIn(in);
+		}
+
+		graph.addLayer(createLayerName(moduleName,"cnn",moduleIndex,blockIndex),
+				builder
+						.nOut(out)
+						.convolutionMode(convolutionMode)
+						.cudnnAlgoMode(cudnnAlgoMode)
+						.build(),
+				input);
+
+		String batchNormAndActivationInput=createLayerName(moduleName,"cnn",moduleIndex,blockIndex);
+
+		batchNormAndActivation(graph,batchNormAndActivationInput, moduleName,moduleIndex, blockIndex);
+
+		return graph;
+	}
+
+	private void batchNormAndActivation(ComputationGraphConfiguration.GraphBuilder graph,String batchNormAndActivationInput, String moduleName,int moduleIndex,int blockIndex) {
+		graph.addLayer(createLayerName(moduleName,"batch",moduleIndex,blockIndex),
+				new BatchNormalization.Builder(false)
+						.decay(0.99)
+						.eps(0.001)
+						.build(),
+				batchNormAndActivationInput);
+		graph.addLayer(createLayerName(moduleName,"activation-layer",moduleIndex,blockIndex),
+				new ActivationLayer.Builder()
+						.activation(Activation.RELU)
+						.build(), createLayerName(moduleName,"batch",moduleIndex,blockIndex));
+	}
+
+	private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int out,ConvolutionMode convolutionMode) {
+		int in=0;
+		return convBlock(graph, moduleName, moduleIndex,blockIndex, input, kernelSize, stride,in, out, convolutionMode);
+	}
+
+	private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize,int out,ConvolutionMode convolutionMode) {
+		int in=0;
+		int[] stride= {1,1};
+		return convBlock(graph, moduleName,moduleIndex, blockIndex, input, kernelSize, stride,in, out, convolutionMode);
+	}
+	private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize,int out) {
+		int in=0;
+		int[] stride= {1,1};
+		ConvolutionMode convolutionMode=ConvolutionMode.Same;
+		return convBlock(graph, moduleName,moduleIndex, blockIndex, input, kernelSize, stride,in, out, convolutionMode);
+	}
+
+	private ComputationGraphConfiguration.GraphBuilder MaxPooling2D(ComputationGraphConfiguration.GraphBuilder graph,int[] kernelSize, int[] stride,ConvolutionMode convolutionMode, String moduleName, Integer moduleIndex, Integer blockIndex,String input) {
+
+		graph
+
+				.addLayer(createLayerName(moduleName,"max-pooling",moduleIndex,blockIndex),
+						new SubsamplingLayer.Builder(
+								SubsamplingLayer.PoolingType.MAX,
+								kernelSize,
+								stride)
+								.convolutionMode(convolutionMode)
+								.build(),
+						input);
+		return graph;
+	}
+
+	private ComputationGraphConfiguration.GraphBuilder AveragePooling2D(ComputationGraphConfiguration.GraphBuilder graph,int[] kernelSize, int[] stride,ConvolutionMode convolutionMode, String moduleName, Integer moduleIndex, Integer blockIndex,String input) {
+
+		graph
+
+				.addLayer(createLayerName(moduleName,"avg-pooling",moduleIndex,blockIndex),
+						new SubsamplingLayer.Builder(
+								SubsamplingLayer.PoolingType.AVG,
+								kernelSize,
+								stride)
+								.convolutionMode(convolutionMode)
+								.build(),
+						input);
+		return graph;
+	}
+
+	private ComputationGraphConfiguration.GraphBuilder MaxPooling2D(ComputationGraphConfiguration.GraphBuilder graph, String moduleName,Integer moduleIndex,Integer blockIndex,String input,int[] kernelSize, int[] stride,ConvolutionMode convolutionMode) {
+
+		graph
+
+				.addLayer(createLayerName(moduleName,"max-pooling",moduleIndex,blockIndex),
+						new SubsamplingLayer.Builder(
+								SubsamplingLayer.PoolingType.MAX,
+								kernelSize,
+								stride)
+								.convolutionMode(convolutionMode)
+								.build(),
+						input);
+		return graph;
+	}
+
+	private ComputationGraphConfiguration.GraphBuilder AveragePooling2D(ComputationGraphConfiguration.GraphBuilder graph, String moduleName, Integer moduleIndex,Integer blockIndex,String input,int[] kernelSize, int[] stride,ConvolutionMode convolutionMode) {
+
+		graph
+
+				.addLayer(createLayerName(moduleName,"avg-pooling",moduleIndex,blockIndex),
+						new SubsamplingLayer.Builder(
+								SubsamplingLayer.PoolingType.AVG,
+								kernelSize,
+								stride)
+								.convolutionMode(convolutionMode)
+								.build(),
+						input);
+		return graph;
+	}
+
+	@Override
     public ModelMetaData metaData() {
         return new ModelMetaData(new int[][] {inputShape}, 1, ZooType.CNN);
     }
