@@ -8,7 +8,6 @@ import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.conf.distribution.TruncatedNormalDistribution;
-import org.deeplearning4j.nn.conf.graph.L2NormalizeVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
@@ -47,13 +46,16 @@ public class InceptionV4 extends ZooModel {
     @Builder.Default private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
 
     
-   private static String activationLayerName="activation-layer";
+   private static String ACTIVATION_LAYER ="activation-layer";
     
-   private static String mergeVertexLayerName="merge-vertex";
+   private static String MERGE_VERTEX ="merge-vertex";
     
-   private static String maxPoolingLayerName="max-pooling";
+   private static String MAX_POOLING ="max-pooling";
 
-   private static String avgPoolingLayerName="avg-pooling";
+   private static String AVG_POOLING ="avg-pooling";
+   
+   
+   
     
     private InceptionV4() {}
 
@@ -80,11 +82,15 @@ public class InceptionV4 extends ZooModel {
         
         ComputationGraphConfiguration.GraphBuilder graph = graphBuilder("input");
         
-        String input=createLayerName("stem",mergeVertexLayerName,0,16);
+        String input=createLayerName("stem", MERGE_VERTEX,0,16);
 
-		 input=createLayerName("inception-A",mergeVertexLayerName,3,9);
+		 input=createLayerName("inception-A", MERGE_VERTEX,3,9);
 
-		 input=createLayerName("reduction-A",mergeVertexLayerName,0,4);
+		 input=createLayerName("reduction-A", MERGE_VERTEX,0,4);
+
+		 input=createLayerName("inception-B", MERGE_VERTEX,6,11);
+
+		 input=createLayerName("reduction-B", MERGE_VERTEX,0,7);
 
         graph.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
 
@@ -125,18 +131,20 @@ public class InceptionV4 extends ZooModel {
 
 		graph=buildInceptionStem(graph, input);
 
-		String inceptionAInput=createLayerName("stem",mergeVertexLayerName,0,16);
+		String inceptionAInput=createLayerName("stem", MERGE_VERTEX,0,16);
+		int inceptionABatchSize=4;
+		graph = buildBatchInceptionA(graph, inceptionAInput, "inception-A", inceptionABatchSize);
 
-
-		String inceptionAModuleName="inception-A";
-
-        int inceptionABatchSize=4;
-
-        graph = buildBatchInceptionA(graph, inceptionAInput, inceptionAModuleName, inceptionABatchSize);
-
-        String reductionAInput=createLayerName("inception-A",mergeVertexLayerName,3,9);
-
+        String reductionAInput=createLayerName("inception-A", MERGE_VERTEX,3,9);
         graph=buildReductionA(graph, reductionAInput, 0) ;
+
+
+		String inceptionBInput=createLayerName("reduction-A", MERGE_VERTEX,0,4);
+		int inceptionBBatchSize=7;
+		graph =buildBatchInceptionB(graph, inceptionBInput, "inception-B", inceptionBBatchSize);
+
+		String reductionBInput=createLayerName("inception-B", MERGE_VERTEX,6,11);
+		graph=buildReductionB(graph, reductionBInput, 0) ;
 
 		/**
 		 //inceptionB input is the reductionA output
@@ -172,7 +180,7 @@ public class InceptionV4 extends ZooModel {
 		for(int i=0;i<batchSize;i++) {
 
 			if(i>0) {
-				input=createLayerName(moduleName,mergeVertexLayerName,i-1,9);
+				input=createLayerName(moduleName, MERGE_VERTEX,i-1,9);
 			}
 
 			graph=buildInceptionA(graph, input, i);
@@ -186,10 +194,10 @@ public class InceptionV4 extends ZooModel {
 		for(int i=0;i<batchSize;i++) {
 
 			if(i>0) {
-				input=createLayerName(moduleName,"merge-vertex-0",0,i-1);
+				input=createLayerName(moduleName, MERGE_VERTEX,i-1,11);
 			}
 
-			// 	graph=buildInceptionB(graph, input, i);
+			 graph=buildInceptionB(graph, input, i);
 
 		}
 		return graph;
@@ -200,10 +208,10 @@ public class InceptionV4 extends ZooModel {
 		for(int i=0;i<batchSize;i++) {
 
 			if(i>0) {
-				input=createLayerName(moduleName,"merge-vertex-0",0,i-1);
+				//input=createLayerName(moduleName,mergeVertexLayerName,i-1,11);
 			}
 
-			graph=buildInceptionC(graph, input, i);
+			//graph=buildInceptionC(graph, input, i);
 
 		}
 		return graph;
@@ -231,37 +239,37 @@ public class InceptionV4 extends ZooModel {
 
 	      convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3},new int[] {2,2}, inputShape[0], 32, ConvolutionMode.Truncate);
 	   
-	      convBlock(graph, moduleName,moduleIndex, 2, createLayerName(moduleName,activationLayerName,moduleIndex,1), new int[] {3,3}, 32, ConvolutionMode.Truncate);
+	      convBlock(graph, moduleName,moduleIndex, 2, createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,1), new int[] {3,3}, 32, ConvolutionMode.Truncate);
 	      
-	      convBlock(graph, moduleName, moduleIndex,3, createLayerName(moduleName,activationLayerName,moduleIndex,2), new int[] {3,3}, 64);
+	      convBlock(graph, moduleName, moduleIndex,3, createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,2), new int[] {3,3}, 64);
     	 
-	      MaxPooling2D(graph,moduleName,moduleIndex,4, createLayerName(moduleName,activationLayerName,moduleIndex,3), new int[] {3, 3}, new int[] {2, 2}, ConvolutionMode.Truncate);
+	      MaxPooling2D(graph,moduleName,moduleIndex,4, createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,3), new int[] {3, 3}, new int[] {2, 2}, ConvolutionMode.Truncate);
 	      
-	      convBlock(graph, moduleName, moduleIndex,5, createLayerName(moduleName,activationLayerName,moduleIndex,3), new int[] {3,3},new int[] {2,2},  96, ConvolutionMode.Truncate);
+	      convBlock(graph, moduleName, moduleIndex,5, createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,3), new int[] {3,3},new int[] {2,2},  96, ConvolutionMode.Truncate);
 		   
-	      graph.addVertex(createLayerName(moduleName,mergeVertexLayerName,moduleIndex,6), new MergeVertex(), new String[]{createLayerName(moduleName,maxPoolingLayerName,moduleIndex,4),createLayerName(moduleName,activationLayerName,moduleIndex,5)});
+	      graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,6), new MergeVertex(), new String[]{createLayerName(moduleName, MAX_POOLING,moduleIndex,4),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,5)});
 	  
     	  //stem right branch start
-	      convBlock(graph, moduleName,moduleIndex, 7, createLayerName(moduleName,mergeVertexLayerName,moduleIndex,6), new int[] {1,1}, 64);
+	      convBlock(graph, moduleName,moduleIndex, 7, createLayerName(moduleName, MERGE_VERTEX,moduleIndex,6), new int[] {1,1}, 64);
 	      
-	      convBlock(graph, moduleName, moduleIndex,8, createLayerName(moduleName,activationLayerName,moduleIndex,7), new int[] {3,3}, 96, ConvolutionMode.Truncate);
+	      convBlock(graph, moduleName, moduleIndex,8, createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,7), new int[] {3,3}, 96, ConvolutionMode.Truncate);
 		  
 	      //stem right branch end
 	      
 	      //stem left start
-	      convBlock(graph, moduleName, moduleIndex,9, createLayerName(moduleName,mergeVertexLayerName,moduleIndex,6), new int[] {1,1}, 64);
-	      convBlock(graph, moduleName,moduleIndex, 10, createLayerName(moduleName,activationLayerName,moduleIndex,9), new int[] {1,7}, 64);
-	      convBlock(graph, moduleName, moduleIndex,11, createLayerName(moduleName,activationLayerName,moduleIndex,10), new int[] {7,1}, 64);
-	      convBlock(graph, moduleName, moduleIndex,12, createLayerName(moduleName,activationLayerName,moduleIndex,11), new int[] {3,3}, 96, ConvolutionMode.Truncate);
+	      convBlock(graph, moduleName, moduleIndex,9, createLayerName(moduleName, MERGE_VERTEX,moduleIndex,6), new int[] {1,1}, 64);
+	      convBlock(graph, moduleName,moduleIndex, 10, createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,9), new int[] {1,7}, 64);
+	      convBlock(graph, moduleName, moduleIndex,11, createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,10), new int[] {7,1}, 64);
+	      convBlock(graph, moduleName, moduleIndex,12, createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,11), new int[] {3,3}, 96, ConvolutionMode.Truncate);
 		  //stem left end
 	      
-	      graph.addVertex(createLayerName(moduleName,mergeVertexLayerName,moduleIndex,13), new MergeVertex(), new String[]{createLayerName(moduleName,activationLayerName,moduleIndex,12),createLayerName(moduleName,activationLayerName,moduleIndex,8)});
+	      graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,13), new MergeVertex(), new String[]{createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,12),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,8)});
     	  
-    	  convBlock(graph, moduleName, moduleIndex,14, createLayerName(moduleName,mergeVertexLayerName,moduleIndex,13), new int[] {3,3},new int[] {2,2},  192, ConvolutionMode.Truncate);
+    	  convBlock(graph, moduleName, moduleIndex,14, createLayerName(moduleName, MERGE_VERTEX,moduleIndex,13), new int[] {3,3},new int[] {2,2},  192, ConvolutionMode.Truncate);
 		  
-	      MaxPooling2D(graph,moduleName,moduleIndex,15, createLayerName(moduleName,mergeVertexLayerName,moduleIndex,13), new int[] {3, 3}, new int[] {2, 2}, ConvolutionMode.Truncate);
+	      MaxPooling2D(graph,moduleName,moduleIndex,15, createLayerName(moduleName, MERGE_VERTEX,moduleIndex,13), new int[] {3, 3}, new int[] {2, 2}, ConvolutionMode.Truncate);
 		     
-          graph.addVertex(createLayerName(moduleName,mergeVertexLayerName,moduleIndex,16), new MergeVertex(), new String[]{createLayerName(moduleName,maxPoolingLayerName,moduleIndex,15),createLayerName(moduleName,activationLayerName,moduleIndex,14)});
+          graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,16), new MergeVertex(), new String[]{createLayerName(moduleName, MAX_POOLING,moduleIndex,15),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,14)});
     	  
        	return graph;
     }
@@ -281,33 +289,29 @@ public class InceptionV4 extends ZooModel {
 		batchNormAndActivation(graph,input,moduleName,moduleIndex,0);
 
 		//update input name to batchNormAndActivation layer name
-		input=createLayerName(moduleName,activationLayerName,moduleIndex,0);
+		input=createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,0);
 
 		//branch 1 start
 		convBlock(graph, moduleName, moduleIndex,1,input, new int[] {1,1}, 96);
 
 		//branch 2 start
 		convBlock(graph, moduleName, moduleIndex,2,input, new int[] {1,1}, 64);
-
-		convBlock(graph, moduleName, moduleIndex,3,createLayerName(moduleName,activationLayerName,moduleIndex,2), new int[] {3,3}, 96);
+		convBlock(graph, moduleName, moduleIndex,3,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,2), new int[] {3,3}, 96);
 
 		//branch 3 start
 		convBlock(graph, moduleName, moduleIndex,4,input, new int[] {1,1}, 64);
-
-		convBlock(graph, moduleName, moduleIndex,5,createLayerName(moduleName,activationLayerName,moduleIndex,4), new int[] {3,3}, 96);
-
-		convBlock(graph, moduleName, moduleIndex,6,createLayerName(moduleName,activationLayerName,moduleIndex,5), new int[] {3,3}, 96);
+		convBlock(graph, moduleName, moduleIndex,5,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,4), new int[] {3,3}, 96);
+		convBlock(graph, moduleName, moduleIndex,6,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,5), new int[] {3,3}, 96);
 
 
 		//branch 4 start
 
 		AveragePooling2D(graph,moduleName,moduleIndex,7,input,new int[] {3,3},new int[] {1,1},ConvolutionMode.Same);
-
-		convBlock(graph, moduleName, moduleIndex,8,createLayerName(moduleName,avgPoolingLayerName,moduleIndex,7), new int[] {1,1}, 96);
+		convBlock(graph, moduleName, moduleIndex,8,createLayerName(moduleName, AVG_POOLING,moduleIndex,7), new int[] {1,1}, 96);
 
 
 		//merge 4 branches
-		graph.addVertex(createLayerName(moduleName,mergeVertexLayerName,moduleIndex,9), new MergeVertex(), new String[]{createLayerName(moduleName,activationLayerName,moduleIndex,1),createLayerName(moduleName,activationLayerName,moduleIndex,3),createLayerName(moduleName,activationLayerName,moduleIndex,6),createLayerName(moduleName,activationLayerName,moduleIndex,8)});
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,9), new MergeVertex(), new String[]{createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,1),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,3),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,6),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,8)});
 
 		return graph;
 
@@ -322,25 +326,47 @@ public class InceptionV4 extends ZooModel {
 
 		//start branch 2
 		convBlock(graph, moduleName, moduleIndex,1,input, new int[] {1,1}, 192);
-
-		convBlock(graph, moduleName, moduleIndex,2,createLayerName(moduleName,activationLayerName,moduleIndex,1), new int[] {3,3}, 224);
-
-		convBlock(graph, moduleName, moduleIndex,3, createLayerName(moduleName,activationLayerName,moduleIndex,2), new int[] {3,3},new int[] {2,2},  256, ConvolutionMode.Truncate);
+		convBlock(graph, moduleName, moduleIndex,2,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,1), new int[] {3,3}, 224);
+		convBlock(graph, moduleName, moduleIndex,3, createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,2), new int[] {3,3},new int[] {2,2},  256, ConvolutionMode.Truncate);
 
 		//start branch 3
 		MaxPooling2D(graph,moduleName,moduleIndex,4,input,new int[] {3,3},new int[] {2,2},ConvolutionMode.Truncate);
 
 
         //merge 3 branches
-		graph.addVertex(createLayerName(moduleName,mergeVertexLayerName,moduleIndex,4), new MergeVertex(), new String[]{createLayerName(moduleName,activationLayerName,moduleIndex,0),createLayerName(moduleName,activationLayerName,moduleIndex,3),createLayerName(moduleName,maxPoolingLayerName,moduleIndex,4)});
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,4), new MergeVertex(), new String[]{createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,0),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,3),createLayerName(moduleName, MAX_POOLING,moduleIndex,4)});
 
 		return graph;
 	}
 
 
-	private ComputationGraphConfiguration.GraphBuilder buildInceptionC(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
+	private ComputationGraphConfiguration.GraphBuilder buildInceptionB(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
 
-		String moduleName="inception-C";
+		String moduleName="inception-B";
+        //start branch 1
+		convBlock(graph, moduleName, moduleIndex,0,input, new int[] {1,1}, 384);
+
+		//start branch 2
+		convBlock(graph, moduleName, moduleIndex,1,input, new int[] {1,1}, 192);
+		convBlock(graph, moduleName, moduleIndex,2,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,1), new int[] {1,7}, 244);
+		convBlock(graph, moduleName, moduleIndex,3,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,2), new int[] {7,1}, 256);
+
+
+		//start branch 3
+		convBlock(graph, moduleName, moduleIndex,4,input, new int[] {1,1}, 192);
+		convBlock(graph, moduleName, moduleIndex,5,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,4), new int[] {7,1}, 192);
+		convBlock(graph, moduleName, moduleIndex,6,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,5), new int[] {1,7}, 224);
+		convBlock(graph, moduleName, moduleIndex,7,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,6), new int[] {7,1}, 224);
+		convBlock(graph, moduleName, moduleIndex,8,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,7), new int[] {1,7}, 256);
+
+		//start branch 4
+		AveragePooling2D(graph,moduleName,moduleIndex,9,input,new int[] {3,3},new int[] {1,1},ConvolutionMode.Same);
+		convBlock(graph, moduleName, moduleIndex,10,createLayerName(moduleName, AVG_POOLING,moduleIndex,9), new int[] {1,1}, 128);
+
+
+		//merge 4 branches
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,11), new MergeVertex(), new String[]{createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,0),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,3),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,8),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,10)});
+
 
 		return graph;
 
@@ -351,6 +377,22 @@ public class InceptionV4 extends ZooModel {
 
 		String moduleName="reduction-B";
 
+        //start branch 1
+		convBlock(graph, moduleName, moduleIndex,0,input, new int[] {1,1}, 192);
+		convBlock(graph, moduleName, moduleIndex,1,  createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,0), new int[] {3,3},new int[] {2,2},  192, ConvolutionMode.Truncate);
+
+		//start branch 2
+		convBlock(graph, moduleName, moduleIndex,2,input, new int[] {1,1}, 256);
+		convBlock(graph, moduleName, moduleIndex,3,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,2), new int[] {1,7}, 256);
+		convBlock(graph, moduleName, moduleIndex,4,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,3), new int[] {7,1}, 320);
+		convBlock(graph, moduleName, moduleIndex,5,createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,4), new int[] {3,3},new int[] {2,2},  320, ConvolutionMode.Truncate);
+
+
+		//start branch 3
+		MaxPooling2D(graph,moduleName,moduleIndex,6,input,new int[] {3,3},new int[] {2,2},ConvolutionMode.Truncate);
+
+		//merge 3 branches
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,7), new MergeVertex(), new String[]{createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,1),createLayerName(moduleName, ACTIVATION_LAYER,moduleIndex,5),createLayerName(moduleName, MAX_POOLING,moduleIndex,6)});
 
 		return graph;
 	}
