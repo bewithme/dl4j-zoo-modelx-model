@@ -194,7 +194,7 @@ public class InceptionResnetV2 extends ZooModel {
 		int moduleIndex=0;
 		//c
 		convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2}, inputShape[0], 32, ConvolutionMode.Truncate);
-			//c
+		//c
 		convBlock(graph, moduleName, moduleIndex,1, createLayerName(moduleName, CNN,moduleIndex,0), new int[] {3,3}, 32, ConvolutionMode.Truncate);
         //c
 		convBlock(graph, moduleName, moduleIndex,2, createLayerName(moduleName, CNN,moduleIndex,1), new int[] {3,3}, 64, ConvolutionMode.Same);
