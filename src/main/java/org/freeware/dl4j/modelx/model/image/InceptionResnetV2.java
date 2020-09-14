@@ -29,6 +29,8 @@ import java.util.Map;
  * 
  * https://arxiv.org/pdf/1602.07261v1.pdf
  * @author wenfengxu
+ * Convolution2D subsample=dl4j strides
+ * Convolution2D border_mode=dl4j convolutionMode
  *
  */
 @AllArgsConstructor
@@ -87,6 +89,8 @@ public class InceptionResnetV2 extends ZooModel {
 
         String input=createLayerName("stem", ACTIVATION_LAYER,0,16);
 
+        input=createLayerName("inception-A", ACTIVATION_LAYER,9,9);
+
         graphBuilder.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
         
 
@@ -131,6 +135,12 @@ public class InceptionResnetV2 extends ZooModel {
 		graphBuilder=buildInceptionStem(graphBuilder, input);
 
 
+        input=createLayerName("stem", ACTIVATION_LAYER,0,16);
+
+        int inceptionABatchSize=10;
+
+        graphBuilder=buildBatchInceptionA(graphBuilder,input,inceptionABatchSize);
+
 
 
 		return graphBuilder;
@@ -143,9 +153,9 @@ public class InceptionResnetV2 extends ZooModel {
 		for(int i=0;i<batchSize;i++) {
 
 			if(i>0) {
-				input=createLayerName("inception-A", MERGE_VERTEX,i-1,9);
+				input=createLayerName("inception-A", ACTIVATION_LAYER,i-1,9);
 			}
-
+            log.info(input);
 			graph=buildInceptionA(graph, input, i);
 
 		}
@@ -248,9 +258,34 @@ public class InceptionResnetV2 extends ZooModel {
 	private ComputationGraphConfiguration.GraphBuilder buildInceptionA(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
 
 		String moduleName="inception-A";
+		//ir1
+        convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1}, 32, ConvolutionMode.Same);
+
+        //ir2
+        convBlock(graph, moduleName, moduleIndex,1, input, new int[] {1,1}, 32, ConvolutionMode.Same);
+        //ir2
+        convBlock(graph, moduleName, moduleIndex,2, createLayerName(moduleName, CNN,moduleIndex,1), new int[] {3,3}, 32, ConvolutionMode.Same);
+
+        //ir3
+        convBlock(graph, moduleName, moduleIndex,3, input, new int[] {1,1}, 32, ConvolutionMode.Same);
+        //ir3
+        convBlock(graph, moduleName, moduleIndex,4, createLayerName(moduleName, CNN,moduleIndex,3), new int[] {3,3}, 48, ConvolutionMode.Same);
+        //ir3
+        convBlock(graph, moduleName, moduleIndex,5, createLayerName(moduleName, CNN,moduleIndex,4), new int[] {3,3}, 64, ConvolutionMode.Same);
+
+        //ir_merge
+        graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,6), new MergeVertex(), new String[]{createLayerName(moduleName, CNN,moduleIndex,0),createLayerName(moduleName, CNN,moduleIndex,2),createLayerName(moduleName, CNN,moduleIndex,5)});
 
 
-		return graph;
+        convBlock(graph,moduleName,moduleIndex,7,createLayerName(moduleName, MERGE_VERTEX,moduleIndex,6),new int[]{1,1},new int[]{1,1},0, 384,ConvolutionMode.Same,Activation.IDENTITY);
+
+        graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,8), new MergeVertex(), new String[]{input,createLayerName(moduleName, CNN,moduleIndex,7)});
+
+
+        batchNormAndActivation(graph,createLayerName(moduleName, MERGE_VERTEX,moduleIndex,8), moduleName,moduleIndex,9);
+
+
+        return graph;
 
 	}
 
@@ -290,18 +325,29 @@ public class InceptionResnetV2 extends ZooModel {
 
 	}
 
-
-	private String createLayerName(String moduleName, String leyerName,Integer moduleIndex,Integer blockIndex) {
-		String newLayerName=moduleName.concat("-").concat(leyerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
+	/**
+	 * one model has one or more
+	 * module,one module has one
+	 * or more block,so the name of
+	 * layer is constructed with
+	 * moduleName+"-"+layerName+"-"+moduleIndex+"-"+blockIndex
+	 * @param moduleName
+	 * @param layerName
+	 * @param moduleIndex
+	 * @param blockIndex
+	 * @return
+	 */
+	private String createLayerName(String moduleName, String layerName,Integer moduleIndex,Integer blockIndex) {
+		String newLayerName=moduleName.concat("-").concat(layerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
 		return newLayerName;
 	}
 
 	private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int in,int out,ConvolutionMode convolutionMode) {
 
-		ConvolutionLayer.Builder builder=new ConvolutionLayer.Builder(
-				kernelSize,
-				stride);
+		ConvolutionLayer.Builder builder=new ConvolutionLayer.Builder(kernelSize, stride);
+
 		if(in>0){
+
 			builder.nIn(in);
 		}
 
@@ -317,6 +363,28 @@ public class InceptionResnetV2 extends ZooModel {
 
 		return graph;
 	}
+
+
+    private ComputationGraphConfiguration.GraphBuilder convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int in,int out,ConvolutionMode convolutionMode,Activation activation) {
+
+        ConvolutionLayer.Builder builder=new ConvolutionLayer.Builder(kernelSize, stride);
+
+        if(in>0){
+
+            builder.nIn(in);
+        }
+
+        graph.addLayer(createLayerName(moduleName,CNN,moduleIndex,blockIndex),
+                builder
+                        .nOut(out)
+                        .activation(activation)
+                        .convolutionMode(convolutionMode)
+                        .cudnnAlgoMode(cudnnAlgoMode)
+                        .build(),
+                input);
+        return graph;
+    }
+
 
 	private void batchNormAndActivation(ComputationGraphConfiguration.GraphBuilder graph,String batchNormAndActivationInput, String moduleName,int moduleIndex,int blockIndex) {
 		graph.addLayer(createLayerName(moduleName,"batch",moduleIndex,blockIndex),
