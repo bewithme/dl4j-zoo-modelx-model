@@ -91,6 +91,8 @@ public class InceptionResnetV2 extends ZooModel {
 
         input=createLayerName("inception-A", ACTIVATION_LAYER,9,9);
 
+		input=createLayerName("reduction-A", ACTIVATION_LAYER,0,6);
+
         graphBuilder.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
         
 
@@ -140,6 +142,11 @@ public class InceptionResnetV2 extends ZooModel {
         int inceptionABatchSize=10;
 
         graphBuilder=buildBatchInceptionA(graphBuilder,input,inceptionABatchSize);
+
+
+		input=createLayerName("inception-A", ACTIVATION_LAYER,9,9);
+
+		graphBuilder=buildReductionA(graphBuilder,input);
 
 
 
@@ -290,9 +297,29 @@ public class InceptionResnetV2 extends ZooModel {
 	}
 
 
-	private ComputationGraphConfiguration.GraphBuilder buildReductionA(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
+	private ComputationGraphConfiguration.GraphBuilder buildReductionA(ComputationGraphConfiguration.GraphBuilder graph,String input) {
 
 		String moduleName="reduction-A";
+
+		int moduleIndex=0;
+
+		//r1
+		MaxPooling2D(graph,moduleName,moduleIndex,0,input,new int[] {3,3},new int[] {2,2},ConvolutionMode.Truncate);
+        //r2
+		convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3}, new int[] {2,2},384, ConvolutionMode.Truncate);
+
+		//r3
+		convBlock(graph, moduleName, moduleIndex,2, input, new int[] {1,1}, 256, ConvolutionMode.Same);
+		//r3
+		convBlock(graph, moduleName, moduleIndex,3, createLayerName(moduleName, CNN,moduleIndex,2), new int[] {3,3}, 256, ConvolutionMode.Same);
+		//r3
+		convBlock(graph, moduleName, moduleIndex,4, createLayerName(moduleName, CNN,moduleIndex,3), new int[] {3,3}, new int[] {2,2},384, ConvolutionMode.Truncate);
+
+
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,5), new MergeVertex(), new String[]{createLayerName(moduleName, MAX_POOLING,moduleIndex,0),createLayerName(moduleName, CNN,moduleIndex,1),createLayerName(moduleName, CNN,moduleIndex,4)});
+
+
+		batchNormAndActivation(graph,createLayerName(moduleName, MERGE_VERTEX,moduleIndex,5), moduleName,moduleIndex,6);
 
 		return graph;
 	}
