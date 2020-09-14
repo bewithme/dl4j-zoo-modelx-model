@@ -12,6 +12,7 @@ import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.conf.preprocessor.CnnToFeedForwardPreProcessor;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.zoo.ModelMetaData;
 import org.deeplearning4j.zoo.PretrainedType;
 import org.deeplearning4j.zoo.ZooModel;
@@ -93,6 +94,10 @@ public class InceptionResnetV2 extends ZooModel {
 
 		input=createLayerName("reduction-A", ACTIVATION_LAYER,0,6);
 
+		input=createLayerName("inception-B", ACTIVATION_LAYER,19,7);
+
+		input=createLayerName("reduction-B", ACTIVATION_LAYER,0,9);
+
         graphBuilder.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
         
 
@@ -125,8 +130,8 @@ public class InceptionResnetV2 extends ZooModel {
 				.activation(Activation.RELU)
 				.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
 				.updater(updater)
-				.weightInit(new TruncatedNormalDistribution(0.0, 0.5))
-				.l2(5e-5)
+				.weightInit(WeightInit.XAVIER)
+
 				.miniBatch(true)
 				.cacheMode(cacheMode)
 				.trainingWorkspaceMode(workspaceMode)
@@ -147,6 +152,16 @@ public class InceptionResnetV2 extends ZooModel {
 		input=createLayerName("inception-A", ACTIVATION_LAYER,9,9);
 
 		graphBuilder=buildReductionA(graphBuilder,input);
+
+
+		input=createLayerName("reduction-A", ACTIVATION_LAYER,0,6);
+
+		graphBuilder=buildBatchInceptionB(graphBuilder,input,20);
+
+
+		input=createLayerName("inception-B", ACTIVATION_LAYER,19,7);
+
+		graphBuilder=buildReductionB(graphBuilder,input);
 
 
 
@@ -174,7 +189,7 @@ public class InceptionResnetV2 extends ZooModel {
 		for(int i=0;i<batchSize;i++) {
 
 			if(i>0) {
-				input=createLayerName("inception-B", MERGE_VERTEX,i-1,11);
+				input=createLayerName("inception-B", ACTIVATION_LAYER,i-1,7);
 			}
 
 			graph=buildInceptionB(graph, input, i);
@@ -329,16 +344,74 @@ public class InceptionResnetV2 extends ZooModel {
 
 		String moduleName="inception-B";
 
+		//ir1
+		convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1}, 192, ConvolutionMode.Same);
+
+		//ir2
+		convBlock(graph, moduleName, moduleIndex,1, input, new int[] {1,1}, 128, ConvolutionMode.Same);
+		//ir2
+		convBlock(graph, moduleName, moduleIndex,2, createLayerName(moduleName, CNN,moduleIndex,1), new int[] {1,7}, 160, ConvolutionMode.Same);
+        //ir2
+		convBlock(graph, moduleName, moduleIndex,3, createLayerName(moduleName, CNN,moduleIndex,2), new int[] {7,1}, 192, ConvolutionMode.Same);
+
+
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,4), new MergeVertex(), new String[]{createLayerName(moduleName, CNN,moduleIndex,0),createLayerName(moduleName, CNN,moduleIndex,3)});
+
+
+		//ir_conv
+		convBlock(graph,moduleName,moduleIndex,5,createLayerName(moduleName, MERGE_VERTEX,moduleIndex,4),new int[]{1,1},new int[]{1,1},0, 1152,ConvolutionMode.Same,Activation.IDENTITY);
+
+
+
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,6), new MergeVertex(), new String[]{input,createLayerName(moduleName, CNN,moduleIndex,5)});
+
+
+		batchNormAndActivation(graph,createLayerName(moduleName, MERGE_VERTEX,moduleIndex,6), moduleName,moduleIndex,7);
+
 
 		return graph;
+
+
 
 	}
 
 
-	private ComputationGraphConfiguration.GraphBuilder buildReductionB(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
+	private ComputationGraphConfiguration.GraphBuilder buildReductionB(ComputationGraphConfiguration.GraphBuilder graph,String input) {
 
 		String moduleName="reduction-B";
 
+		int moduleIndex=0;
+
+		//r1
+		MaxPooling2D(graph,moduleName,moduleIndex,0,input,new int[] {3,3},new int[] {2,2},ConvolutionMode.Truncate);
+
+		//r2
+		convBlock(graph, moduleName, moduleIndex,1, input, new int[] {1,1}, 256, ConvolutionMode.Same);
+		//r2
+		convBlock(graph, moduleName, moduleIndex,2, createLayerName(moduleName, CNN,moduleIndex,1), new int[] {3,3}, new int[] {2,2},384, ConvolutionMode.Same);
+
+		//r3
+		convBlock(graph, moduleName, moduleIndex,3, input, new int[] {1,1}, 256, ConvolutionMode.Same);
+		//r3
+		convBlock(graph, moduleName, moduleIndex,4, createLayerName(moduleName, CNN,moduleIndex,3), new int[] {3,3},new int[] {2,2}, 288, ConvolutionMode.Same);
+
+
+		//r4
+		convBlock(graph, moduleName, moduleIndex,5, input, new int[] {1,1}, 256, ConvolutionMode.Same);
+		//r4
+		convBlock(graph, moduleName, moduleIndex,6, createLayerName(moduleName, CNN,moduleIndex,5), new int[] {3,3}, 288, ConvolutionMode.Same);
+		//r4
+		convBlock(graph, moduleName, moduleIndex,7, createLayerName(moduleName, CNN,moduleIndex,6), new int[] {3,3},new int[] {2,2}, 320, ConvolutionMode.Same);
+
+
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,8), new MergeVertex(), new String[]{
+				createLayerName(moduleName, MAX_POOLING,moduleIndex,0),
+				createLayerName(moduleName, CNN,moduleIndex,2),
+				createLayerName(moduleName, CNN,moduleIndex,4),
+				createLayerName(moduleName, CNN,moduleIndex,7)});
+
+
+		batchNormAndActivation(graph,createLayerName(moduleName, MERGE_VERTEX,moduleIndex,8), moduleName,moduleIndex,9);
 
 		return graph;
 	}
