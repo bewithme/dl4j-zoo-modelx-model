@@ -12,6 +12,7 @@ import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.zoo.ModelMetaData;
 import org.deeplearning4j.zoo.PretrainedType;
 import org.deeplearning4j.zoo.ZooModel;
@@ -106,13 +107,13 @@ public class InceptionV4 extends ZooModel {
 				.activation(Activation.RELU)
 				.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
 				.updater(updater)
-				.weightInit(new TruncatedNormalDistribution(0.0, 0.5))
-				.l2(5e-5)
+				.weightInit(WeightInit.XAVIER)
 				.miniBatch(true)
 				.cacheMode(cacheMode)
 				.trainingWorkspaceMode(workspaceMode)
 				.inferenceWorkspaceMode(workspaceMode)
-				.convolutionMode(ConvolutionMode.Truncate).graphBuilder();
+				.convolutionMode(ConvolutionMode.Truncate)
+				.graphBuilder();
 
 
 		graph=buildInceptionStem(graph, input);
@@ -402,9 +403,20 @@ public class InceptionV4 extends ZooModel {
 
 	}
 
-
-	private String createLayerName(String moduleName, String leyerName,Integer moduleIndex,Integer blockIndex) {
-		String newLayerName=moduleName.concat("-").concat(leyerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
+	/**
+	 * one model has one or more
+	 * module,one module has one
+	 * or more block,so the name of
+	 * layer is constructed with
+	 * moduleName+"-"+layerName+"-"+moduleIndex+"-"+blockIndex
+	 * @param moduleName
+	 * @param layerName
+	 * @param moduleIndex
+	 * @param blockIndex
+	 * @return
+	 */
+	private String createLayerName(String moduleName, String layerName,Integer moduleIndex,Integer blockIndex) {
+		String newLayerName=moduleName.concat("-").concat(layerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
 		return newLayerName;
 	}
 
