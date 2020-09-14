@@ -388,12 +388,12 @@ public class InceptionResnetV2 extends ZooModel {
 		//r2
 		convBlock(graph, moduleName, moduleIndex,1, input, new int[] {1,1}, 256, ConvolutionMode.Same);
 		//r2
-		convBlock(graph, moduleName, moduleIndex,2, createLayerName(moduleName, CNN,moduleIndex,1), new int[] {3,3}, new int[] {2,2},384, ConvolutionMode.Same);
+		convBlock(graph, moduleName, moduleIndex,2, createLayerName(moduleName, CNN,moduleIndex,1), new int[] {3,3}, new int[] {2,2},384, ConvolutionMode.Truncate);
 
 		//r3
 		convBlock(graph, moduleName, moduleIndex,3, input, new int[] {1,1}, 256, ConvolutionMode.Same);
 		//r3
-		convBlock(graph, moduleName, moduleIndex,4, createLayerName(moduleName, CNN,moduleIndex,3), new int[] {3,3},new int[] {2,2}, 288, ConvolutionMode.Same);
+		convBlock(graph, moduleName, moduleIndex,4, createLayerName(moduleName, CNN,moduleIndex,3), new int[] {3,3},new int[] {2,2}, 288, ConvolutionMode.Truncate);
 
 
 		//r4
@@ -401,7 +401,7 @@ public class InceptionResnetV2 extends ZooModel {
 		//r4
 		convBlock(graph, moduleName, moduleIndex,6, createLayerName(moduleName, CNN,moduleIndex,5), new int[] {3,3}, 288, ConvolutionMode.Same);
 		//r4
-		convBlock(graph, moduleName, moduleIndex,7, createLayerName(moduleName, CNN,moduleIndex,6), new int[] {3,3},new int[] {2,2}, 320, ConvolutionMode.Same);
+		convBlock(graph, moduleName, moduleIndex,7, createLayerName(moduleName, CNN,moduleIndex,6), new int[] {3,3},new int[] {2,2}, 320, ConvolutionMode.Truncate);
 
 
 		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,8), new MergeVertex(), new String[]{
