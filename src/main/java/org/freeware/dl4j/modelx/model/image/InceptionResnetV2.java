@@ -6,11 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.*;
-import org.deeplearning4j.nn.conf.distribution.TruncatedNormalDistribution;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
-import org.deeplearning4j.nn.conf.preprocessor.CnnToFeedForwardPreProcessor;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.zoo.ModelMetaData;
@@ -22,8 +20,7 @@ import org.nd4j.linalg.learning.config.IUpdater;
 import org.nd4j.linalg.learning.config.RmsProp;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
-import java.util.HashMap;
-import java.util.Map;
+
 
 
 /**
@@ -88,15 +85,6 @@ public class InceptionResnetV2 extends ZooModel {
         
         ComputationGraphConfiguration.GraphBuilder graphBuilder = graphBuilder("input");
 
-        String input=createLayerName("stem", ACTIVATION_LAYER,0,16);
-
-        input=createLayerName("inception-A", ACTIVATION_LAYER,9,9);
-
-		input=createLayerName("reduction-A", ACTIVATION_LAYER,0,6);
-
-		input=createLayerName("inception-B", ACTIVATION_LAYER,19,7);
-
-		input=createLayerName("reduction-B", ACTIVATION_LAYER,0,9);
 
         graphBuilder.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
         
@@ -107,7 +95,7 @@ public class InceptionResnetV2 extends ZooModel {
 										.activation(Activation.SOFTMAX).build()
 
                                                       ,
-								input)
+								"drop_out_layer")
 
                         .setOutputs("outputLayer");
 
@@ -163,6 +151,15 @@ public class InceptionResnetV2 extends ZooModel {
 
 		graphBuilder=buildReductionB(graphBuilder,input);
 
+		input=createLayerName("reduction-B", ACTIVATION_LAYER,0,9);
+
+		graphBuilder=buildBatchInceptionC(graphBuilder,input,10);
+
+
+		AveragePooling2D(graphBuilder,"average-pooling",0,0,createLayerName("inception-C", ACTIVATION_LAYER,9,7),new int[] {8,8},new int[] {1,1},ConvolutionMode.Same);
+
+
+		graphBuilder.addLayer("drop_out_layer",new DropoutLayer.Builder(0.8).build(),createLayerName("average-pooling", AVG_POOLING,0,0));
 
 
 		return graphBuilder;
@@ -203,7 +200,7 @@ public class InceptionResnetV2 extends ZooModel {
 		for(int i=0;i<batchSize;i++) {
 
 			if(i>0) {
-				input=createLayerName("inception-C",MERGE_VERTEX,i-1,13);
+				input=createLayerName("inception-C",ACTIVATION_LAYER,i-1,7);
 			}
 
 			graph=buildInceptionC(graph, input, i);
@@ -420,6 +417,30 @@ public class InceptionResnetV2 extends ZooModel {
 	private ComputationGraphConfiguration.GraphBuilder buildInceptionC(ComputationGraphConfiguration.GraphBuilder graph,String input,Integer moduleIndex) {
 
 		String moduleName="inception-C";
+
+		//ir1
+		convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1}, 192, ConvolutionMode.Same);
+
+		//ir2
+		convBlock(graph, moduleName, moduleIndex,1, input, new int[] {1,1}, 192, ConvolutionMode.Same);
+		//ir2
+		convBlock(graph, moduleName, moduleIndex,2, createLayerName(moduleName, CNN,moduleIndex,1), new int[] {1,3}, 224, ConvolutionMode.Same);
+		//ir2
+		convBlock(graph, moduleName, moduleIndex,3, createLayerName(moduleName, CNN,moduleIndex,2), new int[] {3,1}, 256, ConvolutionMode.Same);
+
+
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,4), new MergeVertex(), new String[]{createLayerName(moduleName, CNN,moduleIndex,0),createLayerName(moduleName, CNN,moduleIndex,3)});
+
+		//ir_conv
+		convBlock(graph,moduleName,moduleIndex,5,createLayerName(moduleName, MERGE_VERTEX,moduleIndex,4),new int[]{1,1},new int[]{1,1},0, 2144,ConvolutionMode.Same,Activation.IDENTITY);
+
+
+
+		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,6), new MergeVertex(), new String[]{input,createLayerName(moduleName, CNN,moduleIndex,5)});
+
+
+		batchNormAndActivation(graph,createLayerName(moduleName, MERGE_VERTEX,moduleIndex,6), moduleName,moduleIndex,7);
+
 
 		return graph;
 
