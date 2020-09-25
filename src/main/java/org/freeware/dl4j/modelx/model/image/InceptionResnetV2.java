@@ -81,16 +81,12 @@ public class InceptionResnetV2 extends ZooModel {
 	@Override
     public ComputationGraph init() {
       
-
-        
-        ComputationGraphConfiguration.GraphBuilder graphBuilder = graphBuilder("input");
+    	ComputationGraphConfiguration.GraphBuilder graphBuilder = graphBuilder("input");
 
 
         graphBuilder.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
         
-
-
-                        .addLayer("outputLayer",new OutputLayer.Builder().nOut(numClasses)
+				        .addLayer("outputLayer",new OutputLayer.Builder().nOut(numClasses)
 										.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
 										.activation(Activation.SOFTMAX).build()
 
@@ -447,7 +443,7 @@ public class InceptionResnetV2 extends ZooModel {
 	}
 
 	/**
-	 * one model has one or more
+	 * One model has one or more
 	 * module,one module has one
 	 * or more block,so the name of
 	 * layer is constructed with
