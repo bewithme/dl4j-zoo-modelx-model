@@ -16,6 +16,7 @@ import org.deeplearning4j.zoo.PretrainedType;
 import org.deeplearning4j.zoo.ZooModel;
 import org.deeplearning4j.zoo.ZooType;
 import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.IUpdater;
 import org.nd4j.linalg.learning.config.RmsProp;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
@@ -39,7 +40,7 @@ public class InceptionResnetV2 extends ZooModel {
     @Builder.Default private long seed = 1234;
     @Builder.Default private int[] inputShape = new int[] {3, 299, 299};
     @Builder.Default private int numClasses = 0;
-    @Builder.Default private IUpdater updater = new RmsProp(0.1, 0.96, 0.001);
+    @Builder.Default private IUpdater updater =new Adam(0.001);
     @Builder.Default private CacheMode cacheMode = CacheMode.NONE;
     @Builder.Default private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
     @Builder.Default private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
