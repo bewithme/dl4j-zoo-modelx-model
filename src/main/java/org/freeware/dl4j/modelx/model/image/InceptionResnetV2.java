@@ -176,7 +176,7 @@ public class InceptionResnetV2 extends ZooModel {
 			if(i>0) {
 				input=createLayerName("inception-A", ACTIVATION_LAYER,i-1,9);
 			}
-            log.info(input);
+
 			graph=buildInceptionA(graph, input, i);
 
 		}
