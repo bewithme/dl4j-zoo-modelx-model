@@ -128,31 +128,37 @@ public class InceptionResnetV2 extends ZooModel {
 
         input=createLayerName("stem", ACTIVATION_LAYER,0,16);
 
-        int inceptionABatchSize=10;
+        int inceptionABatchSize=5;
 
         graphBuilder=buildBatchInceptionA(graphBuilder,input,inceptionABatchSize);
 
 
-		input=createLayerName("inception-A", ACTIVATION_LAYER,9,9);
+		input=createLayerName("inception-A", ACTIVATION_LAYER,(inceptionABatchSize-1),9);
 
 		graphBuilder=buildReductionA(graphBuilder,input);
 
 
 		input=createLayerName("reduction-A", ACTIVATION_LAYER,0,6);
 
-		graphBuilder=buildBatchInceptionB(graphBuilder,input,20);
+
+		int inceptionBBatchSize=10;
+
+		graphBuilder=buildBatchInceptionB(graphBuilder,input,inceptionBBatchSize);
 
 
-		input=createLayerName("inception-B", ACTIVATION_LAYER,19,7);
+		input=createLayerName("inception-B", ACTIVATION_LAYER,(inceptionBBatchSize-1),7);
 
 		graphBuilder=buildReductionB(graphBuilder,input);
 
 		input=createLayerName("reduction-B", ACTIVATION_LAYER,0,9);
 
-		graphBuilder=buildBatchInceptionC(graphBuilder,input,10);
+
+		int inceptionCBatchSize=5;
+
+		graphBuilder=buildBatchInceptionC(graphBuilder,input,inceptionCBatchSize);
 
 
-		AveragePooling2D(graphBuilder,"average-pooling",0,0,createLayerName("inception-C", ACTIVATION_LAYER,9,7),new int[] {8,8},new int[] {1,1},ConvolutionMode.Same);
+		AveragePooling2D(graphBuilder,"average-pooling",0,0,createLayerName("inception-C", ACTIVATION_LAYER,(inceptionCBatchSize-1),7),new int[] {8,8},new int[] {1,1},ConvolutionMode.Same);
 
 
 		graphBuilder.addLayer("drop_out_layer",new DropoutLayer.Builder(0.8).build(),createLayerName("average-pooling", AVG_POOLING,0,0));
