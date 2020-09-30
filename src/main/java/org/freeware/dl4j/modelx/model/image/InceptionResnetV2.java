@@ -332,7 +332,6 @@ public class InceptionResnetV2 extends ZooModel {
 
 		graph.addVertex(createLayerName(moduleName, MERGE_VERTEX,moduleIndex,5), new MergeVertex(), new String[]{createLayerName(moduleName, MAX_POOLING,moduleIndex,0),createLayerName(moduleName, CNN,moduleIndex,1),createLayerName(moduleName, CNN,moduleIndex,4)});
 
-
 		batchNormAndActivation(graph,createLayerName(moduleName, MERGE_VERTEX,moduleIndex,5), moduleName,moduleIndex,6);
 
 		return graph;
