@@ -40,7 +40,7 @@ public class InceptionResnetV2 extends ZooModel {
     @Builder.Default private long seed = 1234;
     @Builder.Default private int[] inputShape = new int[] {3, 299, 299};
     @Builder.Default private int numClasses = 0;
-    @Builder.Default private IUpdater updater =new Adam(0.001);
+    @Builder.Default private IUpdater updater =new Adam(0.0001);
     @Builder.Default private CacheMode cacheMode = CacheMode.NONE;
     @Builder.Default private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
     @Builder.Default private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
@@ -121,7 +121,7 @@ public class InceptionResnetV2 extends ZooModel {
 				.cacheMode(cacheMode)
 				.trainingWorkspaceMode(workspaceMode)
 				.inferenceWorkspaceMode(workspaceMode)
-				.convolutionMode(ConvolutionMode.Truncate).graphBuilder();
+				.graphBuilder();
 
 
 		graphBuilder=buildInceptionStem(graphBuilder, input);
