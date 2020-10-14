@@ -36,7 +36,7 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
 @AllArgsConstructor
 @Builder
 @Slf4j
-public class InceptionResnetV2 extends ZooModel {
+public class InceptionResNetV2 extends ZooModel {
 
 	@Builder.Default private final  long seed = 1234;
 	@Builder.Default private  int[] inputShape = new int[] {3, 299, 299};
@@ -58,7 +58,7 @@ public class InceptionResnetV2 extends ZooModel {
 
 	private static final String CNN ="cnn";
 
-    private InceptionResnetV2() {
+    private InceptionResNetV2() {
 
 	}
 
