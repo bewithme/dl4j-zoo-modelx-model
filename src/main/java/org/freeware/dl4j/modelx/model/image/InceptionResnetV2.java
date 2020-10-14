@@ -18,7 +18,6 @@ import org.deeplearning4j.zoo.ZooType;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.IUpdater;
-import org.nd4j.linalg.learning.config.RmsProp;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 
