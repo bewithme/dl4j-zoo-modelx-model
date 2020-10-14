@@ -29,8 +29,9 @@ import lombok.extern.slf4j.Slf4j;
 
 
 /**
- * This is dl4j implement of InceptionV4
+ * This is dl4j implementation of InceptionV4 base on this paper
  * https://arxiv.org/pdf/1602.07261v1.pdf
+ * and reference this source code  https://github.com/titu1994/Inception-v4
  * @author wenfengxu  wechatid:italybaby
  *
  */
