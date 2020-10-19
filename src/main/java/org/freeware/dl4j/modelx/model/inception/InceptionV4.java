@@ -1,4 +1,4 @@
-package org.freeware.dl4j.modelx.model.image;
+package org.freeware.dl4j.modelx.model.inception;
 
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
