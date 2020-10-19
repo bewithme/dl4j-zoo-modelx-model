@@ -1,28 +1,19 @@
-package org.freeware.dl4j.modelx.train.image;
+package org.freeware.dl4j.modelx.train.inception;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.Random;
 
-import org.datavec.api.io.labels.ParentPathLabelGenerator;
-import org.datavec.api.split.FileSplit;
-import org.datavec.image.loader.NativeImageLoader;
-import org.datavec.image.recordreader.ImageRecordReader;
 import org.deeplearning4j.core.storage.StatsStorage;
-import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.model.stats.StatsListener;
 import org.deeplearning4j.ui.model.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
 import org.freeware.dl4j.modelx.DataSetUtils;
-import org.freeware.dl4j.modelx.model.image.InceptionResnetV2;
+import org.freeware.dl4j.modelx.model.inception.InceptionResNetV2;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
 import lombok.extern.slf4j.Slf4j;
-import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
-import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 
 @Slf4j
 public class InceptionResnetV2Trainer {
@@ -41,7 +32,7 @@ public class InceptionResnetV2Trainer {
 			e.printStackTrace();
 		}
 
-		InceptionResnetV2 inceptionResNetV2= InceptionResnetV2.builder().numClasses(numPossibleLabels).build();
+		InceptionResNetV2 inceptionResNetV2= InceptionResNetV2.builder().numClasses(numPossibleLabels).build();
 
 		
 		ComputationGraph model=inceptionResNetV2.init();
