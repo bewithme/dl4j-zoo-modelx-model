@@ -1,4 +1,4 @@
-package org.freeware.dl4j.modelx.train.image;
+package org.freeware.dl4j.modelx.train.inception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.core.storage.StatsStorage;
@@ -6,7 +6,7 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.util.ModelSerializer;
 import org.freeware.dl4j.modelx.DataSetUtils;
 
-import org.freeware.dl4j.modelx.model.image.InceptionV4;
+import org.freeware.dl4j.modelx.model.inception.InceptionV4;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
 import org.deeplearning4j.ui.api.UIServer;
@@ -22,13 +22,13 @@ public class InceptionV4Trainer {
     public static void main(String[] args) {
 
 
-        String dataPath="/Users/wenfengxu/Desktop/临时文件/stars_face";
+        String dataPath="/Users/wenfengxu/Downloads/59760_840806_bundle_archive/raw-img";
 
         int numPossibleLabels= DataSetUtils.getFileDirectoriesCount(dataPath);
 
         DataSetIterator dataSetIterator= null;
         try {
-            dataSetIterator = DataSetUtils.getDataSetIterator(dataPath,2,numPossibleLabels,299,299,3);
+            dataSetIterator = DataSetUtils.getDataSetIterator(dataPath,4,numPossibleLabels,299,299,3);
         } catch (IOException e) {
             log.error("",e);
         }
