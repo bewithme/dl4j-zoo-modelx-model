@@ -58,9 +58,7 @@ public class InceptionResNetV2 extends ZooModel {
 
 	private static final String CNN ="cnn";
 
-    private InceptionResNetV2() {
 
-	}
 
     @Override
     public String pretrainedUrl(PretrainedType pretrainedType) {

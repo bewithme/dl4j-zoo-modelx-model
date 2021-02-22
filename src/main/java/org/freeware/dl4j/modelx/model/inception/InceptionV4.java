@@ -54,7 +54,6 @@ public class InceptionV4 extends ZooModel {
 
    private static String AVG_POOLING ="avg-pooling";
    
-   private InceptionV4() {}
 
     @Override
     public String pretrainedUrl(PretrainedType pretrainedType) {
