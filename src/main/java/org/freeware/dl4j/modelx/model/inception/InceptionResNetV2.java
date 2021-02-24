@@ -86,9 +86,10 @@ public class InceptionResNetV2 extends ZooModel {
 
         graphBuilder.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
         
-				        .addLayer("outputLayer",new OutputLayer.Builder().nOut(numClasses)
-										.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-										.activation(Activation.SOFTMAX).build()
+				        .addLayer("outputLayer",new CenterLossOutputLayer.Builder()
+										.lossFunction(LossFunctions.LossFunction.SQUARED_LOSS)
+										.activation(Activation.SOFTMAX).nOut(numClasses).lambda(1e-4).alpha(0.9)
+										.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer).build()
 
                                                       ,
 								"drop_out_layer")

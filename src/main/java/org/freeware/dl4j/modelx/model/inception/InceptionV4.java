@@ -2,11 +2,7 @@ package org.freeware.dl4j.modelx.model.inception;
 
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
-import org.deeplearning4j.nn.conf.CacheMode;
-import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
-import org.deeplearning4j.nn.conf.ConvolutionMode;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.WorkspaceMode;
+import org.deeplearning4j.nn.conf.*;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
@@ -80,10 +76,10 @@ public class InceptionV4 extends ZooModel {
 
         graph.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
 
-				.addLayer("outputLayer",new OutputLayer.Builder().nOut(numClasses)
-								.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-								.activation(Activation.SOFTMAX)
-								.build()
+				.addLayer("outputLayer",new CenterLossOutputLayer.Builder()
+								.lossFunction(LossFunctions.LossFunction.SQUARED_LOSS)
+								.activation(Activation.SOFTMAX).nOut(numClasses).lambda(1e-4).alpha(0.9)
+								.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer).build()
 						,
 						"drop_out_layer")
                         .setOutputs("outputLayer");
