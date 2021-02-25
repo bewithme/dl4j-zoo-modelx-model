@@ -84,47 +84,69 @@ public class YOLO3 extends ZooModel {
 
    	    ComputationGraphConfiguration.GraphBuilder graph = graphBuilder();
 
-        String lastLayerName= buildLayerZeroToFour(graph,"input");
+        String stemLastLayerName= buildLayerFromZeroToFour(graph,"input");
 
-        lastLayerName=buildLayerFiveToEight(graph,lastLayerName);
+        stemLastLayerName= buildLayerFromFiveToEight(graph,stemLastLayerName);
 
-        lastLayerName=buildLayerNineToEleven(graph,lastLayerName);
+        stemLastLayerName= buildLayerFromNineToEleven(graph,stemLastLayerName);
 
-        lastLayerName=buildLayerTwelveToFifteen(graph,lastLayerName);
+        stemLastLayerName= buildLayerFromTwelveToFifteen(graph,stemLastLayerName);
 
         //skip 36
-        lastLayerName=buildLayerSixteenToThirtySix(graph,lastLayerName);
+        stemLastLayerName= buildLayerFromSixteenToThirtySix(graph,stemLastLayerName);
 
-        String skipThirtySix=lastLayerName;
+        String skipThirtySix=stemLastLayerName;
 
-        lastLayerName=buildLayerThirtySevenToForty(graph,lastLayerName);
+        stemLastLayerName= buildLayerFromThirtySevenToForty(graph,stemLastLayerName);
 
         //skip 61
-        lastLayerName=buildLayerFortyOneToSixtyOne(graph,lastLayerName);
+        stemLastLayerName= buildLayerFromFortyOneToSixtyOne(graph,stemLastLayerName);
 
-        String skipSixtyOne=lastLayerName;
+        String skipSixtyOne=stemLastLayerName;
 
-        lastLayerName=buildLayerSixtyTwoToSixtyFive(graph,lastLayerName);
+        stemLastLayerName= buildLayerFromSixtyTwoToSixtyFive(graph,stemLastLayerName);
 
-        lastLayerName=buildLayerSixtySixToSeventyFour(graph,lastLayerName);
+        stemLastLayerName= buildLayerFromSixtySixToSeventyFour(graph,stemLastLayerName);
 
-        lastLayerName=buildLayerSeventyFiveToSeventyNine(graph,lastLayerName);
+        stemLastLayerName= buildLayerFromSeventyFiveToSeventyNine(graph,stemLastLayerName);
 
-        String beforePredictLayerName=lastLayerName;
+        //small objects
+        String smallObjectDetectionLayerName= buildLayerSmallObjectDetection(graph,stemLastLayerName);
 
-        String predictSmallLayerName=buildLayerPredictSmall(graph,beforePredictLayerName);
+        String predictMediumLastLayerName= buildLayerFromEightyThreeToEightySix(graph,stemLastLayerName,skipSixtyOne);
 
-        String eightyThreeToEightySixLayerName=buildLayerEightyThreeToEightySix(graph,beforePredictLayerName,skipSixtyOne);
+		predictMediumLastLayerName= buildLayerFromEightySevenToNinetyOne(graph,predictMediumLastLayerName);
+        //medium objects
+		String mediumObjectDetectionLayerName= buildLayerForMediumObjectDetection(graph,predictMediumLastLayerName);
 
-        graph.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
+
+		String predictBigLastLayerName= buildLayerFromNinetyFiveToNinetyEight(graph,predictMediumLastLayerName,skipThirtySix);
+
+		//big objects
+		String predictBigLayerName= buildLayerForBigObjectDetection(graph,predictBigLastLayerName);
+
+
+		graph.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
 
 				.addLayer("outputLayer",new OutputLayer.Builder().nOut(numClasses)
 								.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
 								.activation(Activation.SOFTMAX)
 								.build()
 						,
-						new String[]{predictSmallLayerName,eightyThreeToEightySixLayerName})
-                        .setOutputs("outputLayer");
+						smallObjectDetectionLayerName)
+				.addLayer("outputLayer1",new OutputLayer.Builder().nOut(numClasses)
+								.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+								.activation(Activation.SOFTMAX)
+								.build()
+						,
+						mediumObjectDetectionLayerName)
+				.addLayer("outputLayer2",new OutputLayer.Builder().nOut(numClasses)
+								.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+								.activation(Activation.SOFTMAX)
+								.build()
+						,
+						predictBigLayerName)
+                        .setOutputs("outputLayer","outputLayer1","outputLayer2");
 
         ComputationGraphConfiguration conf = graph.build();
 
@@ -162,9 +184,9 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerZeroToFour(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromZeroToFour(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
-		String moduleName="layer-zero-to-four";
+		String moduleName="layer-0-to-4";
 
 		int moduleIndex=0;
 
@@ -189,9 +211,9 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerFiveToEight(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromFiveToEight(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
-		String moduleName="layer-five-to-eight";
+		String moduleName="layer-5-to-8";
 
 		int moduleIndex=0;
 
@@ -214,9 +236,9 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerNineToEleven(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromNineToEleven(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
-		String moduleName="layer-nine-to-eleven";
+		String moduleName="layer-9-to-11";
 
 		int moduleIndex=0;
 
@@ -237,9 +259,9 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerTwelveToFifteen(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromTwelveToFifteen(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
-		String moduleName="layer-twelve-to-fifteen";
+		String moduleName="layer-12-to-15";
 
 		int moduleIndex=0;
 
@@ -264,7 +286,7 @@ public class YOLO3 extends ZooModel {
 	 */
 	private String buildLayerSixteenToThirtySixItem(ComputationGraphConfiguration.GraphBuilder graph,String input,int moduleIndex) {
 
-		String moduleName="layer-sixteen-to-thirty-six";
+		String moduleName="layer-16-to-36";
 
 		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
 
@@ -283,7 +305,7 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerSixteenToThirtySix(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromSixteenToThirtySix(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
 		String lastLayerName=null;
 
@@ -304,9 +326,9 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerThirtySevenToForty(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromThirtySevenToForty(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
-		String moduleName="layer-thirty-seven-to-forty";
+		String moduleName="layer-37-to-40";
 
 		int moduleIndex=0;
 
@@ -333,7 +355,7 @@ public class YOLO3 extends ZooModel {
 	 */
 	private String buildLayerFortyOneToSixtyOneItem(ComputationGraphConfiguration.GraphBuilder graph,String input,int moduleIndex) {
 
-		String moduleName="layer-forty-one-to-sixty-one";
+		String moduleName="layer-41-to-61";
 
 		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
 
@@ -352,7 +374,7 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerFortyOneToSixtyOne(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromFortyOneToSixtyOne(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
 		String lastLayerName=null;
 
@@ -375,9 +397,9 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerSixtyTwoToSixtyFive(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromSixtyTwoToSixtyFive(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
-		String moduleName="layer-sixty-two-to-sixty-five";
+		String moduleName="layer-62-to-65";
 
 		int moduleIndex=0;
 
@@ -403,7 +425,7 @@ public class YOLO3 extends ZooModel {
 	 */
 	private String buildLayerSixtySixToSeventyFourItem(ComputationGraphConfiguration.GraphBuilder graph,String input,int moduleIndex) {
 
-		String moduleName="layer-sixty-six-to-seventy-four";
+		String moduleName="layer-66-to-74";
 
 		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
 
@@ -422,7 +444,7 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerSixtySixToSeventyFour(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromSixtySixToSeventyFour(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
 		String lastLayerName=null;
 
@@ -443,10 +465,10 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerSeventyFiveToSeventyNine(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerFromSeventyFiveToSeventyNine(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
 
-		String moduleName="layer-seventy-five-to-seventy-nine";
+		String moduleName="layer-75-to-79";
 
 		int moduleIndex=0;
 
@@ -470,23 +492,30 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerPredictSmall(ComputationGraphConfiguration.GraphBuilder graph,String input) {
+	private String buildLayerSmallObjectDetection(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
-		String moduleName="layer-eighty-to-eighty-two";
+		String moduleName="layer-80-to-82";
 
 		int moduleIndex=0;
 
 		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {1,1},1024, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)), ConvolutionMode.Same, Boolean.TRUE,Boolean.FALSE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)), ConvolutionMode.Same, Boolean.FALSE,Boolean.FALSE);
 
 		return secondLayerName;
 	}
 
 
-	private String buildLayerEightyThreeToEightySix(ComputationGraphConfiguration.GraphBuilder graph,String input,String skipLayerName) {
+	/**
+	 * Layer 83 => 86
+	 * @param graph
+	 * @param input
+	 * @param skipLayerName
+	 * @return
+	 */
+	private String buildLayerFromEightyThreeToEightySix(ComputationGraphConfiguration.GraphBuilder graph, String input, String skipLayerName) {
 
-		String moduleName="layer-eighty-three-to-eighty-six";
+		String moduleName="layer-83-to-86";
 
 		int moduleIndex=0;
 
@@ -500,6 +529,96 @@ public class YOLO3 extends ZooModel {
 
 		return thirdLayer;
 	}
+
+	private String buildLayerFromEightySevenToNinetyOne(ComputationGraphConfiguration.GraphBuilder graph, String input){
+
+		String moduleName="layer-87-to-91";
+
+		int moduleIndex=0;
+
+		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,2, input, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,3, input, new int[] {3,3},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,4, input, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		return input;
+	}
+
+
+	/**
+	 * Layer 92 => 94
+	 * @param graph
+	 * @param input
+	 * @return
+	 */
+	private String buildLayerForMediumObjectDetection(ComputationGraphConfiguration.GraphBuilder graph, String input) {
+
+		String moduleName="layer-92-to-94";
+
+		int moduleIndex=0;
+
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)), ConvolutionMode.Same, Boolean.FALSE,Boolean.FALSE);
+
+		return secondLayerName;
+	}
+
+
+
+	/**
+	 * Layer 95 => 98
+	 * @param graph
+	 * @param input
+	 * @param skipLayerName
+	 * @return
+	 */
+	private String buildLayerFromNinetyFiveToNinetyEight(ComputationGraphConfiguration.GraphBuilder graph, String input, String skipLayerName) {
+
+		String moduleName="layer-95-to-98";
+
+		int moduleIndex=0;
+
+		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=upSampling2D(graph,moduleName,moduleIndex,1,input);
+
+		String thirdLayer=createLayerName(moduleName, MERGE_VERTEX,moduleIndex,2);
+
+		graph.addVertex(thirdLayer, new MergeVertex(), new String[]{input,skipLayerName});
+
+		return thirdLayer;
+	}
+
+
+	private String buildLayerForBigObjectDetection(ComputationGraphConfiguration.GraphBuilder graph, String input){
+
+		String moduleName="layer-99-to-106";
+
+		int moduleIndex=0;
+
+		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,2, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,3, input, new int[] {3,3},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,4, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,5, input, new int[] {3,3},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+
+		input=convBlock(graph, moduleName, moduleIndex,6, input, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)), ConvolutionMode.Same, Boolean.FALSE,Boolean.FALSE);
+
+		return input;
+	}
+
 
 	/**
          * one model has one or more
