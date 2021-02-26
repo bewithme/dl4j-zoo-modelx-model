@@ -1,0 +1,16 @@
+{
+	"name":"people_fall_down_",
+	"classesNumber": 2,
+	"bigBoundingBoxPriors":[[1.8603762755102042,4.533418367346941],[5.2089271496815295,3.9878052016985137],[4.375527731788077,5.525089679911699]],
+	"mediumBoundingBoxPriors":[[1.8603762755102042,4.533418367346941],[5.2089271496815295,3.9878052016985137],[4.375527731788077,5.525089679911699]],
+	"smallBoundingBoxPriors":[[1.8603762755102042,4.533418367346941],[5.2089271496815295,3.9878052016985137],[4.375527731788077,5.525089679911699]],
+	"learningRate": 1.0E-4,
+	"dataDir": "/Users/wenfengxu/Downloads/dataset/people_fall_down",
+	"batchSize": 4,
+	"epochs": 10,
+	"randomSeed": 7854,
+	"lamdbaCoord": 1.0,
+	"lamdbaNoObject": 0.5,
+	"imageFormat": ".jpg",
+	"modelSavePath":"/Users/wenfengxu/Downloads/people_fall_down"
+}
