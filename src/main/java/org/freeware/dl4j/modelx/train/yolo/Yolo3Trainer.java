@@ -80,11 +80,11 @@ public class Yolo3Trainer {
     		return;
     	}
     	
-    	String yolo2HyperparameterFileJsonStr=FileUtils.readFileToString(hyperparameterFile, "UTF-8");
+    	String hyperparameterFileJsonStr=FileUtils.readFileToString(hyperparameterFile, "UTF-8");
 		
-      	log.info(yolo2HyperparameterFileJsonStr);
+      	log.info(hyperparameterFileJsonStr);
     	
-		Yolo3Hyperparameter yolo2Hyperparameter= JsonUtils.jsonToObject(yolo2HyperparameterFileJsonStr, Yolo3Hyperparameter.class);
+		Yolo3Hyperparameter yolo2Hyperparameter= JsonUtils.jsonToObject(hyperparameterFileJsonStr, Yolo3Hyperparameter.class);
 		
         File imageDir = new File(yolo2Hyperparameter.getDataDir(), IMAGES_FOLDER);
         
