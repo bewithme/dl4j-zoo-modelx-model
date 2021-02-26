@@ -165,7 +165,7 @@ public class Yolo3Trainer {
                 DataSet smallBoundingDataSet=smallTrainRecordReaderDataSetIterator.next();
 
                 INDArray[] features=new INDArray[] {bigBoundingBoxDataSet.getFeatures()};
-
+                // we have three outputs here ,big medium and small
                 INDArray[] labels=new INDArray[] {bigBoundingBoxDataSet.getLabels(),mediumBoundingDataSet.getLabels(),smallBoundingDataSet.getLabels()};
 
                 MultiDataSet multiDataSet=new MultiDataSet(features,labels);
