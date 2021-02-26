@@ -17,14 +17,16 @@ import org.deeplearning4j.zoo.PretrainedType;
 import org.deeplearning4j.zoo.ZooModel;
 import org.deeplearning4j.zoo.ZooType;
 import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.IUpdater;
-import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 
 /**
  *
+ * This is dl4j yolo-v3 implementation
  *
+ * code reference from https://github.com/experiencor/keras-yolo3
  *
  * @author wenfengxu  wechatid:italybaby
  *
@@ -32,17 +34,32 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
 @AllArgsConstructor
 @Builder
 @Slf4j
-public class YOLO3 extends ZooModel {
+public class Yolo3 extends ZooModel {
 
     @Builder.Default private long seed = 1234;
+
     @Builder.Default private int[] inputShape = new int[] {3, 416, 416};
+
     @Builder.Default private int numClasses = 0;
+
     @Builder.Default private IUpdater updater = new Adam(0.001);
+
     @Builder.Default private CacheMode cacheMode = CacheMode.NONE;
+
     @Builder.Default private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
+
     @Builder.Default private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
 
-    
+	@Builder.Default private  double lamdbaCoord=1.0;
+
+	@Builder.Default private  double lamdbaNoObject=0.5;
+
+	@Builder.Default private double[][] bigBoundingBoxPriors = {{2.57273, 2.677385}, {2.87446, 2.06253}, {3.33843, 5.47434}};
+
+	@Builder.Default private double[][] mediumBoundingBoxPriors = {{1.57273, 1.677385}, {1.87446, 1.06253}, {1.33843, 1.47434}};
+
+	@Builder.Default private double[][] smallBoundingBoxPriors = {{0.57273, 0.677385}, {0.87446, 0.06253}, {0.33843, 0.47434}};
+
    private static String ACTIVATION ="activation";
     
    private static String ELEMENT_WISE_VERTEX ="element-wise-vertex";
@@ -61,7 +78,7 @@ public class YOLO3 extends ZooModel {
 
    private static String BATCH_NORM="batch-norm";
 
-   private YOLO3() {}
+   private Yolo3() {}
 
     @Override
     public String pretrainedUrl(PretrainedType pretrainedType) {
@@ -110,43 +127,40 @@ public class YOLO3 extends ZooModel {
 
         stemLastLayerName= buildLayerFromSeventyFiveToSeventyNine(graph,stemLastLayerName);
 
-        //small objects
-        String smallObjectDetectionLayerName= buildLayerSmallObjectDetection(graph,stemLastLayerName);
+        //big objects
+        String bigObjectDetectionLayerName= buildLayerBigObjectDetection(graph,stemLastLayerName);
 
-        String predictMediumLastLayerName= buildLayerFromEightyThreeToEightySix(graph,stemLastLayerName,skipSixtyOne);
+        String mediumObjectDetectionLastLayerName= buildLayerFromEightyThreeToEightySix(graph,stemLastLayerName,skipSixtyOne);
 
-		predictMediumLastLayerName= buildLayerFromEightySevenToNinetyOne(graph,predictMediumLastLayerName);
+		mediumObjectDetectionLastLayerName= buildLayerFromEightySevenToNinetyOne(graph,mediumObjectDetectionLastLayerName);
         //medium objects
-		String mediumObjectDetectionLayerName= buildLayerForMediumObjectDetection(graph,predictMediumLastLayerName);
+		String mediumObjectDetectionLayerName= buildLayerForMediumObjectDetection(graph,mediumObjectDetectionLastLayerName);
 
 
-		String predictBigLastLayerName= buildLayerFromNinetyFiveToNinetyEight(graph,predictMediumLastLayerName,skipThirtySix);
+		String smallObjectDetectionLastLayerName= buildLayerFromNinetyFiveToNinetyEight(graph,mediumObjectDetectionLastLayerName,skipThirtySix);
 
-		//big objects
-		String predictBigLayerName= buildLayerForBigObjectDetection(graph,predictBigLastLayerName);
+		//small objects
+		String smallObjectDetectionLayerName= buildLayerForSmallObjectDetection(graph,smallObjectDetectionLastLayerName);
 
 
 		graph.addInputs("input").setInputTypes(InputType.convolutional(inputShape[2], inputShape[1], inputShape[0]))
 
-				.addLayer("outputLayer",new OutputLayer.Builder().nOut(numClasses)
-								.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-								.activation(Activation.SOFTMAX)
+				.addLayer("output-big",new Yolo3OutputLayerConfiguration.Builder()
+								.boundingBoxPriors(Nd4j.create(bigBoundingBoxPriors))
 								.build()
 						,
-						smallObjectDetectionLayerName)
-				.addLayer("outputLayer1",new OutputLayer.Builder().nOut(numClasses)
-								.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-								.activation(Activation.SOFTMAX)
+						bigObjectDetectionLayerName)
+				.addLayer("output-medium",new Yolo3OutputLayerConfiguration.Builder()
+								.boundingBoxPriors(Nd4j.create(mediumBoundingBoxPriors))
 								.build()
 						,
 						mediumObjectDetectionLayerName)
-				.addLayer("outputLayer2",new OutputLayer.Builder().nOut(numClasses)
-								.lossFunction(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-								.activation(Activation.SOFTMAX)
+				.addLayer("output-small",new Yolo3OutputLayerConfiguration.Builder()
+								.boundingBoxPriors(Nd4j.create(smallBoundingBoxPriors))
 								.build()
 						,
-						predictBigLayerName)
-                        .setOutputs("outputLayer","outputLayer1","outputLayer2");
+						smallObjectDetectionLayerName)
+                        .setOutputs("output-big","output-medium","output-small");
 
         ComputationGraphConfiguration conf = graph.build();
 
@@ -284,7 +298,7 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerSixteenToThirtySixItem(ComputationGraphConfiguration.GraphBuilder graph,String input,int moduleIndex) {
+	private String buildLayerFromSixteenToThirtySixItem(ComputationGraphConfiguration.GraphBuilder graph, String input, int moduleIndex) {
 
 		String moduleName="layer-16-to-36";
 
@@ -311,7 +325,7 @@ public class YOLO3 extends ZooModel {
 
 		for(int moduleIndex=0;moduleIndex<7;moduleIndex++){
 
-			lastLayerName=buildLayerSixteenToThirtySixItem(graph,input,moduleIndex);
+			lastLayerName= buildLayerFromSixteenToThirtySixItem(graph,input,moduleIndex);
 
 			input=lastLayerName;
 		}
@@ -353,7 +367,7 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerFortyOneToSixtyOneItem(ComputationGraphConfiguration.GraphBuilder graph,String input,int moduleIndex) {
+	private String buildLayerFromFortyOneToSixtyOneItem(ComputationGraphConfiguration.GraphBuilder graph, String input, int moduleIndex) {
 
 		String moduleName="layer-41-to-61";
 
@@ -380,7 +394,7 @@ public class YOLO3 extends ZooModel {
 
 		for(int moduleIndex=0;moduleIndex<7;moduleIndex++){
 
-			lastLayerName=buildLayerFortyOneToSixtyOneItem(graph,input,moduleIndex);
+			lastLayerName= buildLayerFromFortyOneToSixtyOneItem(graph,input,moduleIndex);
 
 			input=lastLayerName;
 		}
@@ -423,7 +437,7 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerSixtySixToSeventyFourItem(ComputationGraphConfiguration.GraphBuilder graph,String input,int moduleIndex) {
+	private String buildLayerFromSixtySixToSeventyFourItem(ComputationGraphConfiguration.GraphBuilder graph, String input, int moduleIndex) {
 
 		String moduleName="layer-66-to-74";
 
@@ -450,7 +464,7 @@ public class YOLO3 extends ZooModel {
 
 		for(int moduleIndex=0;moduleIndex<3;moduleIndex++){
 
-			lastLayerName=buildLayerSixtySixToSeventyFourItem(graph,input,moduleIndex);
+			lastLayerName= buildLayerFromSixtySixToSeventyFourItem(graph,input,moduleIndex);
 
 			input=lastLayerName;
 		}
@@ -492,7 +506,7 @@ public class YOLO3 extends ZooModel {
 	 * @param input
 	 * @return
 	 */
-	private String buildLayerSmallObjectDetection(ComputationGraphConfiguration.GraphBuilder graph, String input) {
+	private String buildLayerBigObjectDetection(ComputationGraphConfiguration.GraphBuilder graph, String input) {
 
 		String moduleName="layer-80-to-82";
 
@@ -596,7 +610,7 @@ public class YOLO3 extends ZooModel {
 	}
 
 
-	private String buildLayerForBigObjectDetection(ComputationGraphConfiguration.GraphBuilder graph, String input){
+	private String buildLayerForSmallObjectDetection(ComputationGraphConfiguration.GraphBuilder graph, String input){
 
 		String moduleName="layer-99-to-106";
 
@@ -620,24 +634,7 @@ public class YOLO3 extends ZooModel {
 	}
 
 
-	/**
-         * one model has one or more
-         * module,one module has one
-         * or more block,so the name of
-         * layer is constructed with
-         * moduleName+"-"+layerName+"-"+moduleIndex+"-"+blockIndex
-         * @param moduleName
-         * @param layerName
-         * @param moduleIndex
-         * @param blockIndex
-         * @return
-         */
-	private String createLayerName(String moduleName, String layerName,Integer moduleIndex,Integer blockIndex) {
 
-		String newLayerName=moduleName.concat("-").concat(layerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
-
-		return newLayerName;
-	}
 
 	private String convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int in,int out,ConvolutionMode convolutionMode,Boolean addBatchNorm,Boolean addLeakyRelu) {
 
@@ -721,6 +718,25 @@ public class YOLO3 extends ZooModel {
 		return layerName;
 	}
 
+
+	/**
+	 * one model has one or more
+	 * module,one module has one
+	 * or more block,so the name of
+	 * layer is constructed with
+	 * moduleName+"-"+layerName+"-"+moduleIndex+"-"+blockIndex
+	 * @param moduleName
+	 * @param layerName
+	 * @param moduleIndex
+	 * @param blockIndex
+	 * @return
+	 */
+	private String createLayerName(String moduleName, String layerName,Integer moduleIndex,Integer blockIndex) {
+
+		String newLayerName=moduleName.concat("-").concat(layerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
+
+		return newLayerName;
+	}
 
 	@Override
     public ModelMetaData metaData() {
