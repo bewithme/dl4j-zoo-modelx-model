@@ -84,11 +84,11 @@ public class Yolo3Trainer {
 		
       	log.info(hyperparameterFileJsonStr);
     	
-		Yolo3Hyperparameter yolo2Hyperparameter= JsonUtils.jsonToObject(hyperparameterFileJsonStr, Yolo3Hyperparameter.class);
+		Yolo3Hyperparameter yoloHyperparameter= JsonUtils.jsonToObject(hyperparameterFileJsonStr, Yolo3Hyperparameter.class);
 		
-        File imageDir = new File(yolo2Hyperparameter.getDataDir(), IMAGES_FOLDER);
+        File imageDir = new File(yoloHyperparameter.getDataDir(), IMAGES_FOLDER);
         
-        File annotationDir = new File(yolo2Hyperparameter.getDataDir(),ANNOTATIONS_FOLDER);
+        File annotationDir = new File(yoloHyperparameter.getDataDir(),ANNOTATIONS_FOLDER);
         //删除无用的系统文件
         deleteUselessFile(annotationDir);
         //删除无用的系统文件
@@ -96,29 +96,34 @@ public class Yolo3Trainer {
         
         log.info("Load data...");
         
-        Random random = new Random(yolo2Hyperparameter.getRandomSeed());
+        Random random = new Random(yoloHyperparameter.getRandomSeed());
         //创建输入分割器数组
-        InputSplit[] inputSplit = getInputSplit(imageDir, random,yolo2Hyperparameter);
+        InputSplit[] inputSplit = getInputSplit(imageDir, random,yoloHyperparameter);
         //训练集文件分割器
         InputSplit trainDataInputSplit = inputSplit[0];
         //测试集文件分割器
         InputSplit testDataInputSplit  = inputSplit[1];
         //创建训练记录读取数据集迭代器
-        DataSetIterator trainRecordReaderDataSetIterator = getDataSetIterator(yolo2Hyperparameter,trainDataInputSplit,13,13);
+        DataSetIterator trainRecordReaderDataSetIterator = getDataSetIterator(yoloHyperparameter,trainDataInputSplit,13,13);
 
-        DataSetIterator mediumTrainRecordReaderDataSetIterator = getDataSetIterator(yolo2Hyperparameter,trainDataInputSplit,26,26);
+        DataSetIterator mediumTrainRecordReaderDataSetIterator = getDataSetIterator(yoloHyperparameter,trainDataInputSplit,26,26);
 
-        DataSetIterator smallTrainRecordReaderDataSetIterator = getDataSetIterator(yolo2Hyperparameter,trainDataInputSplit,52,52);
+        DataSetIterator smallTrainRecordReaderDataSetIterator = getDataSetIterator(yoloHyperparameter,trainDataInputSplit,52,52);
 
 
        //加载已有模型，如果本地不存在，则会从远程将预训练模型下载到当前用户的 
         //.deeplearning4j/models/tiny-yolo-voc_dl4j_inference.v2.zip 目录 
         ComputationGraph pretrainedComputationGraph =null;
         
-        File latestModelFile=getLatestModelFile(yolo2Hyperparameter);
+        File latestModelFile=getLatestModelFile(yoloHyperparameter);
         
         if(latestModelFile==null) {
-        	 pretrainedComputationGraph = (ComputationGraph) Yolo3.builder().numClasses(yolo2Hyperparameter.getClassesNumber()).build().init();
+        	 pretrainedComputationGraph = (ComputationGraph) Yolo3.builder()
+                     .numClasses(yoloHyperparameter.getClassesNumber())
+                     .bigBoundingBoxPriors(yoloHyperparameter.getBigBoundingBoxPriors())
+                     .mediumBoundingBoxPriors(yoloHyperparameter.getMediumBoundingBoxPriors())
+                     .smallBoundingBoxPriors(yoloHyperparameter.getSmallBoundingBoxPriors())
+                     .build().init();
         }else {
              pretrainedComputationGraph = ModelSerializer.restoreComputationGraph(latestModelFile,true);
         }
@@ -142,13 +147,13 @@ public class Yolo3Trainer {
       
         long startTime=System.currentTimeMillis();
         
-        String modelSavePath=yolo2Hyperparameter.getModelSavePath();
+        String modelSavePath=yoloHyperparameter.getModelSavePath();
         
         if(!modelSavePath.endsWith(File.separator)) {
         	modelSavePath=modelSavePath.concat(File.separator);
         }
         
-        for (int i = startEpoch; i < yolo2Hyperparameter.getEpochs(); i++) {
+        for (int i = startEpoch; i < yoloHyperparameter.getEpochs(); i++) {
         	//每轮训练开始之前将数据集重置
             trainRecordReaderDataSetIterator.reset();
 
@@ -176,7 +181,7 @@ public class Yolo3Trainer {
 
       
             //每完成一轮，保存一次模型
-            ModelSerializer.writeModel(model, modelSavePath.concat(yolo2Hyperparameter.getName()).concat("model.zip_")+i, true);
+            ModelSerializer.writeModel(model, modelSavePath.concat(yoloHyperparameter.getName()).concat("model.zip_")+i, true);
 
             log.info("*** Completed epoch {} ***", i);
         }
