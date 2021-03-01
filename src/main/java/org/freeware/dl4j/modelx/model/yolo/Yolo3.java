@@ -181,7 +181,7 @@ public class Yolo3 extends ZooModel {
 	public ComputationGraphConfiguration.GraphBuilder graphBuilder() {
 
 		ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
-				.activation(Activation.IDENTITY)
+
 				.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
 				.updater(updater)
 				.weightInit(WeightInit.XAVIER)
