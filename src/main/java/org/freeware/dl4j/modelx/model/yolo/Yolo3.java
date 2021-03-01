@@ -54,11 +54,11 @@ public class Yolo3 extends ZooModel {
 
 	@Builder.Default private  double lamdbaNoObject=0.5;
 
-	@Builder.Default private double[][] bigBoundingBoxPriors = {{2.57273, 2.677385}, {2.87446, 2.06253}, {3.33843, 5.47434}};
+	@Builder.Default private double[][] bigBoundingBoxPriors ;
 
-	@Builder.Default private double[][] mediumBoundingBoxPriors = {{1.57273, 1.677385}, {1.87446, 1.06253}, {1.33843, 1.47434}};
+	@Builder.Default private double[][] mediumBoundingBoxPriors ;
 
-	@Builder.Default private double[][] smallBoundingBoxPriors = {{0.57273, 0.677385}, {0.87446, 0.06253}, {0.33843, 0.47434}};
+	@Builder.Default private double[][] smallBoundingBoxPriors;
 
    private static String ACTIVATION ="activation";
     
@@ -147,16 +147,22 @@ public class Yolo3 extends ZooModel {
 
 				.addLayer("output-big",new Yolo3OutputLayerConfiguration.Builder()
 								.boundingBoxPriors(Nd4j.create(bigBoundingBoxPriors))
+						        .lambdaCoord(lamdbaCoord)
+						        .lambdaNoObj(lamdbaNoObject)
 								.build()
 						,
 						bigObjectDetectionLayerName)
 				.addLayer("output-medium",new Yolo3OutputLayerConfiguration.Builder()
 								.boundingBoxPriors(Nd4j.create(mediumBoundingBoxPriors))
+								.lambdaCoord(lamdbaCoord)
+								.lambdaNoObj(lamdbaNoObject)
 								.build()
 						,
 						mediumObjectDetectionLayerName)
 				.addLayer("output-small",new Yolo3OutputLayerConfiguration.Builder()
 								.boundingBoxPriors(Nd4j.create(smallBoundingBoxPriors))
+								.lambdaCoord(lamdbaCoord)
+								.lambdaNoObj(lamdbaNoObject)
 								.build()
 						,
 						smallObjectDetectionLayerName)
