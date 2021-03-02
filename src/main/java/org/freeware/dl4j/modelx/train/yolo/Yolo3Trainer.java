@@ -5,11 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import org.apache.commons.io.FileUtils;
 import org.datavec.api.io.filters.RandomPathFilter;
@@ -170,6 +166,10 @@ public class Yolo3Trainer {
                 DataSet smallBoundingDataSet=smallTrainRecordReaderDataSetIterator.next();
 
                 INDArray[] features=new INDArray[] {bigBoundingBoxDataSet.getFeatures()};
+
+                log.info(Arrays.toString(bigBoundingBoxDataSet.getLabels().shape()));
+                log.info(Arrays.toString(mediumBoundingDataSet.getLabels().shape()));
+                log.info(Arrays.toString(smallBoundingDataSet.getLabels().shape()));
                 // we have three outputs here ,big medium and small
                 INDArray[] labels=new INDArray[] {bigBoundingBoxDataSet.getLabels(),mediumBoundingDataSet.getLabels(),smallBoundingDataSet.getLabels()};
 
@@ -192,7 +192,7 @@ public class Yolo3Trainer {
        
     }
 
-	public static InputSplit[] getInputSplit(File imageDir, Random random, Yolo3Hyperparameter yolo2Hyperparameter) {
+	public static InputSplit[] getInputSplit(File imageDir, Random random, Yolo3Hyperparameter yoloHyperparameter) {
 		
 		 //随机路径过滤器，可以写规则来过滤掉不需要的数据
         RandomPathFilter pathFilter = new RandomPathFilter(random) {
@@ -201,7 +201,7 @@ public class Yolo3Trainer {
             	//转换为标签文件的路径
                 name = name.replace(File.separator+IMAGES_FOLDER+File.separator, 
                 		File.separator+ANNOTATIONS_FOLDER+File.separator)
-                		.replace(yolo2Hyperparameter.getImageFormat(), ANNOTATION_FORMAT);
+                		.replace(yoloHyperparameter.getImageFormat(), ANNOTATION_FORMAT);
                 log.info("loading annotation:"+name);
                 try {
                 	//如果图片文件对应的标签文件存在，则表示此条数据可以使用

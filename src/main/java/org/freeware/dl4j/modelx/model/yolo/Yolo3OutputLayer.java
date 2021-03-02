@@ -1,6 +1,7 @@
 package org.freeware.dl4j.modelx.model.yolo;
 
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.api.layers.IOutputLayer;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
@@ -41,6 +42,7 @@ import java.util.List;
 import static org.nd4j.linalg.indexing.NDArrayIndex.*;
 import static org.nd4j.linalg.indexing.NDArrayIndex.all;
 
+@Slf4j
 public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguration> implements Serializable, IOutputLayer {
 
     private static final Gradient EMPTY_GRADIENT = new DefaultGradient();
@@ -51,6 +53,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     protected INDArray labels;
 
     private double fullNetRegTerm;
+
     private double score;
 
     public Yolo3OutputLayer(NeuralNetConfiguration conf, DataType dataType) {
@@ -59,6 +62,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
     @Override
     public Pair<Gradient, INDArray> backpropGradient(INDArray epsilon, LayerWorkspaceMgr workspaceMgr) {
+
         INDArray epsOut = computeBackpropGradientAndScore(workspaceMgr, false, false);
 
         return new Pair<>(EMPTY_GRADIENT, epsOut);
@@ -71,18 +75,23 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
                 " but got rank %s labels array with shape %s", labels.rank(), labels.shape());
 
         double lambdaCoord = layerConf().getLambdaCoord();
+
         double lambdaNoObj = layerConf().getLambdaNoObj();
 
-        long mb = input.size(0);
-        long h = input.size(2);
-        long w = input.size(3);
-        int b = (int) layerConf().getBoundingBoxes().size(0);
-        int c = (int) labels.size(1)-4;
+        long miniBatchSize = input.size(0);
 
+        long inputHeight = input.size(2);
+
+        long inputWidth = input.size(3);
+
+        int numberOfBoundingBoxes = (int) layerConf().getBoundingBoxes().size(0);
+
+        int numberOfClass = (int) labels.size(1)-4;
+        //keep data type of the input the same as labels
         INDArray labels = this.labels.castTo(input.dataType());     //Ensure correct dtype (same as params); no-op if already correct dtype
 
         //Various shape arrays, to reuse
-        long[] nhw = new long[]{mb, h, w};
+        long[] inputShapeNhw = new long[]{miniBatchSize, inputHeight, inputWidth};
 
         //Labels shape: [mb, 4+C, H, W]
         //Infer mask array from labels. Mask array is 1_i^B in YOLO paper - i.e., whether an object is present in that
@@ -91,9 +100,18 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         Preconditions.checkState(labels.rank() == 4, "Expected labels array to be rank 4 with shape [minibatch, 4+numClasses, H, W]. Got labels array with shape %ndShape", labels);
         Preconditions.checkState(labels.size(1) > 0, "Invalid labels array: labels.size(1) must be > 4. labels array should be rank 4 with shape [minibatch, 4+numClasses, H, W]. Got labels array with shape %ndShape", labels);
 
-        val size1 = labels.size(1);
-        INDArray classLabels = labels.get(all(), interval(4,size1), all(), all());   //Shape: [minibatch, nClasses, H, W]
-        INDArray maskObjectPresent = classLabels.sum(Nd4j.createUninitialized(input.dataType(), nhw, 'c'), 1);//.castTo(DataType.BOOL); //Shape: [minibatch, H, W]
+        //[miniBatch,4+c,grid height,grid width],
+        //labelSize=4+class number
+        val labelSize = labels.size(1);
+
+        //Shape: [miniBatch, nClasses, gridH, gridW]
+        INDArray classLabels = labels.get(all(), interval(4,labelSize), all(), all());
+
+        //.castTo(DataType.BOOL); //Shape: [miniBatch, gridH, gridW]
+        INDArray maskObjectPresent = classLabels.sum(Nd4j.createUninitialized(input.dataType(), inputShapeNhw, 'c'), 1);
+
+        log.info(Arrays.toString(maskObjectPresent.shape()));
+
         INDArray maskObjectPresentBool = maskObjectPresent.castTo(DataType.BOOL);
 
         // ----- Step 1: Labels format conversion -----
@@ -114,15 +132,15 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         // ----- Step 2: apply activation functions to network output activations -----
         //Reshape from [minibatch, B*(5+C), H, W] to [minibatch, B, 5+C, H, W]
-        long[] expInputShape = new long[]{mb, b*(5+c), h, w};
-        long[] newShape = new long[]{mb, b, 5+c, h, w};
+        long[] expInputShape = new long[]{miniBatchSize, numberOfBoundingBoxes*(5+numberOfClass), inputHeight, inputWidth};
+        long[] newShape = new long[]{miniBatchSize, numberOfBoundingBoxes, 5+numberOfClass, inputHeight, inputWidth};
         long newLength = ArrayUtil.prodLong(newShape);
         Preconditions.checkState(Arrays.equals(expInputShape, input.shape()), "Unable to reshape input - input array shape does not match" +
                 " expected shape. Expected input shape [minibatch, B*(5+C), H, W]=%s but got input of shape %ndShape. This may be due to an incorrect nOut (layer size/channels)" +
                 " for the last convolutional layer in the network. nOut of the last layer must be B*(5+C) where B is the number of" +
-                " bounding boxes, and C is the number of object classes. Expected B=%s from network configuration and C=%s from labels", expInputShape, input, b, c);
-        INDArray input5 = input.dup('c').reshape('c', mb, b, 5+c, h, w);
-        INDArray inputClassesPreSoftmax = input5.get(all(), all(), interval(5, 5+c), all(), all());
+                " bounding boxes, and C is the number of object classes. Expected B=%s from network configuration and C=%s from labels", expInputShape, input, numberOfBoundingBoxes, numberOfClass);
+        INDArray input5 = input.dup('c').reshape('c', miniBatchSize, numberOfBoundingBoxes, 5+numberOfClass, inputHeight, inputWidth);
+        INDArray inputClassesPreSoftmax = input5.get(all(), all(), interval(5, 5+numberOfClass), all(), all());
 
         // Sigmoid for x/y centers
         INDArray preSigmoidPredictedXYCenterGrid = input5.get(all(), all(), interval(0,2), all(), all());
@@ -170,44 +188,44 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         //One design goal here is to make the loss function configurable. To do this, we want to reshape the activations
         //(and masks) to a 2d representation, suitable for use in DL4J's loss functions
 
-        INDArray mask1_ij_obj_2d = mask1_ij_obj.reshape(mb*b*h*w, 1);  //Must be C order before reshaping
+        INDArray mask1_ij_obj_2d = mask1_ij_obj.reshape(miniBatchSize*numberOfBoundingBoxes*inputHeight*inputWidth, 1);  //Must be C order before reshaping
         INDArray mask1_ij_noobj_2d = mask1_ij_obj_2d.rsub(1.0);
 
 
         INDArray predictedXYCenter2d = predictedXYCenterGrid.permute(0,1,3,4,2)  //From: [mb, B, 2, H, W] to [mb, B, H, W, 2]
-                .dup('c').reshape('c', mb*b*h*w, 2);
+                .dup('c').reshape('c', miniBatchSize*numberOfBoundingBoxes*inputHeight*inputWidth, 2);
         //Don't use INDArray.broadcast(int...) until ND4J issue is fixed: https://github.com/deeplearning4j/nd4j/issues/2066
         //INDArray labelsCenterXYInGridBroadcast = labelsCenterXYInGrid.broadcast(mb, b, 2, h, w);
         //Broadcast labelsCenterXYInGrid from [mb, 2, h, w} to [mb, b, 2, h, w]
-        INDArray labelsCenterXYInGridBroadcast = Nd4j.createUninitialized(input.dataType(), new long[]{mb, b, 2, h, w}, 'c');
-        for(int i=0; i<b; i++ ){
+        INDArray labelsCenterXYInGridBroadcast = Nd4j.createUninitialized(input.dataType(), new long[]{miniBatchSize, numberOfBoundingBoxes, 2, inputHeight, inputWidth}, 'c');
+        for(int i=0; i<numberOfBoundingBoxes; i++ ){
             labelsCenterXYInGridBroadcast.get(all(), point(i), all(), all(), all()).assign(labelsCenterXYInGridBox);
         }
-        INDArray labelXYCenter2d = labelsCenterXYInGridBroadcast.permute(0,1,3,4,2).dup('c').reshape('c', mb*b*h*w, 2);    //[mb, b, 2, h, w] to [mb, b, h, w, 2] to [mb*b*h*w, 2]
+        INDArray labelXYCenter2d = labelsCenterXYInGridBroadcast.permute(0,1,3,4,2).dup('c').reshape('c', miniBatchSize*numberOfBoundingBoxes*inputHeight*inputWidth, 2);    //[mb, b, 2, h, w] to [mb, b, h, w, 2] to [mb*b*h*w, 2]
 
         //Width/height (sqrt)
-        INDArray predictedWHSqrt2d = predictedWHSqrt.permute(0,1,3,4,2).dup('c').reshape(mb*b*h*w, 2).dup('c'); //from [mb, b, 2, h, w] to [mb, b, h, w, 2] to [mb*b*h*w, 2]
+        INDArray predictedWHSqrt2d = predictedWHSqrt.permute(0,1,3,4,2).dup('c').reshape(miniBatchSize*numberOfBoundingBoxes*inputHeight*inputWidth, 2).dup('c'); //from [mb, b, 2, h, w] to [mb, b, h, w, 2] to [mb*b*h*w, 2]
         //Broadcast labelWHSqrt from [mb, 2, h, w} to [mb, b, 2, h, w]
-        INDArray labelWHSqrtBroadcast = Nd4j.createUninitialized(input.dataType(), new long[]{mb, b, 2, h, w}, 'c');
-        for(int i=0; i<b; i++ ){
+        INDArray labelWHSqrtBroadcast = Nd4j.createUninitialized(input.dataType(), new long[]{miniBatchSize, numberOfBoundingBoxes, 2, inputHeight, inputWidth}, 'c');
+        for(int i=0; i<numberOfBoundingBoxes; i++ ){
             labelWHSqrtBroadcast.get(all(), point(i), all(), all(), all()).assign(labelWHSqrt); //[mb, 2, h, w] to [mb, b, 2, h, w]
         }
-        INDArray labelWHSqrt2d = labelWHSqrtBroadcast.permute(0,1,3,4,2).dup('c').reshape(mb*b*h*w, 2).dup('c');   //[mb, b, 2, h, w] to [mb, b, h, w, 2] to [mb*b*h*w, 2]
+        INDArray labelWHSqrt2d = labelWHSqrtBroadcast.permute(0,1,3,4,2).dup('c').reshape(miniBatchSize*numberOfBoundingBoxes*inputHeight*inputWidth, 2).dup('c');   //[mb, b, 2, h, w] to [mb, b, h, w, 2] to [mb*b*h*w, 2]
 
         //Confidence
-        INDArray labelConfidence2d = labelConfidence.dup('c').reshape('c', mb * b * h * w, 1);
-        INDArray predictedConfidence2d = predictedConfidence.dup('c').reshape('c', mb * b * h * w, 1).dup('c');
-        INDArray predictedConfidence2dPreSigmoid = predictedConfidencePreSigmoid.dup('c').reshape('c', mb * b * h * w, 1).dup('c');
+        INDArray labelConfidence2d = labelConfidence.dup('c').reshape('c', miniBatchSize * numberOfBoundingBoxes * inputHeight * inputWidth, 1);
+        INDArray predictedConfidence2d = predictedConfidence.dup('c').reshape('c', miniBatchSize * numberOfBoundingBoxes * inputHeight * inputWidth, 1).dup('c');
+        INDArray predictedConfidence2dPreSigmoid = predictedConfidencePreSigmoid.dup('c').reshape('c', miniBatchSize * numberOfBoundingBoxes * inputHeight * inputWidth, 1).dup('c');
 
 
         //Class prediction loss
         INDArray classPredictionsPreSoftmax2d = inputClassesPreSoftmax.permute(0,1,3,4,2) //[minibatch, b, c, h, w] To [mb, b, h, w, c]
-                .dup('c').reshape('c', new long[]{mb*b*h*w, c});
-        INDArray classLabelsBroadcast = Nd4j.createUninitialized(input.dataType(), new long[]{mb, b, c, h, w}, 'c');
-        for(int i=0; i<b; i++ ){
+                .dup('c').reshape('c', new long[]{miniBatchSize*numberOfBoundingBoxes*inputHeight*inputWidth, numberOfClass});
+        INDArray classLabelsBroadcast = Nd4j.createUninitialized(input.dataType(), new long[]{miniBatchSize, numberOfBoundingBoxes, numberOfClass, inputHeight, inputWidth}, 'c');
+        for(int i=0; i<numberOfBoundingBoxes; i++ ){
             classLabelsBroadcast.get(all(), point(i), all(), all(), all()).assign(classLabels); //[mb, c, h, w] to [mb, b, c, h, w]
         }
-        INDArray classLabels2d = classLabelsBroadcast.permute(0,1,3,4,2).dup('c').reshape('c', new long[]{mb*b*h*w, c});
+        INDArray classLabels2d = classLabelsBroadcast.permute(0,1,3,4,2).dup('c').reshape('c', new long[]{miniBatchSize*numberOfBoundingBoxes*inputHeight*inputWidth, numberOfClass});
 
         //Calculate the loss:
         ILossFunction lossConfidence = new LossL2();
@@ -226,7 +244,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
                     .addi(classPredictionLoss)
                     .dup('c');
 
-            scoreForExamples = scoreForExamples.reshape('c', mb, b*h*w).sum(true, 1);
+            scoreForExamples = scoreForExamples.reshape('c', miniBatchSize, numberOfBoundingBoxes*inputHeight*inputWidth).sum(true, 1);
             if(fullNetRegTerm > 0.0) {
                 scoreForExamples.addi(fullNetRegTerm);
             }
@@ -256,8 +274,8 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         // ----- Gradient Calculation (specifically: return dL/dIn -----
 
         INDArray epsOut = workspaceMgr.createUninitialized(ArrayType.ACTIVATION_GRAD, input.dataType(), input.shape(), 'c');
-        INDArray epsOut5 = Shape.newShapeNoCopy(epsOut, new long[]{mb, b, 5+c, h, w}, false);
-        INDArray epsClassPredictions = epsOut5.get(all(), all(), interval(5, 5+c), all(), all());    //Shape: [mb, b, 5+c, h, w]
+        INDArray epsOut5 = Shape.newShapeNoCopy(epsOut, new long[]{miniBatchSize, numberOfBoundingBoxes, 5+numberOfClass, inputHeight, inputWidth}, false);
+        INDArray epsClassPredictions = epsOut5.get(all(), all(), interval(5, 5+numberOfClass), all(), all());    //Shape: [mb, b, 5+c, h, w]
         INDArray epsXY = epsOut5.get(all(), all(), interval(0,2), all(), all());
         INDArray epsWH = epsOut5.get(all(), all(), interval(2,4), all(), all());
         INDArray epsC = epsOut5.get(all(), all(), point(4), all(), all());
@@ -266,7 +284,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         //Calculate gradient component from class probabilities (softmax)
         //Shape: [minibatch*h*w, c]
         INDArray gradPredictionLoss2d = layerConf().getLossClassPredictions().computeGradient(classLabels2d, classPredictionsPreSoftmax2d, new ActivationSoftmax(), mask1_ij_obj_2d);
-        INDArray gradPredictionLoss5d = gradPredictionLoss2d.dup('c').reshape(mb, b, h, w, c).permute(0,1,4,2,3).dup('c');
+        INDArray gradPredictionLoss5d = gradPredictionLoss2d.dup('c').reshape(miniBatchSize, numberOfBoundingBoxes, inputHeight, inputWidth, numberOfClass).permute(0,1,4,2,3).dup('c');
         epsClassPredictions.assign(gradPredictionLoss5d);
 
 
@@ -274,7 +292,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         INDArray gradXYCenter2d = layerConf().getLossPositionScale().computeGradient(labelXYCenter2d, predictedXYCenter2d, identity, mask1_ij_obj_2d);
         gradXYCenter2d.muli(lambdaCoord);
         INDArray gradXYCenter5d = gradXYCenter2d.dup('c')
-                .reshape('c', mb, b, h, w, 2)
+                .reshape('c', miniBatchSize, numberOfBoundingBoxes, inputHeight, inputWidth, 2)
                 .permute(0,1,4,2,3);   //From: [mb, B, H, W, 2] to [mb, B, 2, H, W]
         gradXYCenter5d = new ActivationSigmoid().backprop(preSigmoidPredictedXYCenterGrid.dup(), gradXYCenter5d).getFirst();
         epsXY.assign(gradXYCenter5d);
@@ -286,7 +304,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         //dL/dW = dL/dsqrtw * dsqrtw / dW = dL/dsqrtw * 0.5 / sqrt(w)
         INDArray gradWH2d = gradWHSqrt2d.muli(0.5).divi(predictedWHSqrt2d);  //dL/dW and dL/dH, w = pw * exp(tw)
         //dL/dinWH = dL/dW * dW/dInWH = dL/dW * pw * exp(tw)
-        INDArray gradWH5d = gradWH2d.dup('c').reshape(mb, b, h, w, 2).permute(0,1,4,2,3);   //To: [mb, b, 2, h, w]
+        INDArray gradWH5d = gradWH2d.dup('c').reshape(miniBatchSize, numberOfBoundingBoxes, inputHeight, inputWidth, 2).permute(0,1,4,2,3);   //To: [mb, b, 2, h, w]
         gradWH5d.muli(predictedWH);
         gradWH5d.muli(lambdaCoord);
         epsWH.assign(gradWH5d);
@@ -300,7 +318,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         INDArray dLc_dC_2d = gradConfidence2dA.addi(gradConfidence2dB.muli(lambdaNoObj));  //dL/dC; C = sigmoid(tc)
         INDArray dLc_dzc_2d = new ActivationSigmoid().backprop( predictedConfidence2dPreSigmoid, dLc_dC_2d).getFirst();
         //Calculate dL/dtc
-        INDArray epsConfidence4d = dLc_dzc_2d.dup('c').reshape('c', mb, b, h, w);   //[mb*b*h*w, 2] to [mb, b, h, w]
+        INDArray epsConfidence4d = dLc_dzc_2d.dup('c').reshape('c', miniBatchSize, numberOfBoundingBoxes, inputHeight, inputWidth);   //[mb*b*h*w, 2] to [mb, b, h, w]
         epsC.assign(epsConfidence4d);
 
 
