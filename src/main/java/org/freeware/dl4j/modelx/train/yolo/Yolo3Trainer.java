@@ -19,12 +19,14 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
 import org.freeware.dl4j.modelx.JsonUtils;
+import org.freeware.dl4j.modelx.dataset.Yolo3DataSetIterator;
 import org.freeware.dl4j.modelx.model.yolo.Yolo3;
 import org.freeware.dl4j.modelx.train.uitls.ModelTrainOptions;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.MultiDataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,11 +102,7 @@ public class Yolo3Trainer {
         //测试集文件分割器
         InputSplit testDataInputSplit  = inputSplit[1];
         //创建训练记录读取数据集迭代器
-        DataSetIterator trainRecordReaderDataSetIterator = getDataSetIterator(yoloHyperparameter,trainDataInputSplit,13,13);
-
-        DataSetIterator mediumTrainRecordReaderDataSetIterator = getDataSetIterator(yoloHyperparameter,trainDataInputSplit,26,26);
-
-        DataSetIterator smallTrainRecordReaderDataSetIterator = getDataSetIterator(yoloHyperparameter,trainDataInputSplit,52,52);
+        MultiDataSetIterator trainRecordReaderDataSetIterator = new Yolo3DataSetIterator(yoloHyperparameter.getDataDir(),yoloHyperparameter.getBatchSize(),yoloHyperparameter.getLabels(),yoloHyperparameter.getBigBoundingBoxPriors(),yoloHyperparameter.getMediumBoundingBoxPriors(),yoloHyperparameter.getSmallBoundingBoxPriors());
 
 
        //加载已有模型，如果本地不存在，则会从远程将预训练模型下载到当前用户的 
@@ -115,7 +113,7 @@ public class Yolo3Trainer {
         
         if(latestModelFile==null) {
         	 pretrainedComputationGraph = (ComputationGraph) Yolo3.builder()
-                     .numClasses(yoloHyperparameter.getClassesNumber())
+                     .numClasses(yoloHyperparameter.getLabels().length)
                      .bigBoundingBoxPriors(yoloHyperparameter.getBigBoundingBoxPriors())
                      .mediumBoundingBoxPriors(yoloHyperparameter.getMediumBoundingBoxPriors())
                      .smallBoundingBoxPriors(yoloHyperparameter.getSmallBoundingBoxPriors())
@@ -153,35 +151,17 @@ public class Yolo3Trainer {
         	//每轮训练开始之前将数据集重置
             trainRecordReaderDataSetIterator.reset();
 
-            mediumTrainRecordReaderDataSetIterator.reset();
-
-            smallTrainRecordReaderDataSetIterator.reset();
 
             while (trainRecordReaderDataSetIterator.hasNext()){
 
-                DataSet bigBoundingBoxDataSet=trainRecordReaderDataSetIterator.next();
+                trainRecordReaderDataSetIterator.next();
 
-                DataSet mediumBoundingDataSet=mediumTrainRecordReaderDataSetIterator.next();
-
-                DataSet smallBoundingDataSet=smallTrainRecordReaderDataSetIterator.next();
-
-                INDArray[] features=new INDArray[] {bigBoundingBoxDataSet.getFeatures()};
-
-                log.info(Arrays.toString(bigBoundingBoxDataSet.getLabels().shape()));
-                log.info(Arrays.toString(mediumBoundingDataSet.getLabels().shape()));
-                log.info(Arrays.toString(smallBoundingDataSet.getLabels().shape()));
-                // we have three outputs here ,big medium and small
-                INDArray[] labels=new INDArray[] {bigBoundingBoxDataSet.getLabels(),mediumBoundingDataSet.getLabels(),smallBoundingDataSet.getLabels()};
-
-                MultiDataSet multiDataSet=new MultiDataSet(features,labels);
-
-                model.fit(multiDataSet);
 
             }
 
       
             //每完成一轮，保存一次模型
-            ModelSerializer.writeModel(model, modelSavePath.concat(yoloHyperparameter.getName()).concat("model.zip_")+i, true);
+           // ModelSerializer.writeModel(model, modelSavePath.concat(yoloHyperparameter.getName()).concat("model.zip_")+i, true);
 
             log.info("*** Completed epoch {} ***", i);
         }

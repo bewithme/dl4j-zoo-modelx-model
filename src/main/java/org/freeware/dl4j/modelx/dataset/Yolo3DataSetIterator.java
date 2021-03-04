@@ -77,23 +77,23 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	public Yolo3DataSetIterator(String dataSetPath,
 								int batchSize,
 								String[] labels ,
-								int[] inputShape,
 								int[][] bigBoundingBoxPriors,
 								int[][] mediumBoundingBoxPriors,
 								int[][] smallBoundingBoxPriors) {
 
 		super();
 
-		this.inputShape=inputShape;
+
 		this.labels=labels;
-        this.nativeImageLoader=new NativeImageLoader(inputShape[0],inputShape[1],inputShape[2]);
+
+        this.nativeImageLoader=new NativeImageLoader(inputShape[1],inputShape[2],inputShape[0]);
 
         setAnchors(bigBoundingBoxPriors, mediumBoundingBoxPriors, smallBoundingBoxPriors);
 
 		//检查并设置目录
 		checkAndSetDirectory(dataSetPath);
 
-		this.labelProvider=new VocLabelProvider(this.labelPath);
+		this.labelProvider=new VocLabelProvider(dataSetPath);
 
 		this.maxBoxPerImage=getMaxBoxPerImage();
 
@@ -142,12 +142,12 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			dataSetPath=dataSetPath.concat(File.separator);
 		}
 
-		this.labelPath=dataSetPath.concat(ANNOTATIONS_FOLDER);
+		this.labelPath=dataSetPath.concat(ANNOTATIONS_FOLDER).concat(File.separator);
 
 		if(!new File(this.labelPath).exists()){
 			throw new IllegalStateException(this.labelPath.concat("directory does not exist"));
 		}
-		this.featurePath=dataSetPath.concat(IMAGES_FOLDER);
+		this.featurePath=dataSetPath.concat(IMAGES_FOLDER).concat(File.separator);
 
 		if(!new File(this.featurePath).exists()){
 			throw new IllegalStateException(this.featurePath.concat("directory does not exist"));
@@ -160,9 +160,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	 * @return
 	 */
 	private int getMaxBoxPerImage(){
+
 		List<File> labelFileList=ExtendedFileUtils.listFiles(this.labelPath, new String[] {"xml"}, false);
+
 		List<Integer> imageObjectSizeList=new ArrayList<>(100);
+
 		for(File labelFile:labelFileList){
+
 			List<ImageObject> imageObjectList=labelProvider.getImageObjectsForPath(labelFile.getAbsolutePath());
 
 			imageObjectSizeList.add(imageObjectList.size());
@@ -195,16 +199,17 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		int endIndex=batchSize*(currentBatch+1);
 
 		if(endIndex>this.featureFiles.size()){
+
 			endIndex=this.featureFiles.size();
+
 			startIndex=endIndex-this.batchSize;
 		}
 
 		int realBatchSize=endIndex-startIndex;
-		//特征存放数数，便于拼接
+		//特征存放，便于拼接
 		INDArray[] featureList=new INDArray[realBatchSize] ;
-		//标签存放数数，便于拼接
+		//标签存放数，便于拼接
 		INDArray[] labelList=new INDArray[realBatchSize];
-
 
 		INDArray labelBig=Nd4j.zeros(realBatchSize,13,13,3,4+1+this.labels.length);
 
@@ -215,11 +220,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		INDArray[] labels=new INDArray[]{labelBig,labelMedium,labelSmall} ;
 
 		int exampleCount=0;
+
 		for(int exampleIndex=startIndex;exampleIndex<endIndex;exampleIndex++) {
 			
 			File featureFile=featureFiles.get(exampleIndex);
 			
 			try {
+
 				//得到特征值
 				INDArray feature = nativeImageLoader.asMatrix(featureFile);
 
@@ -253,19 +260,19 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 					}
                     //边界框放于与之iou最大的anchor所在的输出
-					INDArray label=labels[maxIndex/3];
+					INDArray currentLabel=labels[maxIndex/3];
 
-                    long gridWidth=label.shape()[1];
+                    long gridWidth=currentLabel.shape()[1];
 
-					long gridHeight=label.shape()[2];
+					long gridHeight=currentLabel.shape()[2];
 
 					double centerX = .5*(imageObject.getX1() + imageObject.getX2());
 					// sigma(t_x) + c_x
-					centerX = centerX / this.inputShape[0] * gridWidth ;
+					centerX = centerX / inputShape[1] * gridWidth ;
 
 					double centerY = .5*(imageObject.getY1() + imageObject.getY2());
 					// sigma(t_y) + c_y
-					centerY = centerY / this.inputShape[1] * gridHeight ;
+					centerY = centerY / inputShape[2] * gridHeight ;
 
 					// determine the sizes of the bounding box 数据归一化
 					double	width = Math.log(imageObject.getX2()- imageObject.getX1()) / maxAnchor.getX2();
@@ -280,19 +287,23 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 					int gridY=(int)Math.floor(centerY);
 
-
-					//label.putScalar(exampleCount,gridX,gridY,maxIndex%3,4);
-
                     int anchorIndex=maxIndex%3;
 
-                    for(int boxValueIndex=0;boxValueIndex<box.length;boxValueIndex++){
-						label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(boxValueIndex)},box[boxValueIndex]);
+                    currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.all()},0);
+
+					for(int boxValueIndex=0;boxValueIndex<box.length;boxValueIndex++){
+
+						currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(boxValueIndex)},box[boxValueIndex]);
 					}
-                    label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4)},1.0);
-					label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4+1+classIndex)},1.0);
+                    currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4)},1.0);
+
+					currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4+1+classIndex)},1.0);
 
 				}
 				exampleCount=exampleCount+1;
+
+				log.info(labels.hashCode()+"----");
+
 			} catch (Exception e) {
 
 				log.error("",e);
@@ -301,15 +312,19 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
     	}
 		//按小批量维度拼接标签数据
 		INDArray features=Nd4j.concat(0,featureList);
-		//按小批量维度拼接标签数据
-		//INDArray labels=Nd4j.concat(0,labelList);
 
+		INDArray[] featuresArray=new INDArray[] {features};
+
+		// we have three outputs here ,big medium and small
+		INDArray[] labelsArray=new INDArray[] {labelBig,labelMedium,labelSmall};
+
+		MultiDataSet multiDataSet=new MultiDataSet(featuresArray,labelsArray);
 
         //小批量计数器加1
 		currentBatch++;
-		//封装并返回数据集
-		return null;
-	//	return new DataSet(features,labels);
+
+		return multiDataSet;
+
 	}
 
    private double iou(ImageObject imageObject1,ImageObject imageObject2){
@@ -371,7 +386,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	@Override
 	public boolean resetSupported() {
 		// TODO Auto-generated method stub
-		return false;
+		return true;
 	}
 
 

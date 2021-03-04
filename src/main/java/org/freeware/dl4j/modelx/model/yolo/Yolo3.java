@@ -54,11 +54,11 @@ public class Yolo3 extends ZooModel {
 
 	@Builder.Default private  double lamdbaNoObject=0.5;
 
-	@Builder.Default private double[][] bigBoundingBoxPriors ;
+	@Builder.Default private int[][] bigBoundingBoxPriors ;
 
-	@Builder.Default private double[][] mediumBoundingBoxPriors ;
+	@Builder.Default private int[][] mediumBoundingBoxPriors ;
 
-	@Builder.Default private double[][] smallBoundingBoxPriors;
+	@Builder.Default private int[][] smallBoundingBoxPriors;
 
    private static String ACTIVATION ="activation";
     

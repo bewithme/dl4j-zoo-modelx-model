@@ -11,13 +11,13 @@ public class Yolo3Hyperparameter {
 	
 	    private  String name;
 	     
-	    private  int classesNumber ;
+	    private  String[] labels ;
 	    
-	    private  double[][] bigBoundingBoxPriors;
+	    private  int[][] bigBoundingBoxPriors;
 
-	    private  double[][] mediumBoundingBoxPriors;
+	    private  int[][] mediumBoundingBoxPriors;
 
-	    private  double[][] smallBoundingBoxPriors;
+	    private  int[][] smallBoundingBoxPriors;
 	    
         private  double learningRate;
 	    
