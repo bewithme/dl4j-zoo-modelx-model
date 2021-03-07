@@ -482,7 +482,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		if (dy > 0){
 			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{dy,0},{0,0}}, Pad.Mode.CONSTANT,127);
 		}else{
-			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(imageHeight-dy,imageHeight),NDArrayIndex.all()} );
+			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(-dy,imageHeight),NDArrayIndex.all()} );
 		}
 
 		if ((new_h + dy) < net_h){
