@@ -1,10 +1,13 @@
 package org.freeware.dl4j.modelx.dataset;
 
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.bytedeco.opencv.opencv_core.Mat;
 import org.datavec.image.loader.Java2DNativeImageLoader;
 import org.datavec.image.loader.NativeImageLoader;
 import org.datavec.image.recordreader.objdetect.ImageObject;
@@ -34,6 +37,9 @@ import java.nio.charset.Charset;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
+
+import static org.bytedeco.opencv.global.opencv_core.flip;
+import static org.bytedeco.opencv.global.opencv_imgproc.*;
 
 
 /**
@@ -94,7 +100,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		this.labels=labels;
 
-        this.nativeImageLoader=new NativeImageLoader(inputShape[1],inputShape[2],inputShape[0]);
+        this.nativeImageLoader=new NativeImageLoader();
 
         setAnchors(bigBoundingBoxPriors, mediumBoundingBoxPriors, smallBoundingBoxPriors);
 
@@ -150,15 +156,15 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			dataSetPath=dataSetPath.concat(File.separator);
 		}
 
-		this.labelPath=dataSetPath.concat(ANNOTATIONS_FOLDER).concat(File.separator);
+		labelPath=dataSetPath.concat(ANNOTATIONS_FOLDER).concat(File.separator);
 
-		if(!new File(this.labelPath).exists()){
-			throw new IllegalStateException(this.labelPath.concat("directory does not exist"));
+		if(!new File(labelPath).exists()){
+			throw new IllegalStateException(labelPath.concat("directory does not exist"));
 		}
-		this.featurePath=dataSetPath.concat(IMAGES_FOLDER).concat(File.separator);
+		featurePath=dataSetPath.concat(IMAGES_FOLDER).concat(File.separator);
 
-		if(!new File(this.featurePath).exists()){
-			throw new IllegalStateException(this.featurePath.concat("directory does not exist"));
+		if(!new File(featurePath).exists()){
+			throw new IllegalStateException(featurePath.concat("directory does not exist"));
 		}
 	}
 
@@ -235,17 +241,20 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			
 			try {
 
-				//得到特征值
-				INDArray feature = nativeImageLoader.asMatrix(featureFile);
+				//得到特征
+				INDArray imageFeature = nativeImageLoader.asMatrix(featureFile);
 
-				log.info(feature.shapeInfoToString());
-				featureList[exampleCount]=feature;
-				//通过特征文件名来得到标签文件名
-				String   labelFileName =labelPath.concat(featureFile.getName().replace(".jpg",".xml").replace(".png",".xml"));
-                //得到指定标签文件的所有边界框
-				List<ImageObject> imageObjectList=labelProvider.getImageObjectsForPath(labelFileName);
+				log.info(imageFeature.shapeInfoToString());
+                //得到边界框标签
+				List<ImageObject> boundingBoxesList=getBoundingBoxes(featureFile);
 
-				for(ImageObject imageObject:imageObjectList){
+				ImageAugmentResult imageAugmentResult=augmentImage(imageFeature,boundingBoxesList,inputShape[1],inputShape[2]);
+
+				featureList[exampleCount]=imageAugmentResult.getImage();
+
+				boundingBoxesList=imageAugmentResult.getBoundingBoxesList();
+
+				for(ImageObject imageObject:boundingBoxesList){
 
 					ImageObject maxAnchor=null;
 
@@ -257,7 +266,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
                     for(int anchorIndex=0;anchorIndex<anchors.size();anchorIndex++){
 
-                    	ImageObject anchor=this.anchors.get(anchorIndex);
+                    	ImageObject anchor=anchors.get(anchorIndex);
 
 						double iou=iou(shiftedBox,anchor);
 
@@ -303,10 +312,8 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 					log.info(exampleCount+" "+gridX+" "+gridY+" "+anchorIndex);
 
-					if(exampleCount==3&&gridX==14&&gridY==2){
 
-						log.info(labelFileName);
-					}
+
                     currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.all()},0);
 
 					int classIndex= Arrays.asList(labels).indexOf(imageObject.getLabel());
@@ -348,15 +355,31 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	}
 
-	private INDArray augImage(INDArray image,int net_h,int net_w){
+	/**
+	 * 获取边界框
+	 * @param featureFile
+	 * @return
+	 */
+	private  List<ImageObject> getBoundingBoxes(File featureFile){
+
+		//通过特征文件名来得到标签文件名
+		String   labelFileName =labelPath.concat(featureFile.getName().replace(".jpg",".xml").replace(".png",".xml"));
+		//得到指定标签文件的所有边界框
+		List<ImageObject> imageObjectList=labelProvider.getImageObjectsForPath(labelFileName);
+
+		return imageObjectList;
+	}
+
+	private ImageAugmentResult augmentImage(INDArray image,List<ImageObject> boundingBoxesList,int net_h,int net_w) throws IOException {
 
 		image= INDArrayUtil.leftToRightFlip(image);
 
-		long  channel = image.shape()[0];
-		long image_h = image.shape()[1];
-		long image_w= image.shape()[2];
+		long image_h = image.shape()[2];
+
+		long image_w= image.shape()[3];
 
 		float dw = jitter * image_w;
+
 		float dh = jitter * image_h;
 
 		float new_ar = (image_w + randomUniform(-dw, dw)) / (image_h + randomUniform(-dh, dh));
@@ -377,16 +400,61 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		dx = (int) randomUniform(0, net_w - new_w);
 		dy = (int) randomUniform(0, net_h - new_h);
 
+        image=applyRandomScaleAndCrop(image, new_w, new_h, net_w, net_h, dx, dy);
 
+		image=randomDistortImage(image);
 
-		return null;
+		int flip=rnd.nextInt(2);
+
+		image=randomFLip(image,flip);
+
+		boundingBoxesList=correctBoundingBoxes(boundingBoxesList,new_w,new_h,net_w,net_h,dx,dy,flip,image_w,image_h);
+
+		return new ImageAugmentResult(image,boundingBoxesList);
 	}
 
 	private float randomUniform(float min,float max){
 		return min + ((max - min) * rnd.nextFloat());
 	}
 
-    private INDArray applyRandomScaleAndCrop(INDArray image,int  new_w, int new_h, int net_w, int net_h, int dx, int dy) throws IOException {
+	private  int constrain(int min_v,int  max_v, int value){
+		if (value < min_v){
+			return min_v;
+		}
+		if (value > max_v){
+			return max_v;
+		}
+		return value;
+
+	}
+
+	private List<ImageObject> correctBoundingBoxes(List<ImageObject> imageObjectList, int new_w, int new_h, int net_w, int net_h, int dx,int  dy,int  flip, long  image_w, long image_h){
+
+		Collections.shuffle(imageObjectList);
+		float sx = Float.parseFloat(String.valueOf(new_w))/image_w;
+		float sy=Float.parseFloat(String.valueOf(new_h))/image_h;
+		List<ImageObject>  correctBoxesList = new ArrayList<>();
+		for(ImageObject imageObject:imageObjectList){
+			int xMin = constrain(0, net_w, (int) (imageObject.getX1()*sx + dx));
+			int xMax = constrain(0, net_w, (int) (imageObject.getX2()*sx + dx));
+			int yMin = constrain(0, net_h, (int) (imageObject.getY1()*sy + dy));
+			int yMax = constrain(0, net_h, (int) (imageObject.getY2()*sy + dy));
+			if (xMax<= xMin || yMax<= yMin){
+				continue;
+			}
+			if (flip == 1) {
+				int swap = xMin;
+				xMin = net_w - xMax;
+				xMax = net_w - swap;
+			}
+			correctBoxesList.add(new ImageObject(xMin,yMin,xMax,yMax,imageObject.getLabel()));
+		}
+
+		return correctBoxesList;
+	}
+
+
+	private INDArray applyRandomScaleAndCrop(INDArray image,int  new_w, int new_h, int net_w, int net_h, int dx, int dy) throws IOException {
 
 		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 
@@ -396,28 +464,32 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		INDArray resizedImage=java2DNativeImageLoader.asMatrix(targetImage);
 
+		long[] shape=resizedImage.shape();
+
+		long imageHeight = shape[2];
+
+		long imageWidth= shape[3];
+
 		if (dx > 0) {
-			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{dx,0},{0,0}}, Pad.Mode.CONSTANT,127);
+			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0,0},{dx,0}}, Pad.Mode.CONSTANT,127);
 		}else {
-
-
+			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(-dx,imageWidth)} );
 		}
 		if ((new_w + dx) < net_w){
-
+			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0,0},{0,net_w - (new_w+dx)}}, Pad.Mode.CONSTANT,127);
 		}
 
 		if (dy > 0){
-
+			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{dy,0},{0,0}}, Pad.Mode.CONSTANT,127);
 		}else{
-
+			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(imageHeight-dy,imageHeight),NDArrayIndex.all()} );
 		}
 
 		if ((new_h + dy) < net_h){
-
+			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0, net_h - (new_h+dy)},{0,0}}, Pad.Mode.CONSTANT,127);
 		}
 
-
-		return resizedImage.get(new INDArrayIndex[]{NDArrayIndex.interval(0,net_h),NDArrayIndex.interval(0,net_w),NDArrayIndex.all()});
+		return resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,net_h),NDArrayIndex.interval(0,net_w)});
 
     }
 
@@ -438,6 +510,64 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		g.dispose();
 
 		return targetImage;
+	}
+
+	private INDArray randomDistortImage(INDArray image){
+		float hue=18f, saturation=1.5f, exposure=1.5f;
+
+		float dhue=randomUniform(-hue,hue);
+		float dsat=randScale(saturation);
+		float dexp=randScale(exposure);
+
+		image=ctvColor(image,COLOR_RGB2HSV);
+		INDArrayIndex[] dsatIndex=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(1),NDArrayIndex.all(),NDArrayIndex.all()};
+		INDArrayIndex[] dexpIndex= new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(2),NDArrayIndex.all(),NDArrayIndex.all()};
+		INDArray dsatArray=image.get(dsatIndex).mul(dsat);
+		INDArray dexpArray=image.get(dexpIndex).mul(dexp);
+		image.put(dsatIndex,dsatArray);
+		image.put(dexpIndex,dexpArray);
+
+		INDArrayIndex[] dhueIndex= new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0),NDArrayIndex.all(),NDArrayIndex.all()};
+		INDArray dhueArray=image.get(dhueIndex).mul(dhue);
+		image.put(dhueIndex,dhueArray);
+
+		image=ctvColor(image,COLOR_HSV2RGB);
+		return image;
+	}
+
+	private INDArray ctvColor(INDArray image,int code){
+
+		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
+		Mat mat=java2DNativeImageLoader.asMat(image);
+		Mat result = new Mat();
+		try {
+			cvtColor(mat, result, code);
+
+			return java2DNativeImageLoader.asMatrix(result);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private INDArray randomFLip(INDArray image,int flip){
+
+		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
+		Mat mat=java2DNativeImageLoader.asMat(image);
+		Mat result = new Mat();
+		try {
+			flip(mat, result, flip);
+			return java2DNativeImageLoader.asMatrix(result);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private float randScale(float scale){
+		scale=randomUniform(1,scale);
+		if(rnd.nextInt(2)==0){
+			return scale;
+		}
+		return 1.0f/scale;
 	}
 
 
@@ -501,8 +631,12 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		
 	}
 
-
-
+	@Data
+	@AllArgsConstructor
+   class ImageAugmentResult{
+	   private INDArray image;
+	   private List<ImageObject> boundingBoxesList;
+   }
 
 
 
