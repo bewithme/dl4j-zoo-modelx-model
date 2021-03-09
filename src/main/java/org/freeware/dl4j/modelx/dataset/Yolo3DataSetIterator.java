@@ -44,7 +44,6 @@ import static org.bytedeco.opencv.global.opencv_imgproc.*;
  *  @author wenfengxu
  *
  */
-
 @Slf4j
 public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
@@ -437,19 +436,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		return new ImageAugmentResult(image,correctBoundingBoxesList);
 	}
 
-	private float randomUniform(float min,float max){
-		return min + ((max - min) * random.nextFloat());
-	}
 
-	private  int constrain(int min,int  max, int value){
-		if (value < min){
-			return min;
-		}
-		if (value > max){
-			return max;
-		}
-		return value;
-	}
 
 	/**
 	 * 修正边界框
@@ -520,21 +507,25 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		long imageWidth= shape[3];
 
 		if (dx > 0) {
+			//resizedImage的宽左边加dx列并用127填充
 			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0,0},{dx,0}}, Pad.Mode.CONSTANT,127);
 		}else {
 			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(-dx,imageWidth)} );
 		}
 		if ((newInputWidth + dx) < netInputWidth){
+			//resizedImage的宽右边加netInputWidth - (newInputWidth+dx)列并用127填充
 			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0,0},{0,netInputWidth - (newInputWidth+dx)}}, Pad.Mode.CONSTANT,127);
 		}
 
 		if (dy > 0){
+			//把resizedImage高上边加dy行，并用127填充
 			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{dy,0},{0,0}}, Pad.Mode.CONSTANT,127);
 		}else{
+
 			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(-dy,imageHeight),NDArrayIndex.all()} );
 		}
-
 		if ((newInputHeight + dy) < netInputHeight){
+			//把resizedImage高下边加netInputHeight - (newInputHeight+dy)行，并用127填充
 			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0, netInputHeight - (newInputHeight+dy)},{0,0}}, Pad.Mode.CONSTANT,127);
 		}
 
@@ -569,12 +560,19 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		return targetImage;
 	}
 
+	/**
+	 * 随机扭曲图片
+	 * @param image
+	 * @return
+	 */
 	private INDArray randomDistortImage(INDArray image){
 
 		float hue=18f, saturation=1.5f, exposure=1.5f;
 
 		float dhue=randomUniform(-hue,hue);
+
 		float dsat=randScale(saturation);
+
 		float dexp=randScale(exposure);
 
 		image=ctvColor(image,COLOR_RGB2HSV);
@@ -602,9 +600,16 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		image.put(dhueIndex,dhueArray);
 
 		image=ctvColor(image,COLOR_HSV2RGB);
+
 		return image;
 	}
 
+	/**
+	 * 改变颜色
+	 * @param image
+	 * @param code
+	 * @return
+	 */
 	private INDArray ctvColor(INDArray image,int code){
 
 		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
@@ -621,6 +626,12 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		}
 	}
 
+	/**
+	 * 随机翻转
+	 * @param image
+	 * @param flip
+	 * @return
+	 */
 	private INDArray randomFLip(INDArray image,int flip){
 
 		if(flip!=1){
@@ -637,6 +648,11 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		}
 	}
 
+	/**
+	 * 随机缩放
+	 * @param scale
+	 * @return
+	 */
 	private float randScale(float scale){
 		scale=randomUniform(1,scale);
 		if(random.nextInt(2)==0){
@@ -645,7 +661,32 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		return 1.0f/scale;
 	}
 
+	/**
+	 * 获取随机数
+	 * @param min
+	 * @param max
+	 * @return
+	 */
+	private float randomUniform(float min,float max){
+		return min + ((max - min) * random.nextFloat());
+	}
 
+	/**
+	 * 约束值的范围
+	 * @param min
+	 * @param max
+	 * @param value
+	 * @return
+	 */
+	private  int constrain(int min,int  max, int value){
+		if (value < min){
+			return min;
+		}
+		if (value > max){
+			return max;
+		}
+		return value;
+	}
 	private double iou(ImageObject imageObject1,ImageObject imageObject2){
 
 	   DetectedObject detectedObject1=convertToDetectedObject(imageObject1);
@@ -658,7 +699,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
    private DetectedObject convertToDetectedObject(ImageObject imageObject){
 
 	  return  new DetectedObject(0,  imageObject.getX2()/2,  imageObject.getY2()/2,  imageObject.getX2()-imageObject.getX1(),  imageObject.getY2()-imageObject.getY1(),null, 0);
-
 	}
 
 
