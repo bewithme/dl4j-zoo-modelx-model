@@ -1,4 +1,4 @@
-package org.freeware.dl4j.modelx;
+package org.freeware.dl4j.modelx.utils;
 
 
 import com.fasterxml.jackson.core.JsonGenerationException;

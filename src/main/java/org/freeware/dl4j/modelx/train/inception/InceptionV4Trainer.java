@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.core.storage.StatsStorage;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.util.ModelSerializer;
-import org.freeware.dl4j.modelx.DataSetUtils;
+import org.freeware.dl4j.modelx.utils.DataSetUtils;
 
 import org.freeware.dl4j.modelx.model.inception.InceptionV4;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;

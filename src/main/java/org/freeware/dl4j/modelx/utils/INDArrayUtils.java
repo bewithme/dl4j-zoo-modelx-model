@@ -1,4 +1,4 @@
-package org.freeware.dl4j.modelx;
+package org.freeware.dl4j.modelx.utils;
 
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.indexing.INDArrayIndex;

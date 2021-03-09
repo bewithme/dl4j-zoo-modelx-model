@@ -9,7 +9,7 @@ import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.model.stats.StatsListener;
 import org.deeplearning4j.ui.model.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
-import org.freeware.dl4j.modelx.DataSetUtils;
+import org.freeware.dl4j.modelx.utils.DataSetUtils;
 import org.freeware.dl4j.modelx.model.inception.InceptionResNetV2;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
