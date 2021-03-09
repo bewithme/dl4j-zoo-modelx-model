@@ -6,7 +6,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
-public class ImageUtils {
+public class YoloImageUtils {
 
     public static void drawBoundingBox(BufferedImage bufferedImage, ImageObject boundingBox, Color color) {
 

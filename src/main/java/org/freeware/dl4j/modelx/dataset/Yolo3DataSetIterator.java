@@ -13,7 +13,7 @@ import org.datavec.image.recordreader.objdetect.impl.VocLabelProvider;
 import org.deeplearning4j.nn.layers.objdetect.DetectedObject;
 import org.deeplearning4j.nn.layers.objdetect.YoloUtils;
 import org.freeware.dl4j.modelx.ExtendedFileUtils;
-import org.freeware.dl4j.modelx.ImageUtils;
+import org.freeware.dl4j.modelx.YoloImageUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.impl.transforms.Pad;
 import org.nd4j.linalg.dataset.MultiDataSet;
@@ -368,7 +368,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	private void saveImageAugmentResult(File featureFile, ImageAugmentResult imageAugmentResult) throws IOException {
 		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 		BufferedImage bufferedImage=java2DNativeImageLoader.asBufferedImage(imageAugmentResult.getImage());
-		ImageUtils.drawBoundingBoxes(bufferedImage,imageAugmentResult.getBoundingBoxesList(), Color.green);
+		YoloImageUtils.drawBoundingBoxes(bufferedImage,imageAugmentResult.getBoundingBoxesList(), Color.green);
 		ImageIO.write(bufferedImage,"jpg",new File("images/"+featureFile.getName()));
 	}
 
