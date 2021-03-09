@@ -4,9 +4,6 @@ package org.freeware.dl4j.modelx.dataset;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.datavec.image.loader.Java2DNativeImageLoader;
 import org.datavec.image.loader.NativeImageLoader;
@@ -16,25 +13,24 @@ import org.datavec.image.recordreader.objdetect.impl.VocLabelProvider;
 import org.deeplearning4j.nn.layers.objdetect.DetectedObject;
 import org.deeplearning4j.nn.layers.objdetect.YoloUtils;
 import org.freeware.dl4j.modelx.ExtendedFileUtils;
-import org.freeware.dl4j.modelx.INDArrayUtil;
+import org.freeware.dl4j.modelx.ImageUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.impl.transforms.Pad;
-import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.MultiDataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.MultiDataSetPreProcessor;
-import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.BooleanIndexing;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
+import org.nd4j.linalg.indexing.conditions.Conditions;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
 
@@ -69,7 +65,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	
     private DataSetPreProcessor preProcessor;
 	
-	private Random rnd=new Random(123456);
+	private Random random =new Random(123456);
 
 	private String labelPath;
 
@@ -113,7 +109,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		//设置小批量大小
 		this.batchSize = batchSize;
-		//删除无效数据，即把关键点缺失的数据都删除
 
 		//获取所有特征数据
     	this.featureFiles = ExtendedFileUtils.listFiles(featurePath, new String[] {"jpg","png"}, false);
@@ -124,7 +119,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			this.totalBatches=featureFiles.size()/batchSize+1;
 		}
 		//随机打乱
-       	Collections.shuffle(featureFiles,rnd);
+       	Collections.shuffle(featureFiles, random);
 	}
 
 	private void setAnchors(int[][] bigBoundingBoxPriors, int[][] mediumBoundingBoxPriors, int[][] smallBoundingBoxPriors) {
@@ -212,28 +207,30 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		//文件读取结束指针
 		int endIndex=batchSize*(currentBatch+1);
 
-		if(endIndex>this.featureFiles.size()){
+		if(endIndex>featureFiles.size()){
 
-			endIndex=this.featureFiles.size();
+			endIndex=featureFiles.size();
 
 			startIndex=endIndex-batchSize;
 		}
 
 		int realBatchSize=endIndex-startIndex;
 		//特征存放，便于拼接
-		INDArray[] featureList=new INDArray[realBatchSize] ;
-		//标签存放数，便于拼接
-		INDArray[] labelList=new INDArray[realBatchSize];
+		INDArray[] imageFeatureList=new INDArray[realBatchSize] ;
 
-		INDArray labelBig=Nd4j.zeros(realBatchSize,13,13,3,4+1+this.labels.length);
+		INDArray groundTrue=Nd4j.zeros(realBatchSize,1,1,1,maxBoxPerImage,4);
 
-		INDArray labelMedium=Nd4j.zeros(realBatchSize,26,26,3,4+1+this.labels.length);
+		INDArray featureBig=Nd4j.zeros(realBatchSize,13,13,3,4+1+labels.length);
 
-		INDArray labelSmall=Nd4j.zeros(realBatchSize,52,52,3,4+1+this.labels.length);
+		INDArray featureMedium=Nd4j.zeros(realBatchSize,26,26,3,4+1+labels.length);
 
-		INDArray[] labels=new INDArray[]{labelBig,labelMedium,labelSmall} ;
+		INDArray featureSmall=Nd4j.zeros(realBatchSize,52,52,3,4+1+labels.length);
+
+		INDArray[] features=new INDArray[]{featureBig,featureMedium,featureSmall} ;
 
 		int exampleCount=0;
+
+		int groundTrueIndex=0;
 
 		for(int exampleIndex=startIndex;exampleIndex<endIndex;exampleIndex++) {
 			
@@ -243,18 +240,16 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 				//得到特征
 				INDArray imageFeature = nativeImageLoader.asMatrix(featureFile);
-
-				log.info(imageFeature.shapeInfoToString());
-                //得到边界框标签
+				//得到边界框标签
 				List<ImageObject> boundingBoxesList=getBoundingBoxes(featureFile);
 
 				ImageAugmentResult imageAugmentResult=augmentImage(imageFeature,boundingBoxesList,inputShape[1],inputShape[2]);
 
-				featureList[exampleCount]=imageAugmentResult.getImage();
+				imageFeatureList[exampleCount]=imageAugmentResult.getImage();
 
 				boundingBoxesList=imageAugmentResult.getBoundingBoxesList();
 
-				for(ImageObject imageObject:boundingBoxesList){
+				for(ImageObject boundingBox:boundingBoxesList){
 
 					ImageObject maxAnchor=null;
 
@@ -262,7 +257,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 					double maxIou=-1D;
 
-					ImageObject shiftedBox=new ImageObject(0,0,imageObject.getX2()-imageObject.getX1(),imageObject.getY2()-imageObject.getY1(),"");
+					ImageObject shiftedBox=new ImageObject(0,0,boundingBox.getX2()-boundingBox.getX1(),boundingBox.getY2()-boundingBox.getY1(),"");
 
                     for(int anchorIndex=0;anchorIndex<anchors.size();anchorIndex++){
 
@@ -281,24 +276,24 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
                     int currentLabelIndex=maxIndex/3;
 
                     //边界框放于与之iou最大的anchor所在的输出
-					INDArray currentLabel=labels[currentLabelIndex];
+					INDArray currentFeature=features[currentLabelIndex];
 
-                    long gridWidth=currentLabel.shape()[1];
+                    long gridWidth=currentFeature.shape()[1];
 
-					long gridHeight=currentLabel.shape()[2];
+					long gridHeight=currentFeature.shape()[2];
 
-					double centerX = .5*(imageObject.getX1() + imageObject.getX2());
+					double centerX = .5*(boundingBox.getX1() + boundingBox.getX2());
 					// 归一化
 					centerX = centerX / inputShape[1] * gridWidth ;
 
-					double centerY = .5*(imageObject.getY1() + imageObject.getY2());
+					double centerY = .5*(boundingBox.getY1() + boundingBox.getY2());
 					// 归一化
 					centerY = centerY / inputShape[2] * gridHeight ;
 
 					// 归一化
-					double	width = Math.log(imageObject.getX2()- imageObject.getX1()) / maxAnchor.getX2();
+					double	width = Math.log(boundingBox.getX2()- boundingBox.getX1()) / maxAnchor.getX2();
 
-					double	height = Math.log(imageObject.getY2()- imageObject.getY1()) / maxAnchor.getY2();
+					double	height = Math.log(boundingBox.getY2()- boundingBox.getY1()) / maxAnchor.getY2();
 
                     double[] box={centerX,centerY,width,height};
 
@@ -308,29 +303,33 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
                     int anchorIndex=maxIndex%3;
 
-					log.info(currentLabel.shapeInfoToString());
+					log.info(currentFeature.shapeInfoToString());
 
-					log.info(exampleCount+" "+gridX+" "+gridY+" "+anchorIndex);
+					currentFeature.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.all()},0);
 
-
-
-                    currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.all()},0);
-
-					int classIndex= Arrays.asList(labels).indexOf(imageObject.getLabel());
-
+					int classIndex= Arrays.asList(features).indexOf(boundingBox.getLabel());
 
 					for(int boxValueIndex=0;boxValueIndex<box.length;boxValueIndex++){
 
-						currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(boxValueIndex)},box[boxValueIndex]);
+						currentFeature.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(boxValueIndex)},box[boxValueIndex]);
 					}
-                    currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4)},1.0);
+                    currentFeature.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4)},1.0);
 
-					currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4+1+classIndex)},1.0);
+					currentFeature.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4+1+classIndex)},1.0);
+
+					double[] groundTrueLabelValues=new double[]{centerX,centerY,boundingBox.getX2()-boundingBox.getX1(),boundingBox.getY2()-boundingBox.getY1()};
+
+                    for(int groundTrueLabelValueIndex=0;groundTrueLabelValueIndex<groundTrueLabelValues.length;groundTrueLabelValueIndex++){
+						groundTrue.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(groundTrueIndex),NDArrayIndex.point(groundTrueLabelValueIndex)},groundTrueLabelValues[groundTrueLabelValueIndex]);
+                    }
+					groundTrueIndex=groundTrueIndex+1;
+
+					groundTrueIndex=groundTrueIndex%maxBoxPerImage;
 
 				}
 				exampleCount=exampleCount+1;
 
-				log.info(labels.hashCode()+"----");
+
 
 			} catch (Exception e) {
 
@@ -339,12 +338,17 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			
     	}
 		//按小批量维度拼接标签数据
-		INDArray features=Nd4j.concat(0,featureList);
+		INDArray imageFeature=Nd4j.concat(0,imageFeatureList);
 
-		INDArray[] featuresArray=new INDArray[] {features};
+		INDArray[] featuresArray=new INDArray[] {imageFeature,featureBig,featureMedium,featureSmall,groundTrue};
 
+		INDArray dummyLabel1 = Nd4j.zeros(realBatchSize,1);
+
+		INDArray dummyLabel2 = Nd4j.zeros(realBatchSize,1);
+
+		INDArray dummyLabel3 = Nd4j.zeros(realBatchSize,1);
 		// we have three outputs here ,big medium and small
-		INDArray[] labelsArray=new INDArray[] {labelBig,labelMedium,labelSmall};
+		INDArray[]  labelsArray=new INDArray[] {dummyLabel1,dummyLabel2,dummyLabel3};
 
 		MultiDataSet multiDataSet=new MultiDataSet(featuresArray,labelsArray);
 
@@ -353,6 +357,19 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		return multiDataSet;
 
+	}
+
+	/**
+	 * 保存数据增强的结果
+	 * @param featureFile
+	 * @param imageAugmentResult
+	 * @throws IOException
+	 */
+	private void saveImageAugmentResult(File featureFile, ImageAugmentResult imageAugmentResult) throws IOException {
+		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
+		BufferedImage bufferedImage=java2DNativeImageLoader.asBufferedImage(imageAugmentResult.getImage());
+		ImageUtils.drawBoundingBoxes(bufferedImage,imageAugmentResult.getBoundingBoxesList(), Color.green);
+		ImageIO.write(bufferedImage,"jpg",new File("images/"+featureFile.getName()));
 	}
 
 	/**
@@ -365,87 +382,107 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		//通过特征文件名来得到标签文件名
 		String   labelFileName =labelPath.concat(featureFile.getName().replace(".jpg",".xml").replace(".png",".xml"));
 		//得到指定标签文件的所有边界框
-		List<ImageObject> imageObjectList=labelProvider.getImageObjectsForPath(labelFileName);
+		List<ImageObject> boundingBoxList=labelProvider.getImageObjectsForPath(labelFileName);
 
-		return imageObjectList;
+		return boundingBoxList;
 	}
 
-	private ImageAugmentResult augmentImage(INDArray image,List<ImageObject> boundingBoxesList,int net_h,int net_w) throws IOException {
+	/**
+	 * 图片数据增强
+	 * @param image
+	 * @param boundingBoxesList
+	 * @param inputHeight
+	 * @param inputWidth
+	 * @return
+	 * @throws IOException
+	 */
+	private ImageAugmentResult augmentImage(INDArray image,List<ImageObject> boundingBoxesList,int inputHeight,int inputWidth) throws IOException {
 
-		image= INDArrayUtil.leftToRightFlip(image);
+		long imageHeight = image.shape()[2];
 
-		long image_h = image.shape()[2];
+		long imageWidth= image.shape()[3];
 
-		long image_w= image.shape()[3];
+		float downImageWidth = jitter * imageWidth;
 
-		float dw = jitter * image_w;
+		float downImageHeight = jitter * imageHeight;
 
-		float dh = jitter * image_h;
-
-		float new_ar = (image_w + randomUniform(-dw, dw)) / (image_h + randomUniform(-dh, dh));
+		float newAr = (imageWidth + randomUniform(-downImageWidth, downImageWidth)) / (imageHeight + randomUniform(-downImageHeight, downImageHeight));
 
 		float scale = randomUniform(0.25f, 2f);
 
-		int new_h=0;
-		int new_w=0;
-		int dx=0;
-		int dy=0;
-		if (new_ar < 1) {
-			new_h = (int) (scale * net_h);
-			new_w = (int) (net_h * new_ar);
-		}else{
-			new_w = (int) (scale * net_w);
-			new_h = (int) (net_w / new_ar);
-		}
-		dx = (int) randomUniform(0, net_w - new_w);
-		dy = (int) randomUniform(0, net_h - new_h);
+		int newInputHeight=0;
 
-        image=applyRandomScaleAndCrop(image, new_w, new_h, net_w, net_h, dx, dy);
+		int newInputWidth=0;
+
+		if (newAr < 1) {
+			newInputHeight = (int) (scale * inputHeight);
+			newInputWidth = (int) (inputHeight * newAr);
+		}else{
+			newInputWidth = (int) (scale * inputWidth);
+			newInputHeight = (int) (inputWidth / newAr);
+		}
+		int dx = (int) randomUniform(0, inputWidth - newInputWidth);
+		int dy = (int) randomUniform(0, inputHeight - newInputHeight);
+
+        image=applyRandomScaleAndCrop(image, newInputWidth, newInputHeight, inputWidth, inputHeight, dx, dy);
 
 		image=randomDistortImage(image);
 
-		int flip=rnd.nextInt(2);
+		int flip= random.nextInt(2);
 
 		image=randomFLip(image,flip);
 
-		boundingBoxesList=correctBoundingBoxes(boundingBoxesList,new_w,new_h,net_w,net_h,dx,dy,flip,image_w,image_h);
+		List<ImageObject> 	correctBoundingBoxesList=correctBoundingBoxes(boundingBoxesList,newInputWidth,newInputHeight,inputWidth,inputHeight,dx,dy,flip,imageWidth,imageHeight);
 
-		return new ImageAugmentResult(image,boundingBoxesList);
+		return new ImageAugmentResult(image,correctBoundingBoxesList);
 	}
 
 	private float randomUniform(float min,float max){
-		return min + ((max - min) * rnd.nextFloat());
+		return min + ((max - min) * random.nextFloat());
 	}
 
-	private  int constrain(int min_v,int  max_v, int value){
-		if (value < min_v){
-			return min_v;
+	private  int constrain(int min,int  max, int value){
+		if (value < min){
+			return min;
 		}
-		if (value > max_v){
-			return max_v;
+		if (value > max){
+			return max;
 		}
 		return value;
-
 	}
 
-	private List<ImageObject> correctBoundingBoxes(List<ImageObject> imageObjectList, int new_w, int new_h, int net_w, int net_h, int dx,int  dy,int  flip, long  image_w, long image_h){
+	/**
+	 * 修正边界框
+	 * @param imageObjectList
+	 * @param newInputWidth
+	 * @param newInputHeight
+	 * @param inputWidth
+	 * @param inputHeight
+	 * @param dx
+	 * @param dy
+	 * @param flip
+	 * @param imageWidth
+	 * @param imageHeight
+	 * @return
+	 */
+	private List<ImageObject> correctBoundingBoxes(List<ImageObject> imageObjectList, int newInputWidth, int newInputHeight, int inputWidth, int inputHeight, int dx,int  dy,int  flip, long  imageWidth, long imageHeight){
 
 		Collections.shuffle(imageObjectList);
-		float sx = Float.parseFloat(String.valueOf(new_w))/image_w;
-		float sy=Float.parseFloat(String.valueOf(new_h))/image_h;
+		float sx = Float.parseFloat(String.valueOf(newInputWidth))/imageWidth;
+		float sy=Float.parseFloat(String.valueOf(newInputHeight))/imageHeight;
 		List<ImageObject>  correctBoxesList = new ArrayList<>();
 		for(ImageObject imageObject:imageObjectList){
-			int xMin = constrain(0, net_w, (int) (imageObject.getX1()*sx + dx));
-			int xMax = constrain(0, net_w, (int) (imageObject.getX2()*sx + dx));
-			int yMin = constrain(0, net_h, (int) (imageObject.getY1()*sy + dy));
-			int yMax = constrain(0, net_h, (int) (imageObject.getY2()*sy + dy));
+			int xMin = constrain(0, inputWidth, (int) (imageObject.getX1()*sx + dx));
+			int xMax = constrain(0, inputWidth, (int) (imageObject.getX2()*sx + dx));
+			int yMin = constrain(0, inputHeight, (int) (imageObject.getY1()*sy + dy));
+			int yMax = constrain(0, inputHeight, (int) (imageObject.getY2()*sy + dy));
 			if (xMax<= xMin || yMax<= yMin){
 				continue;
 			}
 			if (flip == 1) {
 				int swap = xMin;
-				xMin = net_w - xMax;
-				xMax = net_w - swap;
+				xMin = inputWidth - xMax;
+				xMax = inputWidth - swap;
 			}
 			correctBoxesList.add(new ImageObject(xMin,yMin,xMax,yMax,imageObject.getLabel()));
 		}
@@ -454,13 +491,25 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	}
 
 
-	private INDArray applyRandomScaleAndCrop(INDArray image,int  new_w, int new_h, int net_w, int net_h, int dx, int dy) throws IOException {
+	/**
+	 * 随机缩放与裁剪
+	 * @param image
+	 * @param newInputWidth
+	 * @param newInputHeight
+	 * @param netInputWidth
+	 * @param netInputHeight
+	 * @param dx
+	 * @param dy
+	 * @return
+	 * @throws IOException
+	 */
+	private INDArray applyRandomScaleAndCrop(INDArray image,int  newInputWidth, int newInputHeight, int netInputWidth, int netInputHeight, int dx, int dy) throws IOException {
 
 		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 
 		BufferedImage sourceImage=java2DNativeImageLoader.asBufferedImage(image);
 
-		BufferedImage targetImage=resize(sourceImage,new_w,new_h);
+		BufferedImage targetImage=resize(sourceImage,newInputWidth,newInputHeight);
 
 		INDArray resizedImage=java2DNativeImageLoader.asMatrix(targetImage);
 
@@ -475,8 +524,8 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		}else {
 			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(-dx,imageWidth)} );
 		}
-		if ((new_w + dx) < net_w){
-			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0,0},{0,net_w - (new_w+dx)}}, Pad.Mode.CONSTANT,127);
+		if ((newInputWidth + dx) < netInputWidth){
+			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0,0},{0,netInputWidth - (newInputWidth+dx)}}, Pad.Mode.CONSTANT,127);
 		}
 
 		if (dy > 0){
@@ -485,14 +534,22 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(-dy,imageHeight),NDArrayIndex.all()} );
 		}
 
-		if ((new_h + dy) < net_h){
-			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0, net_h - (new_h+dy)},{0,0}}, Pad.Mode.CONSTANT,127);
+		if ((newInputHeight + dy) < netInputHeight){
+			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0, netInputHeight - (newInputHeight+dy)},{0,0}}, Pad.Mode.CONSTANT,127);
 		}
 
-		return resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,net_h),NDArrayIndex.interval(0,net_w)});
+		return resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,netInputHeight),NDArrayIndex.interval(0,netInputWidth)});
 
     }
 
+	/**
+	 * 调整图片大小
+	 * @param sourceImage
+	 * @param targetWidth
+	 * @param targetHeight
+	 * @return
+	 * @throws IOException
+	 */
 	private BufferedImage resize(BufferedImage sourceImage,int targetWidth, int targetHeight) throws IOException {
 
 		int width = sourceImage.getWidth();
@@ -513,6 +570,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	}
 
 	private INDArray randomDistortImage(INDArray image){
+
 		float hue=18f, saturation=1.5f, exposure=1.5f;
 
 		float dhue=randomUniform(-hue,hue);
@@ -520,15 +578,27 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		float dexp=randScale(exposure);
 
 		image=ctvColor(image,COLOR_RGB2HSV);
+
 		INDArrayIndex[] dsatIndex=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(1),NDArrayIndex.all(),NDArrayIndex.all()};
 		INDArrayIndex[] dexpIndex= new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(2),NDArrayIndex.all(),NDArrayIndex.all()};
+
 		INDArray dsatArray=image.get(dsatIndex).mul(dsat);
 		INDArray dexpArray=image.get(dexpIndex).mul(dexp);
+
 		image.put(dsatIndex,dsatArray);
 		image.put(dexpIndex,dexpArray);
 
 		INDArrayIndex[] dhueIndex= new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0),NDArrayIndex.all(),NDArrayIndex.all()};
-		INDArray dhueArray=image.get(dhueIndex).mul(dhue);
+		INDArray dhueArray=image.get(dhueIndex).add(dhue);
+
+		INDArray replacedDhueArray=dhueArray.dup();
+		BooleanIndexing.replaceWhere(replacedDhueArray, 180, Conditions.greaterThan(180));
+		dhueArray=dhueArray.sub(replacedDhueArray);
+
+		replacedDhueArray=dhueArray.dup();
+		BooleanIndexing.replaceWhere(replacedDhueArray, 180, Conditions.lessThan(0));
+		dhueArray=dhueArray.add(replacedDhueArray);
+
 		image.put(dhueIndex,dhueArray);
 
 		image=ctvColor(image,COLOR_HSV2RGB);
@@ -538,11 +608,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	private INDArray ctvColor(INDArray image,int code){
 
 		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
+
 		Mat mat=java2DNativeImageLoader.asMat(image);
+
 		Mat result = new Mat();
+
 		try {
 			cvtColor(mat, result, code);
-
 			return java2DNativeImageLoader.asMatrix(result);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
@@ -551,6 +623,9 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	private INDArray randomFLip(INDArray image,int flip){
 
+		if(flip!=1){
+			return image;
+		}
 		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 		Mat mat=java2DNativeImageLoader.asMat(image);
 		Mat result = new Mat();
@@ -564,7 +639,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	private float randScale(float scale){
 		scale=randomUniform(1,scale);
-		if(rnd.nextInt(2)==0){
+		if(random.nextInt(2)==0){
 			return scale;
 		}
 		return 1.0f/scale;
@@ -582,7 +657,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
    private DetectedObject convertToDetectedObject(ImageObject imageObject){
 
-	  return  new DetectedObject(0,  imageObject.getX2()/2,  imageObject.getY2()/2,  imageObject.getX2(),  imageObject.getY2(),null, 0);
+	  return  new DetectedObject(0,  imageObject.getX2()/2,  imageObject.getY2()/2,  imageObject.getX2()-imageObject.getX1(),  imageObject.getY2()-imageObject.getY1(),null, 0);
 
 	}
 
@@ -626,7 +701,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	@Override
 	public void reset() {
-		 Collections.shuffle(featureFiles,rnd);
+		 Collections.shuffle(featureFiles, random);
 		 this.currentBatch=0;
 		
 	}

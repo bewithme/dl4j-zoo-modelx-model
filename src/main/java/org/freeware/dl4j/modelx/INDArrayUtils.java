@@ -4,7 +4,7 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 
-public class INDArrayUtil {
+public class INDArrayUtils {
 
 
     /**
