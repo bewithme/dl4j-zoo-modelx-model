@@ -217,19 +217,19 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		//特征存放，便于拼接
 		INDArray[] imageFeatureList=new INDArray[realBatchSize] ;
 
-		INDArray groundTrue=Nd4j.zeros(realBatchSize,1,1,1,maxBoxPerImage,4);
+		INDArray groundTrueBoxes=Nd4j.zeros(realBatchSize,maxBoxPerImage,4);
 
-		INDArray featureBig=Nd4j.zeros(realBatchSize,13,13,3,4+1+labels.length);
+		INDArray yoloLabelBig=Nd4j.zeros(realBatchSize,13,13,3+maxBoxPerImage,4+1+labels.length);
 
-		INDArray featureMedium=Nd4j.zeros(realBatchSize,26,26,3,4+1+labels.length);
+		INDArray yoloLabelMedium=Nd4j.zeros(realBatchSize,26,26,3+maxBoxPerImage,4+1+labels.length);
 
-		INDArray featureSmall=Nd4j.zeros(realBatchSize,52,52,3,4+1+labels.length);
+		INDArray yoloLabelSmall=Nd4j.zeros(realBatchSize,52,52,3+maxBoxPerImage,4+1+labels.length);
 
-		INDArray[] features=new INDArray[]{featureBig,featureMedium,featureSmall} ;
+		INDArray[] yoloLabels=new INDArray[]{yoloLabelBig,yoloLabelMedium,yoloLabelSmall} ;
 
 		int exampleCount=0;
 
-		int groundTrueIndex=0;
+		int groundTrueBoxesIndex=0;
 
 		for(int exampleIndex=startIndex;exampleIndex<endIndex;exampleIndex++) {
 			
@@ -275,11 +275,11 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
                     int currentLabelIndex=maxIndex/3;
 
                     //边界框放于与之iou最大的anchor所在的输出
-					INDArray currentFeature=features[currentLabelIndex];
+					INDArray currentLabel=yoloLabels[currentLabelIndex];
 
-                    long gridWidth=currentFeature.shape()[1];
+                    long gridWidth=currentLabel.shape()[1];
 
-					long gridHeight=currentFeature.shape()[2];
+					long gridHeight=currentLabel.shape()[2];
 
 					double centerX = .5*(boundingBox.getX1() + boundingBox.getX2());
 					// 归一化
@@ -302,33 +302,31 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
                     int anchorIndex=maxIndex%3;
 
-					log.info(currentFeature.shapeInfoToString());
+                    currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.all()},0);
 
-					currentFeature.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.all()},0);
-
-					int classIndex= Arrays.asList(features).indexOf(boundingBox.getLabel());
+					int classIndex= Arrays.asList(labels).indexOf(boundingBox.getLabel());
 
 					for(int boxValueIndex=0;boxValueIndex<box.length;boxValueIndex++){
 
-						currentFeature.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(boxValueIndex)},box[boxValueIndex]);
+						currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(boxValueIndex)},box[boxValueIndex]);
 					}
-                    currentFeature.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4)},1.0);
+                    currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4)},1.0);
 
-					currentFeature.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4+1+classIndex)},1.0);
+					currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4+1+classIndex)},1.0);
 
 					double[] groundTrueLabelValues=new double[]{centerX,centerY,boundingBox.getX2()-boundingBox.getX1(),boundingBox.getY2()-boundingBox.getY1()};
 
                     for(int groundTrueLabelValueIndex=0;groundTrueLabelValueIndex<groundTrueLabelValues.length;groundTrueLabelValueIndex++){
-						groundTrue.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(groundTrueIndex),NDArrayIndex.point(groundTrueLabelValueIndex)},groundTrueLabelValues[groundTrueLabelValueIndex]);
+						groundTrueBoxes.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(groundTrueBoxesIndex),NDArrayIndex.point(groundTrueLabelValueIndex)},groundTrueLabelValues[groundTrueLabelValueIndex]);
                     }
-					groundTrueIndex=groundTrueIndex+1;
+					groundTrueBoxesIndex=groundTrueBoxesIndex+1;
 
-					groundTrueIndex=groundTrueIndex%maxBoxPerImage;
+					groundTrueBoxesIndex=groundTrueBoxesIndex%maxBoxPerImage;
+
+					log.info(currentLabel.shapeInfoToString());
 
 				}
 				exampleCount=exampleCount+1;
-
-
 
 			} catch (Exception e) {
 
@@ -339,23 +337,51 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		//按小批量维度拼接标签数据
 		INDArray imageFeature=Nd4j.concat(0,imageFeatureList);
 
-		INDArray[] featuresArray=new INDArray[] {imageFeature,featureBig,featureMedium,featureSmall,groundTrue};
+		INDArray[] featuresArray=new INDArray[] {imageFeature};
 
-		INDArray dummyLabel1 = Nd4j.zeros(realBatchSize,1);
+		combineLabels(realBatchSize, groundTrueBoxes, yoloLabels);
 
-		INDArray dummyLabel2 = Nd4j.zeros(realBatchSize,1);
-
-		INDArray dummyLabel3 = Nd4j.zeros(realBatchSize,1);
-		// we have three outputs here ,big medium and small
-		INDArray[]  labelsArray=new INDArray[] {dummyLabel1,dummyLabel2,dummyLabel3};
-
-		MultiDataSet multiDataSet=new MultiDataSet(featuresArray,labelsArray);
+		MultiDataSet multiDataSet=new MultiDataSet(featuresArray,yoloLabels);
 
         //小批量计数器加1
 		currentBatch++;
 
 		return multiDataSet;
 
+	}
+
+	/**
+	 * 把groundTrueBoxes与bigMediumSmallLabels
+	 * 中的每个元素合并，这个与keras版本的yolo3的实现方式不同
+	 * keras的每个层可有多个输入，所以可以把groundTrueBoxes作为
+	 * 输入连到输出层，而DL4J在目前还不支持一个层多个输入，所以得
+	 * 把所需要用的标签合并起来作为整体标签传递给输出层
+	 * @param realBatchSize
+	 * @param groundTrueBoxes
+	 * @param bigMediumSmallLabels
+	 */
+	private void combineLabels(int realBatchSize, INDArray groundTrueBoxes, INDArray[] bigMediumSmallLabels) {
+
+		for(INDArray labels:bigMediumSmallLabels){
+
+			for(int exampleIndex=0;exampleIndex<realBatchSize;exampleIndex++){
+
+				INDArray groundTrueBox=groundTrueBoxes.get(NDArrayIndex.point(exampleIndex),NDArrayIndex.all(),NDArrayIndex.all());
+
+				for(int boxIndex=0;boxIndex<maxBoxPerImage;boxIndex++){
+
+					for(int boxValueIndex=0;boxValueIndex<4;boxValueIndex++){
+
+						INDArray boxValueArray=groundTrueBox.get(NDArrayIndex.point(boxIndex),NDArrayIndex.point(boxValueIndex));
+
+						double boxValue=boxValueArray.toDoubleVector()[0];
+                        //在N,gridX,gridY=(0,0),box index,4+1+labels.length 位置存放
+						labels.put(new INDArrayIndex[]{NDArrayIndex.point(exampleIndex),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(boxIndex+3),NDArrayIndex.point(boxValueIndex)} ,boxValue);
+					}
+				}
+			}
+
+		}
 	}
 
 	/**
