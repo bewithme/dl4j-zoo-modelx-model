@@ -351,18 +351,18 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	}
 
 	/**
-	 * 把groundTrueBoxes与bigMediumSmallLabels
+	 * 把groundTrueBoxes与yoloLabels
 	 * 中的每个元素合并，这个与keras版本的yolo3的实现方式不同
 	 * keras的每个层可有多个输入，所以可以把groundTrueBoxes作为
 	 * 输入连到输出层，而DL4J在目前还不支持一个层多个输入，所以得
 	 * 把所需要用的标签合并起来作为整体标签传递给输出层
 	 * @param realBatchSize
 	 * @param groundTrueBoxes
-	 * @param bigMediumSmallLabels
+	 * @param yoloLabels
 	 */
-	private void combineLabels(int realBatchSize, INDArray groundTrueBoxes, INDArray[] bigMediumSmallLabels) {
+	private void combineLabels(int realBatchSize, INDArray groundTrueBoxes, INDArray[] yoloLabels) {
 
-		for(INDArray labels:bigMediumSmallLabels){
+		for(INDArray labels:yoloLabels){
 
 			for(int exampleIndex=0;exampleIndex<realBatchSize;exampleIndex++){
 
