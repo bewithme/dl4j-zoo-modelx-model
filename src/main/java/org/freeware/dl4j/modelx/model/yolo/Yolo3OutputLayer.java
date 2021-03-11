@@ -57,8 +57,15 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         //取出真实标签
         INDArray groundTrueBoxes=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.interval(4,anchorBoxesQty+1),NDArrayIndex.interval(0,5)});
 
-
+        //取出处理后的yolo标签
         INDArray yoloTrueLabel=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,4),NDArrayIndex.all()});
+
+        //NCHW --> NHWC
+        input=input.permute(0,2,3,1);
+
+        //NHWC --> [batch, grid_h, grid_w, 3, 4+1+nb_class]
+        INDArray reshapeInput=input.reshape(new long[]{input.size(0),input.size(1),input.size(2),3,input.size(3)/3});
+
 
 
 

@@ -79,7 +79,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	private String[] labels={};
 
-	private List<ImageObject> anchors=new ArrayList<>(9);
+	private List<ImageObject> boundingBoxPriorsList =new ArrayList<>(9);
 
 	private float jitter=0.3f;
 
@@ -124,15 +124,15 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	private void setAnchors(int[][] bigBoundingBoxPriors, int[][] mediumBoundingBoxPriors, int[][] smallBoundingBoxPriors) {
 		for(int i=0;i<smallBoundingBoxPriors.length;i++){
 
-			anchors.add(new ImageObject(0,0,smallBoundingBoxPriors[i][0],smallBoundingBoxPriors[i][1],""));
+			boundingBoxPriorsList.add(new ImageObject(0,0,smallBoundingBoxPriors[i][0],smallBoundingBoxPriors[i][1],""));
 		}
 		for(int i=0;i<mediumBoundingBoxPriors.length;i++){
 
-			anchors.add(new ImageObject(0,0,mediumBoundingBoxPriors[i][0],mediumBoundingBoxPriors[i][1],""));
+			boundingBoxPriorsList.add(new ImageObject(0,0,mediumBoundingBoxPriors[i][0],mediumBoundingBoxPriors[i][1],""));
 		}
 		for(int i=0;i<bigBoundingBoxPriors.length;i++){
 
-			anchors.add(new ImageObject(0,0,bigBoundingBoxPriors[i][0],bigBoundingBoxPriors[i][1],""));
+			boundingBoxPriorsList.add(new ImageObject(0,0,bigBoundingBoxPriors[i][0],bigBoundingBoxPriors[i][1],""));
 		}
 	}
 
@@ -237,62 +237,46 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			
 			try {
 
-				//得到特征
+				//得到图片特征
 				INDArray imageFeature = nativeImageLoader.asMatrix(featureFile);
-				//得到边界框标签
+				//得到当前图片对应的所有边界框
 				List<ImageObject> boundingBoxesList=getBoundingBoxes(featureFile);
-
+                //得到图片增强结果
 				ImageAugmentResult imageAugmentResult=augmentImage(imageFeature,boundingBoxesList,inputShape[1],inputShape[2]);
-
+                //设小批量中的置图片特征
 				imageFeatureList[exampleCount]=imageAugmentResult.getImage();
-
+                //得到图片增强后的边界框
 				boundingBoxesList=imageAugmentResult.getBoundingBoxesList();
 
 				for(ImageObject boundingBox:boundingBoxesList){
+                    //得到与当边界框IOU最大的先验框信息
+					MaxIouResult maxIouResult=getMaxIouResult(boundingBox);
 
-					ImageObject maxAnchor=null;
+					ImageObject maxBoundingBoxPriors=maxIouResult.getMaxBoundingBoxPriors();
 
-					int maxIndex=-1;
+					int maxIndex=maxIouResult.getMaxIndex();
 
-					double maxIou=-1D;
+					int currentLabelIndex=maxIndex/3;
 
-					ImageObject shiftedBox=new ImageObject(0,0,boundingBox.getX2()-boundingBox.getX1(),boundingBox.getY2()-boundingBox.getY1(),"");
-
-                    for(int anchorIndex=0;anchorIndex<anchors.size();anchorIndex++){
-
-                    	ImageObject anchor=anchors.get(anchorIndex);
-
-						double iou=iou(shiftedBox,anchor);
-
-                    	if(maxIou<iou){
-                    		maxIou=iou;
-                    		maxIndex=anchorIndex;
-							maxAnchor=anchor;
-						}
-
-					}
-
-                    int currentLabelIndex=maxIndex/3;
-
-                    //边界框放于与之iou最大的anchor所在的输出
+                    //确定当前先验框存放的标签
 					INDArray currentLabel=yoloLabels[currentLabelIndex];
 
                     long gridWidth=currentLabel.shape()[1];
 
 					long gridHeight=currentLabel.shape()[2];
-
+					//计算当前边界框中心X坐标
 					double centerX = .5*(boundingBox.getX1() + boundingBox.getX2());
 					// 归一化
 					centerX = centerX / inputShape[1] * gridWidth ;
-
+                    //计算当前边界框中心Y坐标
 					double centerY = .5*(boundingBox.getY1() + boundingBox.getY2());
 					// 归一化
 					centerY = centerY / inputShape[2] * gridHeight ;
 
-					// 归一化
-					double	width = Math.log(boundingBox.getX2()- boundingBox.getX1()) / maxAnchor.getX2();
-
-					double	height = Math.log(boundingBox.getY2()- boundingBox.getY1()) / maxAnchor.getY2();
+					// 归一化边界框宽度
+					double	width = Math.log(boundingBox.getX2()- boundingBox.getX1()) / maxBoundingBoxPriors.getX2();
+                    // 归一化边界框高度
+					double	height = Math.log(boundingBox.getY2()- boundingBox.getY1()) / maxBoundingBoxPriors.getY2();
 
                     double[] box={centerX,centerY,width,height};
 
@@ -304,14 +288,15 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
                     currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.all()},0);
 
-					int classIndex= Arrays.asList(labels).indexOf(boundingBox.getLabel());
-
+				    //设置 centerX,centerY,width,height
 					for(int boxValueIndex=0;boxValueIndex<box.length;boxValueIndex++){
-
 						currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(boxValueIndex)},box[boxValueIndex]);
 					}
+					//设置 概率值为1
                     currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4)},1.0);
 
+					int classIndex= Arrays.asList(labels).indexOf(boundingBox.getLabel());
+                    //设置先验框所在目标类别
 					currentLabel.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount), NDArrayIndex.point(gridX), NDArrayIndex.point(gridY), NDArrayIndex.point(anchorIndex),NDArrayIndex.point(4+1+classIndex)},1.0);
 
 					double[] groundTrueLabelValues=new double[]{centerX,centerY,boundingBox.getX2()-boundingBox.getX1(),boundingBox.getY2()-boundingBox.getY1()};
@@ -348,6 +333,42 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		return multiDataSet;
 
+	}
+
+	/**
+	 * 将一个边界框与所有先验框进行IOU计算
+	 * 然后反回IOU最大的选验框、它的索引、最大IOU
+	 * @param boundingBox
+	 * @return
+	 */
+	private MaxIouResult getMaxIouResult(ImageObject boundingBox){
+
+		ImageObject maxBoundingBoxPriors=null;
+
+		int maxIndex=-1;
+
+		double maxIou=-1D;
+
+		ImageObject shiftedBox=new ImageObject(0,0,boundingBox.getX2()-boundingBox.getX1(),boundingBox.getY2()-boundingBox.getY1(),"");
+
+		for(int boundingBoxPriorsIndex = 0; boundingBoxPriorsIndex< boundingBoxPriorsList.size(); boundingBoxPriorsIndex++){
+
+			ImageObject boundingBoxPriors= boundingBoxPriorsList.get(boundingBoxPriorsIndex);
+
+			double iou=iou(shiftedBox,boundingBoxPriors);
+
+			if(maxIou<iou){
+
+				maxIou=iou;
+
+				maxIndex=boundingBoxPriorsIndex;
+
+				maxBoundingBoxPriors=boundingBoxPriors;
+			}
+
+		}
+
+		return new MaxIouResult(maxBoundingBoxPriors,maxIndex,maxIou);
 	}
 
 	/**
@@ -778,6 +799,18 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	   private INDArray image;
 	   private List<ImageObject> boundingBoxesList;
    }
+
+
+	@Data
+	@AllArgsConstructor
+	class MaxIouResult{
+
+		ImageObject maxBoundingBoxPriors=null;
+
+		int maxIndex=-1;
+
+		double maxIou=-1D;
+	}
 
 
 
