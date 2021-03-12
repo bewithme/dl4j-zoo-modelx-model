@@ -308,8 +308,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 					groundTrueBoxesIndex=groundTrueBoxesIndex%maxBoxPerImage;
 
-					log.info(currentLabel.shapeInfoToString());
-
 				}
 				exampleCount=exampleCount+1;
 

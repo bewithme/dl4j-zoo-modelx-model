@@ -38,7 +38,7 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
     private ILossFunction lossClassPredictions;
     @JsonSerialize(using = NDArrayTextSerializer.class)
     @JsonDeserialize(using = BoundingBoxesDeserializer.class)
-    private INDArray boundingBoxes;
+    private INDArray boundingBoxPriors;
 
     private Yolo3OutputLayerConfiguration() {
         //No-arg constructor for Jackson JSON
@@ -50,7 +50,7 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
         this.lambdaNoObj = builder.lambdaNoObj;
         this.lossPositionScale = builder.lossPositionScale;
         this.lossClassPredictions = builder.lossClassPredictions;
-        this.boundingBoxes = builder.boundingBoxes;
+        this.boundingBoxPriors = builder.boundingBoxPriors;
     }
 
     @Override
@@ -167,7 +167,7 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
          * image.
          *
          */
-        private INDArray boundingBoxes;
+        private INDArray boundingBoxPriors;
 
         /**
          * Loss function coefficient for position and size/scale components of the loss function. Default (as per
@@ -218,22 +218,22 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
          * output, a value of 1.0 would correspond to one grid cell; a value of 13 would correspond to the entire
          * image.
          *
-         * @param boundingBoxes Bounding box prior dimensions (width, height)
+         * @param boundingBoxPriors Bounding box prior dimensions (width, height)
          */
-        public Yolo3OutputLayerConfiguration.Builder boundingBoxPriors(INDArray boundingBoxes) {
-            this.setBoundingBoxes(boundingBoxes);
+        public Yolo3OutputLayerConfiguration.Builder boundingBoxPriors(INDArray boundingBoxPriors) {
+            this.setBoundingBoxPriors(boundingBoxPriors);
             return this;
         }
 
         @Override
         public Yolo3OutputLayerConfiguration build() {
-            if (boundingBoxes == null) {
+            if (boundingBoxPriors == null) {
                 throw new IllegalStateException("Bounding boxes have not been set");
             }
 
-            if (boundingBoxes.rank() != 2 || boundingBoxes.size(1) != 2) {
+            if (boundingBoxPriors.rank() != 2 || boundingBoxPriors.size(1) != 2) {
                 throw new IllegalStateException("Bounding box priors must have shape [nBoxes, 2]. Has shape: "
-                        + Arrays.toString(boundingBoxes.shape()));
+                        + Arrays.toString(boundingBoxPriors.shape()));
             }
 
             return new Yolo3OutputLayerConfiguration(this);

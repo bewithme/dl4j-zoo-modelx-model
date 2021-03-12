@@ -99,7 +99,7 @@ public class Yolo3Trainer {
         //测试集文件分割器
         InputSplit testDataInputSplit  = inputSplit[1];
         //创建训练记录读取数据集迭代器
-        MultiDataSetIterator trainRecordReaderDataSetIterator = new Yolo3DataSetIterator(yoloHyperparameter.getDataDir(),yoloHyperparameter.getBatchSize(),yoloHyperparameter.getLabels(),yoloHyperparameter.getBigBoundingBoxPriors(),yoloHyperparameter.getMediumBoundingBoxPriors(),yoloHyperparameter.getSmallBoundingBoxPriors());
+        MultiDataSetIterator yolo3DataSetIterator = new Yolo3DataSetIterator(yoloHyperparameter.getDataDir(),yoloHyperparameter.getBatchSize(),yoloHyperparameter.getLabels(),yoloHyperparameter.getBigBoundingBoxPriors(),yoloHyperparameter.getMediumBoundingBoxPriors(),yoloHyperparameter.getSmallBoundingBoxPriors());
 
 
        //加载已有模型，如果本地不存在，则会从远程将预训练模型下载到当前用户的 
@@ -146,10 +146,13 @@ public class Yolo3Trainer {
         
         for (int i = startEpoch; i < yoloHyperparameter.getEpochs(); i++) {
         	//每轮训练开始之前将数据集重置
-            trainRecordReaderDataSetIterator.reset();
+            yolo3DataSetIterator.reset();
 
 
-            model.fit(trainRecordReaderDataSetIterator);
+            while (yolo3DataSetIterator.hasNext()){
+                yolo3DataSetIterator.next();
+            }
+           // model.fit(yolo3DataSetIterator);
       
             //每完成一轮，保存一次模型
            // ModelSerializer.writeModel(model, modelSavePath.concat(yoloHyperparameter.getName()).concat("model.zip_")+i, true);
