@@ -70,13 +70,13 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         input=input.reshape(new long[]{input.size(0),input.size(1),input.size(2),3,input.size(3)/3});
 
 
-        long gridH=yoloLabel.shape()[1];
+        long gridHeight=yoloLabel.shape()[1];
 
-        long gridW=yoloLabel.shape()[2];
+        long gridWidth=yoloLabel.shape()[2];
 
         long classNum=yoloLabel.shape()[3]-5;
 
-        INDArray gridFactor= Nd4j.create(new float[]{gridW,gridH}).reshape(new long[]{1,1,1,1,2});
+        INDArray gridFactor= Nd4j.create(new float[]{gridWidth,gridHeight}).reshape(new long[]{1,1,1,1,2});
 
         INDArray netFactor= Nd4j.create(new float[]{416,416}).reshape(new long[]{1,1,1,1,2});
 
@@ -93,6 +93,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         INDArray decodeInputXy= Transforms.sigmoid(predictXy);
         //解码高和宽
         INDArray decodeInputHw= Transforms.eps(predictHw);
+
 
 
 
