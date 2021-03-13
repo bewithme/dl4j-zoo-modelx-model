@@ -108,8 +108,9 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
      */
     private  INDArray getCxCy(int gridSize, int batchSize, int anchorQuantityPerCell) {
 
+        //创建一个元素为0到gridSize-1一维数组
         INDArray gridCoordinatePoints= Nd4j.linspace(0,gridSize-1,gridSize);
-
+        //将形状为[1,gridSize]的数组在[gridSize,1]形状上平铺
         INDArray x=Nd4j.tile(gridCoordinatePoints.reshape(new int[]{1,gridSize}),new int[]{gridSize,1});
 
         INDArray y=Nd4j.tile(gridCoordinatePoints.reshape(new int[]{gridSize,1}),new int[]{1,gridSize});
