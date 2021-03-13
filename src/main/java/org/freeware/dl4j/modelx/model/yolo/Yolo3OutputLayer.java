@@ -94,10 +94,40 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         //解码高和宽
         INDArray decodeInputHw= Transforms.eps(predictHw);
 
-
-
-
         return 0;
+    }
+
+    /**
+     * 获取每个单元格相对于最左上角的坐标
+     * 输出形状为[batchSize,gridSize,gridSize,anchorQuantityPerGrid,2]
+     * 最后一个维度用来存当前单元格相对于左上角的坐标(Cx,Cy)
+     * @param gridSize 网格大小，有13，26，52
+     * @param batchSize 批量大小
+     * @param anchorQuantityPerCell 每个单元格负责检测的先验框数量，一般为3
+     * @return
+     */
+    private  INDArray getCxCy(int gridSize, int batchSize, int anchorQuantityPerCell) {
+
+        INDArray gridCoordinatePoints= Nd4j.linspace(0,gridSize-1,gridSize);
+
+        INDArray x=Nd4j.tile(gridCoordinatePoints.reshape(new int[]{1,gridSize}),new int[]{gridSize,1});
+
+        INDArray y=Nd4j.tile(gridCoordinatePoints.reshape(new int[]{gridSize,1}),new int[]{1,gridSize});
+
+        //[gridSize,gridSize]-->[gridSize,gridSize,1]
+        x=Nd4j.expandDims(x,2);
+        //[gridSize,gridSize]-->[gridSize,gridSize,1]
+        y=Nd4j.expandDims(y,2);
+        //[gridSize,gridSize,1]-->[gridSize,gridSize,2]
+        INDArray xy= Nd4j.concat(-1,x,y);
+        //[gridSize,gridSize,2]-->[1,gridSize,gridSize,2]
+        xy=Nd4j.expandDims(xy,0);
+        //[1,gridSize,gridSize,2]-->[1,gridSize,gridSize,1,2]
+        xy=Nd4j.expandDims(xy,3);
+        //[1,gridSize,gridSize,1,2]-->[batchSize,gridSize,gridSize,anchorQuantityPerGrid,2]
+        xy=Nd4j.tile(xy,new int[]{batchSize,1,1,anchorQuantityPerCell,1});
+
+        return xy;
     }
 
     @Override
