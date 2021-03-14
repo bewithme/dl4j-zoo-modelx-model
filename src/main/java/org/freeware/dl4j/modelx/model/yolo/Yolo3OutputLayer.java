@@ -133,7 +133,8 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
 
     /**
-     * 批量计算IOU
+     * 批量计算两个边界框的IOU
+     * A∩B/A∪B
      * @param predictBoundingBoxes
      * @param labelBoundingBoxes
      * @return
@@ -150,14 +151,16 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         INDArrayIndex[] indexZero=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(0)};
         INDArrayIndex[] indexOne=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(1)};
 
+        //计算第一个边界框的面积
         INDArray predictBoundingBoxesArea= predictBoundingBoxes.get(indexTwo).mul(predictBoundingBoxes.get(indexThree));
-
+        //计算第二个边界框的面积
         INDArray labelBoundingBoxesArea= labelBoundingBoxes.get(indexTwo).mul(labelBoundingBoxes.get(indexThree));
 
         INDArray predictBoundingBoxesLeftTop= predictBoundingBoxes.get(indexZeroToTwo).sub(predictBoundingBoxes.get(indexTwoToFour).mul(0.5));
 
         INDArray predictBoundingBoxesRightBottom= predictBoundingBoxes.get(indexZeroToTwo).add(predictBoundingBoxes.get(indexTwoToFour).mul(0.5));
 
+        //转换为(top x,top y,bottom x, bottom y) 格式的bounding box
         predictBoundingBoxes=Nd4j.concat(-1,predictBoundingBoxesLeftTop,predictBoundingBoxesRightBottom);
 
 
