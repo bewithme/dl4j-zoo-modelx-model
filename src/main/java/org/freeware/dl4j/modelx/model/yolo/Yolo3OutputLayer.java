@@ -131,6 +131,59 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         return xy;
     }
 
+
+    /**
+     * 批量计算IOU
+     * @param predictBoundingBoxes
+     * @param labelBoundingBoxes
+     * @return
+     */
+    private  INDArray getIou(INDArray predictBoundingBoxes,INDArray labelBoundingBoxes) {
+
+        INDArrayIndex[] indexZeroToTwo=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,2)};
+
+        INDArrayIndex[] indexTwoToFour=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(2,4)};
+
+        INDArrayIndex[] indexTwo=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(2)};
+        INDArrayIndex[] indexThree=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(3)};
+
+        INDArrayIndex[] indexZero=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(0)};
+        INDArrayIndex[] indexOne=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(1)};
+
+        INDArray predictBoundingBoxesArea= predictBoundingBoxes.get(indexTwo).mul(predictBoundingBoxes.get(indexThree));
+
+        INDArray labelBoundingBoxesArea= labelBoundingBoxes.get(indexTwo).mul(labelBoundingBoxes.get(indexThree));
+
+        INDArray predictBoundingBoxesLeftTop= predictBoundingBoxes.get(indexZeroToTwo).sub(predictBoundingBoxes.get(indexTwoToFour).mul(0.5));
+
+        INDArray predictBoundingBoxesRightBottom= predictBoundingBoxes.get(indexZeroToTwo).add(predictBoundingBoxes.get(indexTwoToFour).mul(0.5));
+
+        predictBoundingBoxes=Nd4j.concat(-1,predictBoundingBoxesLeftTop,predictBoundingBoxesRightBottom);
+
+
+        INDArray labelBoundingBoxesLeftTop= labelBoundingBoxes.get(indexZeroToTwo).sub(labelBoundingBoxes.get(indexTwoToFour).mul(0.5));
+
+        INDArray labelBoundingBoxesRightBottom= labelBoundingBoxes.get(indexZeroToTwo).add(labelBoundingBoxes.get(indexTwoToFour).mul(0.5));
+
+        labelBoundingBoxes=Nd4j.concat(-1,labelBoundingBoxesLeftTop,labelBoundingBoxesRightBottom);
+
+
+        INDArray boundingBoxesLeftTop=Transforms.max(predictBoundingBoxes.get(indexZeroToTwo),labelBoundingBoxes.get(indexZeroToTwo));
+
+        INDArray boundingBoxesRightBottom=Transforms.min(predictBoundingBoxes.get(indexTwoToFour),labelBoundingBoxes.get(indexTwoToFour));
+
+
+        INDArray interSection=Transforms.max(boundingBoxesRightBottom.sub(boundingBoxesLeftTop),0.0);
+
+        INDArray interArea=interSection.get(indexZero).mul(interSection.get(indexOne));
+
+        INDArray unionArea=predictBoundingBoxesArea.add(labelBoundingBoxesArea).sub(interArea);
+
+        INDArray iou=interArea.mul(1.0).mul(unionArea);
+
+        return iou;
+    }
+
     @Override
     public INDArray computeScoreForExamples(double fullNetworkRegScore, LayerWorkspaceMgr workspaceMgr) {
         return null;
