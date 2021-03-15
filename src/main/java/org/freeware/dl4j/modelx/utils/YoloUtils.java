@@ -112,7 +112,7 @@ public class YoloUtils {
     /**
      * 批量计算两个边界框的GIOU
      *
-     * @param boundingBoxes1 [batchSize,gridSize,gridSize,anchorsSize,(x,y,h,w,confidence,classNum)]
+     * @param boundingBoxes1 [batchSize,gridSize,gridSize,boundingBoxPriorsQuantityPerGridCell,(x,y,h,w,confidence,classNum)]
      * @param boundingBoxes2
      * @return
      */
