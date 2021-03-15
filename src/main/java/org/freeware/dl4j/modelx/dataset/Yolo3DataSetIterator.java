@@ -342,6 +342,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	}
 
 	private INDArray getCenterXyWhLabel(ImageObject boundingBox) {
+
 		INDArray coordinate= Nd4j.create(new int[]{boundingBox.getX1(),boundingBox.getY1(),boundingBox.getX2(),boundingBox.getY2()});
 
 		INDArray centerXy=coordinate.get(new INDArrayIndex[]{NDArrayIndex.interval(2,4)}).add(coordinate.get(new INDArrayIndex[]{NDArrayIndex.interval(0,2)})).mul(0.5);
