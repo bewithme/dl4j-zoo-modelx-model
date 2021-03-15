@@ -117,8 +117,6 @@ public class YoloUtils {
      * @return
      */
     private  static INDArray getGIou(INDArrayIndex[] indexZero,INDArrayIndex[] indexOne,INDArrayIndex[] indexTwo,INDArrayIndex[] indexThree,INDArrayIndex[] indexFromZeroToTwo,INDArrayIndex[] indexFromTwoToFour ,INDArray boundingBoxes1,INDArray boundingBoxes2) {
-
-
         //左上角坐标
         INDArray boundingBoxes1LeftTop= boundingBoxes1.get(indexFromZeroToTwo).sub(boundingBoxes1.get(indexFromTwoToFour).mul(0.5));
         //右下角坐标
@@ -162,8 +160,8 @@ public class YoloUtils {
         //【最小凸集内不属于两个框的区域】与【最小凸集】的比值
         INDArray rate=encloseArea.sub(unionArea).mul(1.0).div(encloseArea);
 
-        INDArray giou=iou.sub(rate);
+        INDArray gIou=iou.sub(rate);
 
-        return giou;
+        return gIou;
     }
 }
