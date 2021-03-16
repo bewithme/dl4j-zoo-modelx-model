@@ -279,7 +279,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 									setLabelValues(label, exampleCount,  scaledIouVectorIndex, scaledBoundingBox,smoothClassOneHot);
 								}
 							}
-							setExtraInfo(exampleCount, boxesCount, labelIndex, scaledBoundingBox, label);
+							setExtraValues(exampleCount, boxesCount, labelIndex, scaledBoundingBox, label);
 
 							existPositive = Boolean.TRUE;
 						}
@@ -299,7 +299,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 						setLabelValues(label, exampleCount,  bestPriorBoundingBoxCategoryIndexMode, scaledBoundingBox,smoothClassOneHot);
 
-						setExtraInfo(exampleCount, boxesCount, bestPriorBoundingBoxCategoryIndex, scaledBoundingBox, label);
+						setExtraValues(exampleCount, boxesCount, bestPriorBoundingBoxCategoryIndex, scaledBoundingBox, label);
 
 					}
 				}
@@ -325,7 +325,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	}
 
-	private void setExtraInfo(int exampleCount, INDArray boxesCount, int labelIndex, INDArray scaledBoundingBox, INDArray label) {
+	private void setExtraValues(int exampleCount, INDArray boxesCount, int labelIndex, INDArray scaledBoundingBox, INDArray label) {
 
 		int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
 
