@@ -80,20 +80,22 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	private int[] inputShape={3,416,416};
 
-	private int[] strides={8,16,32};
+	private int[] strides={32,16,8};
 
 	private String[] labels={};
-    //shape of [3,3,2]
-	private INDArray boundingBoxPriors;
+    //shape=[3,3,2]保存所有先验框
+	private INDArray priorBoundingBoxes;
 
 	private float jitter=0.3f;
+	//每个单元格负责检测的先验框数量，一般为3
+	private  int numberOfPriorBoundingBoxPerGridCell=3;
 
 	public Yolo3DataSetIterator(String dataSetPath,
 								int batchSize,
 								String[] labels ,
-								int[][] bigBoundingBoxPriors,
-								int[][] mediumBoundingBoxPriors,
-								int[][] smallBoundingBoxPriors) {
+								int[][] bigPriorBoundingBoxes,
+								int[][] mediumPriorBoundingBoxes,
+								int[][] smallPriorBoundingBoxes) {
 
 		super();
 
@@ -101,7 +103,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
         this.nativeImageLoader=new NativeImageLoader();
 
-		setBoundingBoxPriors(bigBoundingBoxPriors, mediumBoundingBoxPriors, smallBoundingBoxPriors);
+		setPriorBoundingBoxes(bigPriorBoundingBoxes, mediumPriorBoundingBoxes, smallPriorBoundingBoxes);
 
 		//检查并设置目录
 		checkAndSetDirectory(dataSetPath);
@@ -129,12 +131,12 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		}
 	}
 
-	private void setBoundingBoxPriors(int[][] bigBoundingBoxPriors, int[][] mediumBoundingBoxPriors, int[][] smallBoundingBoxPriors) {
+	private void setPriorBoundingBoxes(int[][] bigPriorBoundingBoxes, int[][] mediumPriorBoundingBoxes, int[][] smallPriorBoundingBoxes) {
 		int[] shape=new int[]{1,3,2};
-		INDArray big=Nd4j.create(bigBoundingBoxPriors).reshape(shape);
-		INDArray medium=Nd4j.create(mediumBoundingBoxPriors).reshape(shape);
-		INDArray small=Nd4j.create(smallBoundingBoxPriors).reshape(shape);
-		this.boundingBoxPriors=Nd4j.concat(0,big,medium,small);
+		INDArray big=Nd4j.create(bigPriorBoundingBoxes).reshape(shape);
+		INDArray medium=Nd4j.create(mediumPriorBoundingBoxes).reshape(shape);
+		INDArray small=Nd4j.create(smallPriorBoundingBoxes).reshape(shape);
+		this.priorBoundingBoxes =Nd4j.concat(0,big,medium,small);
 	}
 
 	/**
@@ -218,26 +220,15 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		//特征存放，便于拼接
 		INDArray[] imageFeatureList=new INDArray[realBatchSize] ;
 
-		INDArray groundTrueBoxes=Nd4j.zeros(realBatchSize,maxBoxPerImage,4);
-
-		INDArray labelBig=Nd4j.zeros(realBatchSize,13,13,3+maxBoxPerImage,4+1+labels.length);
-
-		INDArray labelMedium=Nd4j.zeros(realBatchSize,26,26,3+maxBoxPerImage,4+1+labels.length);
-
-		INDArray labelSmall=Nd4j.zeros(realBatchSize,52,52,3+maxBoxPerImage,4+1+labels.length);
-
-		INDArray[] labelBigMediumSmall=new INDArray[]{labelBig,labelMedium,labelSmall} ;
+		INDArray[] labelBigMediumSmall = getLabelBigMediumSmall(realBatchSize);
 
 		int exampleCount=0;
-
-		int groundTrueBoxesIndex=0;
 
 		for(int exampleIndex=startIndex;exampleIndex<endIndex;exampleIndex++) {
 			
 			File featureFile=featureFiles.get(exampleIndex);
 			
 			try {
-
 				//得到图片特征
 				INDArray imageFeature = nativeImageLoader.asMatrix(featureFile);
 				//得到当前图片对应的所有边界框
@@ -248,6 +239,8 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 				imageFeatureList[exampleCount]=imageAugmentResult.getImage();
                 //得到图片增强后的边界框
 				boundingBoxesList=imageAugmentResult.getBoundingBoxesList();
+                //用来统计参与预测的大中小边界框
+				INDArray boxesCount=Nd4j.zeros(3);
 
 				for(ImageObject boundingBox:boundingBoxesList){
                     //[4]
@@ -262,52 +255,53 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 					Boolean existPositive = Boolean.FALSE;
 
 					for(int labelIndex=0;labelIndex<labelBigMediumSmall.length;labelIndex++){
-
 						//[3,4]
 						INDArray threeBoundingBoxPriors = getThreeBoundingBoxPriors(bigMediumSmallScaledBoundingBox, labelIndex);
                         //[4]
 						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex),NDArrayIndex.all()});
                         //[1,4]
 						INDArray expandDimsScaledBoundingBox=Nd4j.expandDims(scaledBoundingBox,0);
-
+                        //[3]
 						INDArray scaledIou= YoloUtils.get2DBoxIou(threeBoundingBoxPriors,expandDimsScaledBoundingBox);
 
-						log.info(scaledIou.toString());
+						float[] scaledIouVector=scaledIou.toFloatVector();
+
+						float scaledIouThreshold=0.3f;
 
 						iouList.add(scaledIou);
 
-						//统计数组中数值大于3的个数
-						MatchCondition matchCondition = new MatchCondition(scaledIou, Conditions.greaterThan(0.3));
+						int greaterThanScaledIouThresholdCount = getGreaterThanScaledIouThresholdCount(scaledIou, scaledIouThreshold);
 
-						INDArray countResult=Nd4j.getExecutioner().exec(matchCondition);
-
-
-
-
-						if(countResult.toIntVector()[0]>0){
-
-							INDArray  centerXy=scaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.interval(0,2)});
-
-							INDArray gridXy=Transforms.floor(centerXy);
-
-							int gridX=gridXy.toIntVector()[0];
-
-							int gridY=gridXy.toIntVector()[1];
-
-
-							labelBigMediumSmall[labelIndex].put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.interval(0,4)},scaledBoundingBox);
+						if(greaterThanScaledIouThresholdCount>0){
+							INDArray label=labelBigMediumSmall[labelIndex];
+							for(int scaledIouVectorIndex=0;scaledIouVectorIndex<scaledIouVector.length;scaledIouVectorIndex++){
+								if(scaledIouVector[scaledIouVectorIndex]>scaledIouThreshold){
+									setLabelValues(label, exampleCount,  scaledIouVectorIndex, scaledBoundingBox,smoothClassOneHot);
+								}
+							}
+							setExtraInfo(exampleCount, boxesCount, labelIndex, scaledBoundingBox, label);
 
 							existPositive = Boolean.TRUE;
-
 						}
-
-
 					}
 
-					groundTrueBoxesIndex=groundTrueBoxesIndex+1;
+					if(existPositive==Boolean.FALSE){
 
-					groundTrueBoxesIndex=groundTrueBoxesIndex%maxBoxPerImage;
+						int bestPriorBoundingBoxIndex = getBestPriorBoundingBoxIndex(iouList);
 
+						int bestPriorBoundingBoxCategoryIndex=bestPriorBoundingBoxIndex/numberOfPriorBoundingBoxPerGridCell;
+
+						int bestPriorBoundingBoxCategoryIndexMode=bestPriorBoundingBoxIndex%numberOfPriorBoundingBoxPerGridCell;
+						//[4]
+						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(bestPriorBoundingBoxCategoryIndex),NDArrayIndex.all()});
+
+						INDArray label=labelBigMediumSmall[bestPriorBoundingBoxCategoryIndex];
+
+						setLabelValues(label, exampleCount,  bestPriorBoundingBoxCategoryIndexMode, scaledBoundingBox,smoothClassOneHot);
+
+						setExtraInfo(exampleCount, boxesCount, bestPriorBoundingBoxCategoryIndex, scaledBoundingBox, label);
+
+					}
 				}
 				exampleCount=exampleCount+1;
 
@@ -322,8 +316,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		INDArray[] featuresArray=new INDArray[] {imageFeature};
 
-		combineLabels(realBatchSize, groundTrueBoxes, labelBigMediumSmall);
-
 		MultiDataSet multiDataSet=new MultiDataSet(featuresArray,labelBigMediumSmall);
 
         //小批量计数器加1
@@ -331,6 +323,65 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		return multiDataSet;
 
+	}
+
+	private void setExtraInfo(int exampleCount, INDArray boxesCount, int labelIndex, INDArray scaledBoundingBox, INDArray label) {
+
+		int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
+
+		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
+
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
+
+		bigMediumSmallScaledBoundingBoxIndex++;
+
+		boxesCount.put(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)},bigMediumSmallScaledBoundingBoxIndex);
+	}
+
+	private void setLabelValues(INDArray label, int exampleCount, int priorBoundingBoxIndex, INDArray scaledBoundingBox, INDArray smoothClassOneHot) {
+
+		INDArray  centerXy=scaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.interval(0,2)});
+
+		INDArray  gridXy= Transforms.floor(centerXy);
+
+		int gridX=gridXy.toIntVector()[0];
+
+		int gridY=gridXy.toIntVector()[1];
+
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
+
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(4,5)},1.0);
+
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(5,5+labels.length)},smoothClassOneHot);
+	}
+
+	private int getBestPriorBoundingBoxIndex(List<INDArray> iouList) {
+
+		INDArray iouArray= Nd4j.create(new long[]{iouList.size(),numberOfPriorBoundingBoxPerGridCell});
+
+		for(int iouIndex=0;iouIndex<iouList.size();iouIndex++){
+			iouArray.put(new INDArrayIndex[]{NDArrayIndex.point(iouIndex),NDArrayIndex.all()},iouList.get(iouIndex));
+		}
+		return iouArray.reshape(-1).argMax(-1).toIntVector()[0];
+	}
+
+	@NotNull
+	private INDArray[] getLabelBigMediumSmall(int realBatchSize) {
+
+		INDArray labelBig= Nd4j.zeros(realBatchSize,13,13,3+maxBoxPerImage,4+1+labels.length);
+
+		INDArray labelMedium=Nd4j.zeros(realBatchSize,26,26,3+maxBoxPerImage,4+1+labels.length);
+
+		INDArray labelSmall=Nd4j.zeros(realBatchSize,52,52,3+maxBoxPerImage,4+1+labels.length);
+
+		return new INDArray[]{labelBig,labelMedium,labelSmall};
+	}
+
+	private int getGreaterThanScaledIouThresholdCount(INDArray scaledIou, float scaledIouThreshold) {
+		//统计数组中数值大于0.3的个数
+		MatchCondition matchCondition = new MatchCondition(scaledIou, Conditions.greaterThan(scaledIouThreshold));
+
+		return Nd4j.getExecutioner().exec(matchCondition).toIntVector()[0];
 	}
 
 	/**
@@ -364,7 +415,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	 */
 	private INDArray getCenterXyWhBoundingBox(ImageObject boundingBox) {
 
-		INDArray coordinate= Nd4j.create(new int[]{boundingBox.getX1(),boundingBox.getY1(),boundingBox.getX2(),boundingBox.getY2()});
+		INDArray coordinate= Nd4j.create(new float[]{boundingBox.getX1(),boundingBox.getY1(),boundingBox.getX2(),boundingBox.getY2()});
 
 		INDArray centerXy=coordinate.get(new INDArrayIndex[]{NDArrayIndex.interval(2,4)}).add(coordinate.get(new INDArrayIndex[]{NDArrayIndex.interval(0,2)})).mul(0.5);
 
@@ -386,16 +437,19 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		//创建一个保存三个先验框的数组
 		INDArray threeBoundingBoxPriors= Nd4j.zeros(new int[]{3,4});
 
-		log.info(bigMediumSmallScaledBoundingBox.shapeInfoToString());
-
 		INDArray scaledBoundingBoxXy=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex),NDArrayIndex.interval(0,2)});
 
 		scaledBoundingBoxXy= Transforms.floor(scaledBoundingBoxXy).add(0.5);
-		log.info(scaledBoundingBoxXy.shapeInfoToString());
-		//它的centerX  centerY是从缩放的边界框获取
-		threeBoundingBoxPriors.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.interval(0,2)},scaledBoundingBoxXy);
 
-		INDArray boundingBoxPrior=boundingBoxPriors.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex),NDArrayIndex.all()});
+		float centerX=scaledBoundingBoxXy.toFloatVector()[0];
+
+		float centerY=scaledBoundingBoxXy.toFloatVector()[1];
+		//它的centerX  centerY是从缩放的边界框获取
+		threeBoundingBoxPriors.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0)},centerX);
+
+		threeBoundingBoxPriors.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(1)},centerY);
+
+		INDArray boundingBoxPrior= priorBoundingBoxes.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex),NDArrayIndex.all()});
 		//它的wh是在用户提供的先验框获取
 		threeBoundingBoxPriors.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.interval(2,4)},boundingBoxPrior);
 		return threeBoundingBoxPriors;
