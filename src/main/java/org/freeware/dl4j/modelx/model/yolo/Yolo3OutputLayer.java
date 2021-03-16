@@ -56,27 +56,17 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         Preconditions.checkState(getLabels() != null, "Cannot calculate gradients/score: labels are null");
 
-        long anchorBoxesQty=labels.size(3);
-
-        //取出真实原始标签
-        INDArray groundTrueBoxes=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.interval(4,anchorBoxesQty+1),NDArrayIndex.interval(0,5)});
-
-        //取出yolo标签
-        INDArray yoloLabel=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,4),NDArrayIndex.all()});
-
+        long numberOfPriorBoundingBoxPerGridCell=labels.size(3);
         //NCHW --> NHWC
         input=input.permute(0,2,3,1);
-
         //NHWC --> [batch, grid_h, grid_w, 3, 4+1+nb_class]
         input=input.reshape(new long[]{input.size(0),input.size(1),input.size(2),3,input.size(3)/3});
 
-        long batchSize=yoloLabel.shape()[0];
+        long batchSize=labels.shape()[0];
 
-        long gridHeight=yoloLabel.shape()[1];
+        long gridHeight=labels.shape()[1];
 
-        long gridWidth=yoloLabel.shape()[2];
-
-        long classNum=yoloLabel.shape()[3]-5;
+        long classOneHotSize=labels.shape()[3]-5;
 
         //得到所有边界框的中心点坐标
         INDArray predictXy=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,2)});
@@ -85,7 +75,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         INDArray predictConfidence=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(4,5)});
 
-        INDArray predictClass=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(5,5+classNum)});
+        INDArray predictClassOneHot=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(5,classOneHotSize)});
 
         INDArray cxCy=YoloUtils.getCxCy(Integer.parseInt(String.valueOf(gridHeight)),Integer.parseInt(String.valueOf(batchSize)),3);
 
@@ -97,9 +87,26 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         predictConfidence=Transforms.sigmoid(predictConfidence);
 
-        predictClass=Transforms.sigmoid(predictClass);
+        predictClassOneHot=Transforms.sigmoid(predictClassOneHot);
 
-        INDArray decodeInput=Nd4j.concat(-1,decodeInputXy,decodeInputHw,predictConfidence,predictClass);
+        INDArray decodeInputXyHw=Nd4j.concat(-1,decodeInputXy,decodeInputHw);
+
+
+        //得到所有边界框的高和宽
+        INDArray labelXyHw=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,3),NDArrayIndex.interval(0,4)});
+
+        INDArray labelConfidence=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,3),NDArrayIndex.interval(4,5)});
+
+        INDArray labelClassOneHot=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,3),NDArrayIndex.interval(5,classOneHotSize)});
+        //取出所有标签
+        INDArray groundTrueBoxes=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.interval(3,numberOfPriorBoundingBoxPerGridCell),NDArrayIndex.interval(0,4)});
+
+
+        INDArray gIou=YoloUtils.get5DBoxGIou(decodeInputXyHw,labelXyHw);
+
+        gIou=Nd4j.expandDims(gIou,-1);
+
+
 
 
         return 0;
