@@ -28,10 +28,10 @@ public class YoloUtils {
      * 最后一个维度用来存当前单元格相对于左上角的坐标(Cx,Cy)
      * @param gridSize 网格大小，有13，26，52
      * @param batchSize 批量大小
-     * @param boundingBoxPriorsQuantityPerGridCell 每个单元格负责检测的先验框数量，一般为3
+     * @param numberOfPriorBoundingBoxPerGridCell 每个单元格负责检测的先验框数量，一般为3
      * @return
      */
-    private static  INDArray getCxCy(int gridSize, int batchSize, int boundingBoxPriorsQuantityPerGridCell) {
+    private static  INDArray getCxCy(int gridSize, int batchSize, int numberOfPriorBoundingBoxPerGridCell) {
 
         //创建一个元素为0到gridSize-1一维数组
         INDArray gridCoordinatePoints= Nd4j.linspace(0,gridSize-1,gridSize);
@@ -50,7 +50,7 @@ public class YoloUtils {
         //[1,gridSize,gridSize,2]-->[1,gridSize,gridSize,1,2]
         xy=Nd4j.expandDims(xy,3);
         //[1,gridSize,gridSize,1,2]-->[batchSize,gridSize,gridSize,anchorQuantityPerGrid,2]
-        xy=Nd4j.tile(xy,new int[]{batchSize,1,1,boundingBoxPriorsQuantityPerGridCell,1});
+        xy=Nd4j.tile(xy,new int[]{batchSize,1,1,numberOfPriorBoundingBoxPerGridCell,1});
 
         return xy;
     }
@@ -103,7 +103,7 @@ public class YoloUtils {
 
         INDArray unionArea=boundingBoxes1Area.add(boundingBoxes2Area).sub(interArea);
 
-        INDArray iou=interArea.mul(1.0).mul(unionArea);
+        INDArray iou=interArea.mul(1.0).div(unionArea.add(1e-6));
 
         return iou;
     }

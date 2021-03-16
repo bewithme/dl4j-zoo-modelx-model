@@ -1,8 +1,11 @@
 package org.freeware.dl4j.modelx.utils;
 
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.indexing.BooleanIndexing;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
+import org.nd4j.linalg.indexing.conditions.Conditions;
+import org.nd4j.nativeblas.Nd4jCpu;
 
 public class INDArrayUtils {
 
@@ -69,5 +72,22 @@ public class INDArrayUtils {
 
         }
         return newArray;
+    }
+
+    /**
+     * 将小于min的值设为min
+     * 将大于max的值设为max
+     * @param data
+     * @param min
+     * @param max
+     * @return
+     */
+    public static INDArray clip(INDArray data,float min,float max){
+
+        BooleanIndexing.replaceWhere(data, min, Conditions.lessThan(min));
+
+        BooleanIndexing.replaceWhere(data, max, Conditions.greaterThan(max));
+
+        return data;
     }
 }
