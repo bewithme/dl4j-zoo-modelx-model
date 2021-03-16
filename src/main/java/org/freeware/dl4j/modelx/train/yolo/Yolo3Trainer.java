@@ -111,9 +111,9 @@ public class Yolo3Trainer {
         if(latestModelFile==null) {
         	 pretrainedComputationGraph = (ComputationGraph) Yolo3.builder()
                      .numClasses(yoloHyperparameter.getLabels().length)
-                     .bigBoundingBoxPriors(yoloHyperparameter.getBigBoundingBoxPriors())
-                     .mediumBoundingBoxPriors(yoloHyperparameter.getMediumBoundingBoxPriors())
-                     .smallBoundingBoxPriors(yoloHyperparameter.getSmallBoundingBoxPriors())
+                     .bigPriorBoundingBoxes(yoloHyperparameter.getBigBoundingBoxPriors())
+                     .mediumPriorBoundingBoxes(yoloHyperparameter.getMediumBoundingBoxPriors())
+                     .smallPriorBoundingBoxes(yoloHyperparameter.getSmallBoundingBoxPriors())
                      .build().init();
         }else {
              pretrainedComputationGraph = ModelSerializer.restoreComputationGraph(latestModelFile,true);

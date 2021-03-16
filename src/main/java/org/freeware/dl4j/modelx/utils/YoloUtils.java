@@ -31,7 +31,7 @@ public class YoloUtils {
      * @param numberOfPriorBoundingBoxPerGridCell 每个单元格负责检测的先验框数量，一般为3
      * @return
      */
-    private static  INDArray getCxCy(int gridSize, int batchSize, int numberOfPriorBoundingBoxPerGridCell) {
+    public static  INDArray getCxCy(int gridSize, int batchSize, int numberOfPriorBoundingBoxPerGridCell) {
 
         //创建一个元素为0到gridSize-1一维数组
         INDArray gridCoordinatePoints= Nd4j.linspace(0,gridSize-1,gridSize);
@@ -63,6 +63,9 @@ public class YoloUtils {
         return getIou(INDEX_CENTER_X_5D, INDEX_CENTER_Y_5D, INDEX_W_5D, INDEX_H_5D, INDEX_CENTER_XY_5D, INDEX_WH_5D,boundingBoxes1,boundingBoxes2);
     }
 
+    public   static INDArray get2DBoxGIou(INDArray boundingBoxes1,INDArray boundingBoxes2){
+        return getGIou(INDEX_CENTER_X_2D, INDEX_CENTER_Y_2D, INDEX_W_2D, INDEX_H_2D, INDEX_CENTER_XY_2D, INDEX_WH_2D,boundingBoxes1,boundingBoxes2);
+    }
     public   static INDArray get5DBoxGIou(INDArray boundingBoxes1,INDArray boundingBoxes2){
         return getGIou(INDEX_CENTER_X_5D, INDEX_CENTER_Y_5D, INDEX_W_5D, INDEX_H_5D, INDEX_CENTER_XY_5D, INDEX_WH_5D,boundingBoxes1,boundingBoxes2);
     }
@@ -134,9 +137,9 @@ public class YoloUtils {
         //确保左上角的坐标小于右下角的坐标
         boundingBoxes2=Nd4j.concat(-1,Transforms.min(boundingBoxes2.get(indexCenterXy),boundingBoxes2.get(indexWh)),Transforms.max(boundingBoxes2.get(indexCenterXy),boundingBoxes2.get(indexWh)));
         //计算第一个边界框的面积
-        INDArray boundingBoxes1Area= boundingBoxes1.get(indexW).sub(boundingBoxes1.get(indexCenterX)).mul(boundingBoxes1.get(indexH).add(boundingBoxes1.get(indexCenterY)));
+        INDArray boundingBoxes1Area= boundingBoxes1.get(indexW).sub(boundingBoxes1.get(indexCenterX)).mul(boundingBoxes1.get(indexH).sub(boundingBoxes1.get(indexCenterY)));
         //计算第二个边界框的面积
-        INDArray boundingBoxes2Area=boundingBoxes2.get(indexW).sub(boundingBoxes2.get(indexCenterX)).mul(boundingBoxes2.get(indexH).add(boundingBoxes2.get(indexCenterY)));
+        INDArray boundingBoxes2Area=boundingBoxes2.get(indexW).sub(boundingBoxes2.get(indexCenterX)).mul(boundingBoxes2.get(indexH).sub(boundingBoxes2.get(indexCenterY)));
 
         INDArray boundingBoxesLeftTop= Transforms.max(boundingBoxes1.get(indexCenterXy),boundingBoxes2.get(indexCenterXy));
 
@@ -148,7 +151,7 @@ public class YoloUtils {
 
         INDArray unionArea=boundingBoxes1Area.add(boundingBoxes2Area).sub(interArea);
 
-        INDArray iou=interArea.mul(1.0).mul(unionArea);
+        INDArray iou=interArea.div(unionArea.add(1e-6));
         //计算boxes1和boxes2的最小凸集框的左上角和右下角坐标
         INDArray encloseBoundingBoxesLeftTop= Transforms.min(boundingBoxes1.get(indexCenterXy),boundingBoxes2.get(indexCenterXy));
 

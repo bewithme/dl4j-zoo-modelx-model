@@ -9,6 +9,7 @@ import org.deeplearning4j.nn.gradient.DefaultGradient;
 import org.deeplearning4j.nn.gradient.Gradient;
 import org.deeplearning4j.nn.layers.AbstractLayer;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
+import org.freeware.dl4j.modelx.utils.YoloUtils;
 import org.nd4j.common.base.Preconditions;
 import org.nd4j.common.primitives.Pair;
 import org.nd4j.linalg.api.buffer.DataType;
@@ -49,7 +50,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     @Override
     public double computeScore(double fullNetworkRegScore, boolean training, LayerWorkspaceMgr workspaceMgr) {
 
-        INDArray boundingBoxPriors=layerConf().getBoundingBoxPriors();
+        INDArray priorBoundingBoxes=layerConf().getPriorBoundingBoxes();
 
         assertInputSet(true);
 
@@ -69,16 +70,13 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         //NHWC --> [batch, grid_h, grid_w, 3, 4+1+nb_class]
         input=input.reshape(new long[]{input.size(0),input.size(1),input.size(2),3,input.size(3)/3});
 
+        long batchSize=yoloLabel.shape()[0];
 
         long gridHeight=yoloLabel.shape()[1];
 
         long gridWidth=yoloLabel.shape()[2];
 
         long classNum=yoloLabel.shape()[3]-5;
-
-        INDArray gridFactor= Nd4j.create(new float[]{gridWidth,gridHeight}).reshape(new long[]{1,1,1,1,2});
-
-        INDArray netFactor= Nd4j.create(new float[]{416,416}).reshape(new long[]{1,1,1,1,2});
 
         //得到所有边界框的中心点坐标
         INDArray predictXy=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,2)});
@@ -89,103 +87,25 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         INDArray predictClass=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(5,5+classNum)});
 
+        INDArray cxCy=YoloUtils.getCxCy(Integer.parseInt(String.valueOf(gridHeight)),Integer.parseInt(String.valueOf(batchSize)),3);
+
+        long stride=416/gridHeight;
         //解码中心点坐标
-        INDArray decodeInputXy= Transforms.sigmoid(predictXy);
+        INDArray decodeInputXy= Transforms.sigmoid(predictXy).add(cxCy).mul(stride);
         //解码高和宽
-        INDArray decodeInputHw= Transforms.eps(predictHw);
+        INDArray decodeInputHw= Transforms.eps(predictHw).mul(priorBoundingBoxes).mul(stride);
+
+        predictConfidence=Transforms.sigmoid(predictConfidence);
+
+        predictClass=Transforms.sigmoid(predictClass);
+
+        INDArray decodeInput=Nd4j.concat(-1,decodeInputXy,decodeInputHw,predictConfidence,predictClass);
+
 
         return 0;
     }
 
-    /**
-     * 获取每个单元格相对于最左上角的坐标
-     * 输出形状为[batchSize,gridSize,gridSize,anchorQuantityPerGrid,2]
-     * 最后一个维度用来存当前单元格相对于左上角的坐标(Cx,Cy)
-     * @param gridSize 网格大小，有13，26，52
-     * @param batchSize 批量大小
-     * @param anchorQuantityPerCell 每个单元格负责检测的先验框数量，一般为3
-     * @return
-     */
-    private  INDArray getCxCy(int gridSize, int batchSize, int anchorQuantityPerCell) {
 
-        //创建一个元素为0到gridSize-1一维数组
-        INDArray gridCoordinatePoints= Nd4j.linspace(0,gridSize-1,gridSize);
-        //将形状为[1,gridSize]的数组在[gridSize,1]形状上平铺
-        INDArray x=Nd4j.tile(gridCoordinatePoints.reshape(new int[]{1,gridSize}),new int[]{gridSize,1});
-
-        INDArray y=Nd4j.tile(gridCoordinatePoints.reshape(new int[]{gridSize,1}),new int[]{1,gridSize});
-
-        //[gridSize,gridSize]-->[gridSize,gridSize,1]
-        x=Nd4j.expandDims(x,2);
-        //[gridSize,gridSize]-->[gridSize,gridSize,1]
-        y=Nd4j.expandDims(y,2);
-        //[gridSize,gridSize,1]-->[gridSize,gridSize,2]
-        INDArray xy= Nd4j.concat(-1,x,y);
-        //[gridSize,gridSize,2]-->[1,gridSize,gridSize,2]
-        xy=Nd4j.expandDims(xy,0);
-        //[1,gridSize,gridSize,2]-->[1,gridSize,gridSize,1,2]
-        xy=Nd4j.expandDims(xy,3);
-        //[1,gridSize,gridSize,1,2]-->[batchSize,gridSize,gridSize,anchorQuantityPerGrid,2]
-        xy=Nd4j.tile(xy,new int[]{batchSize,1,1,anchorQuantityPerCell,1});
-
-        return xy;
-    }
-
-
-    /**
-     * 批量计算两个边界框的IOU
-     * A∩B/A∪B
-     * @param predictBoundingBoxes
-     * @param labelBoundingBoxes
-     * @return
-     */
-    private  INDArray getIou(INDArray predictBoundingBoxes,INDArray labelBoundingBoxes) {
-
-        INDArrayIndex[] indexZeroToTwo=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,2)};
-
-        INDArrayIndex[] indexTwoToFour=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(2,4)};
-
-        INDArrayIndex[] indexTwo=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(2)};
-        INDArrayIndex[] indexThree=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(3)};
-
-        INDArrayIndex[] indexZero=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(0)};
-        INDArrayIndex[] indexOne=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(1)};
-
-        //计算第一个边界框的面积
-        INDArray predictBoundingBoxesArea= predictBoundingBoxes.get(indexTwo).mul(predictBoundingBoxes.get(indexThree));
-        //计算第二个边界框的面积
-        INDArray labelBoundingBoxesArea= labelBoundingBoxes.get(indexTwo).mul(labelBoundingBoxes.get(indexThree));
-
-        INDArray predictBoundingBoxesLeftTop= predictBoundingBoxes.get(indexZeroToTwo).sub(predictBoundingBoxes.get(indexTwoToFour).mul(0.5));
-
-        INDArray predictBoundingBoxesRightBottom= predictBoundingBoxes.get(indexZeroToTwo).add(predictBoundingBoxes.get(indexTwoToFour).mul(0.5));
-
-        //转换为(top x,top y,bottom x, bottom y) 格式的bounding box
-        predictBoundingBoxes=Nd4j.concat(-1,predictBoundingBoxesLeftTop,predictBoundingBoxesRightBottom);
-
-
-        INDArray labelBoundingBoxesLeftTop= labelBoundingBoxes.get(indexZeroToTwo).sub(labelBoundingBoxes.get(indexTwoToFour).mul(0.5));
-
-        INDArray labelBoundingBoxesRightBottom= labelBoundingBoxes.get(indexZeroToTwo).add(labelBoundingBoxes.get(indexTwoToFour).mul(0.5));
-
-        labelBoundingBoxes=Nd4j.concat(-1,labelBoundingBoxesLeftTop,labelBoundingBoxesRightBottom);
-
-
-        INDArray boundingBoxesLeftTop=Transforms.max(predictBoundingBoxes.get(indexZeroToTwo),labelBoundingBoxes.get(indexZeroToTwo));
-
-        INDArray boundingBoxesRightBottom=Transforms.min(predictBoundingBoxes.get(indexTwoToFour),labelBoundingBoxes.get(indexTwoToFour));
-
-
-        INDArray interSection=Transforms.max(boundingBoxesRightBottom.sub(boundingBoxesLeftTop),0.0);
-
-        INDArray interArea=interSection.get(indexZero).mul(interSection.get(indexOne));
-
-        INDArray unionArea=predictBoundingBoxesArea.add(labelBoundingBoxesArea).sub(interArea);
-
-        INDArray iou=interArea.mul(1.0).mul(unionArea);
-
-        return iou;
-    }
 
     @Override
     public INDArray computeScoreForExamples(double fullNetworkRegScore, LayerWorkspaceMgr workspaceMgr) {
