@@ -18,9 +18,6 @@ import org.deeplearning4j.optimize.api.TrainingListener;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.learning.regularization.Regularization;
-import org.nd4j.linalg.lossfunctions.ILossFunction;
-import org.nd4j.linalg.lossfunctions.impl.LossBinaryXENT;
-import org.nd4j.linalg.lossfunctions.impl.LossL2;
 import org.nd4j.serde.jackson.shaded.NDArrayTextSerializer;
 import org.nd4j.shade.jackson.databind.annotation.JsonDeserialize;
 import org.nd4j.shade.jackson.databind.annotation.JsonSerialize;
@@ -34,8 +31,7 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
 
     private double lambdaCoord;
     private double lambdaNoObj;
-    private ILossFunction lossPositionScale;
-    private ILossFunction lossClassPredictions;
+
     @JsonSerialize(using = NDArrayTextSerializer.class)
     @JsonDeserialize(using = BoundingBoxesDeserializer.class)
     private INDArray priorBoundingBoxes;
@@ -48,8 +44,7 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
         super(builder);
         this.lambdaCoord = builder.lambdaCoord;
         this.lambdaNoObj = builder.lambdaNoObj;
-        this.lossPositionScale = builder.lossPositionScale;
-        this.lossClassPredictions = builder.lossClassPredictions;
+
         this.priorBoundingBoxes = builder.priorBoundingBoxes;
     }
 
@@ -147,18 +142,7 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
          */
         private double lambdaNoObj = 0.5;
 
-        /**
-         * Loss function for position/scale component of the loss function
-         *
-         */
-        private ILossFunction lossPositionScale = new LossL2();
 
-        /**
-         * Loss function for the class predictions - defaults to L2 loss (i.e., sum of squared errors, as per the
-         * paper), however Loss MCXENT could also be used (which is more common for classification).
-         *
-         */
-        private ILossFunction lossClassPredictions =new LossBinaryXENT();
 
         /**
          * Bounding box priors dimensions [width, height]. For N bounding boxes, input has shape [rows, columns] = [N,
@@ -191,26 +175,8 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
             return this;
         }
 
-        /**
-         * Loss function for position/scale component of the loss function
-         *
-         * @param lossPositionScale Loss function for position/scale
-         */
-        public Yolo3OutputLayerConfiguration.Builder lossPositionScale(ILossFunction lossPositionScale) {
-            this.setLossPositionScale(lossPositionScale);
-            return this;
-        }
 
-        /**
-         * Loss function for the class predictions - defaults to L2 loss (i.e., sum of squared errors, as per the
-         * paper), however Loss MCXENT could also be used (which is more common for classification).
-         *
-         * @param lossClassPredictions Loss function for the class prediction error component of the YOLO loss function
-         */
-        public Yolo3OutputLayerConfiguration.Builder lossClassPredictions(ILossFunction lossClassPredictions) {
-            this.setLossClassPredictions(lossClassPredictions);
-            return this;
-        }
+
 
         /**
          * Bounding box priors dimensions [width, height]. For N bounding boxes, input has shape [rows, columns] = [N,
@@ -221,7 +187,7 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
          * @param priorBoundingBoxes Bounding box prior dimensions (width, height)
          */
         public Yolo3OutputLayerConfiguration.Builder priorBoundingBoxes(INDArray priorBoundingBoxes) {
-            this.priorBoundingBoxes(priorBoundingBoxes);
+            this.priorBoundingBoxes=priorBoundingBoxes;
             return this;
         }
 
