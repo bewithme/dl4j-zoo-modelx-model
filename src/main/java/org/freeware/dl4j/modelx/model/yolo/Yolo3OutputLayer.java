@@ -14,6 +14,8 @@ import org.nd4j.common.base.Preconditions;
 import org.nd4j.common.primitives.Pair;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.api.ops.CustomOp;
+import org.nd4j.linalg.api.ops.impl.loss.SoftmaxCrossEntropyWithLogitsLoss;
 import org.nd4j.linalg.dataset.api.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
@@ -24,6 +26,7 @@ import org.nd4j.linalg.ops.transforms.Transforms;
 import java.io.Serializable;
 import java.util.List;
 
+import static org.nd4j.linalg.indexing.NDArrayIndex.all;
 
 
 @Slf4j
@@ -47,6 +50,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
 
 
+
     @Override
     public double computeScore(double fullNetworkRegScore, boolean training, LayerWorkspaceMgr workspaceMgr) {
 
@@ -56,7 +60,8 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         Preconditions.checkState(getLabels() != null, "Cannot calculate gradients/score: labels are null");
 
-        long numberOfPriorBoundingBoxPerGridCell=labels.size(3);
+
+
         //NCHW --> NHWC
         input=input.permute(0,2,3,1);
         //NHWC --> [batch, grid_h, grid_w, 3, 4+1+nb_class]
@@ -66,51 +71,78 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         long gridHeight=labels.shape()[1];
 
-        long classOneHotSize=labels.shape()[3]-5;
+        long anchorSize=labels.shape()[2];
+
+        long classOneHotLength=labels.shape()[3]-5;
 
         //得到所有边界框的中心点坐标
-        INDArray predictXy=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,2)});
+        INDArray predictBoxesXy=input.get(new INDArrayIndex[]{all(), all(), all(), all(),NDArrayIndex.interval(0,2)});
         //得到所有边界框的高和宽
-        INDArray predictHw=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(2,4)});
+        INDArray predictBoxesWh=input.get(new INDArrayIndex[]{all(), all(), all(), all(),NDArrayIndex.interval(2,4)});
 
-        INDArray predictConfidence=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(4,5)});
+        INDArray predictConfidence=input.get(new INDArrayIndex[]{all(), all(), all(), all(),NDArrayIndex.interval(4,5)});
 
-        INDArray predictClassOneHot=input.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(5,classOneHotSize)});
+        INDArray predictClassOneHot=input.get(new INDArrayIndex[]{all(), all(), all(), all(),NDArrayIndex.interval(5,classOneHotLength)});
 
         INDArray cxCy=YoloUtils.getCxCy(Integer.parseInt(String.valueOf(gridHeight)),Integer.parseInt(String.valueOf(batchSize)),3);
 
-        long stride=416/gridHeight;
+        long inputSize=416;
+
+        long stride=inputSize/gridHeight;
         //解码中心点坐标
-        INDArray decodeInputXy= Transforms.sigmoid(predictXy).add(cxCy).mul(stride);
-        //解码高和宽
-        INDArray decodeInputHw= Transforms.eps(predictHw).mul(priorBoundingBoxes).mul(stride);
+        INDArray decodePredictBoxesXy= Transforms.sigmoid(predictBoxesXy).add(cxCy).mul(stride);
+        //解码宽高
+        INDArray decodePredictBoxesWh= Transforms.eps(predictBoxesWh).mul(priorBoundingBoxes).mul(stride);
+        //解码置信度
+        INDArray decodePredictConfidence=Transforms.sigmoid(predictConfidence);
+        //解码类别
+        INDArray decodePredictClassOneHot=Transforms.sigmoid(predictClassOneHot);
+        //拼接解码的中心点坐标与宽高
+        INDArray decodePredictBoxesXyWh=Nd4j.concat(-1,decodePredictBoxesXy,decodePredictBoxesWh);
 
-        predictConfidence=Transforms.sigmoid(predictConfidence);
+        //得到标签的边界框信息
+        INDArray labelXyWh=labels.get(new INDArrayIndex[]{all(), all(), all(),NDArrayIndex.interval(0,3),NDArrayIndex.interval(0,4)});
 
-        predictClassOneHot=Transforms.sigmoid(predictClassOneHot);
+        INDArray labelConfidence=labels.get(new INDArrayIndex[]{all(), all(), all(),NDArrayIndex.interval(0,3),NDArrayIndex.interval(4,5)});
 
-        INDArray decodeInputXyHw=Nd4j.concat(-1,decodeInputXy,decodeInputHw);
-
-
-        //得到所有边界框的高和宽
-        INDArray labelXyHw=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,3),NDArrayIndex.interval(0,4)});
-
-        INDArray labelConfidence=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,3),NDArrayIndex.interval(4,5)});
-
-        INDArray labelClassOneHot=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,3),NDArrayIndex.interval(5,classOneHotSize)});
+        INDArray labelClassOneHot=labels.get(new INDArrayIndex[]{all(), all(), all(),NDArrayIndex.interval(0,3),NDArrayIndex.interval(5,classOneHotLength)});
         //取出所有标签
-        INDArray groundTrueBoxes=labels.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.interval(3,numberOfPriorBoundingBoxPerGridCell),NDArrayIndex.interval(0,4)});
+        INDArray groundTrueBoxesXyWh=labels.get(new INDArrayIndex[]{all(), all(), all(),NDArrayIndex.interval(3,anchorSize),NDArrayIndex.interval(0,4)});
 
-
-        INDArray gIou=YoloUtils.get5DBoxGIou(decodeInputXyHw,labelXyHw);
+        INDArray gIou=YoloUtils.get5DBoxGIou(decodePredictBoxesXyWh,labelXyWh);
 
         gIou=Nd4j.expandDims(gIou,-1);
 
+        INDArray labelBoxW=labelXyWh.get(new INDArrayIndex[]{all(), all(), all(), all(),NDArrayIndex.point(2)});
 
+        INDArray labelBoxH=labelXyWh.get(new INDArrayIndex[]{all(), all(), all(), all(),NDArrayIndex.point(3)});
+
+        INDArray lossScale=Transforms.neg(labelBoxW.mul(labelBoxH).mul(1.0).div(inputSize*inputSize)).add(2);
+
+        INDArray gIouLoss=labelConfidence.mul(lossScale).mul(Transforms.neg(gIou).add(1));
+
+        INDArray iou=YoloUtils.get5DBoxIou(decodePredictBoxesXyWh,groundTrueBoxesXyWh);
+
+        INDArray maxIou=iou.max(-1);
+
+        float iou_loss_thresh=0.5f;
+
+        INDArray backgroundConfidence=Transforms.neg(labelConfidence).add(1.0).mul(maxIou);
+
+        INDArray confidenceFocal=YoloUtils.focal(labelConfidence,decodePredictConfidence);
+
+        INDArray confidenceLoss1= YoloUtils.sigmoidCrossEntropyLossWithLogits(labelConfidence, predictConfidence).mul(labelConfidence);
+
+        INDArray confidenceLoss2= YoloUtils.sigmoidCrossEntropyLossWithLogits(labelConfidence, predictConfidence).mul(backgroundConfidence);
+
+        INDArray  confidenceLoss=confidenceFocal.mul(confidenceLoss1.add(confidenceLoss2));
+
+        INDArray  classOneHotLoss= YoloUtils.sigmoidCrossEntropyLossWithLogits(labelClassOneHot, predictClassOneHot).mul(labelConfidence);
 
 
         return 0;
     }
+
 
 
 

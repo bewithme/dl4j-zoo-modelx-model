@@ -331,7 +331,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
 
-		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
 
 		bigMediumSmallScaledBoundingBoxIndex++;
 
