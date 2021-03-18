@@ -167,4 +167,47 @@ public class YoloUtils {
 
         return gIou;
     }
+
+    public static INDArray focal( INDArray target, INDArray actual){
+        float  alpha=1, gamma=2;
+        INDArray abs=Transforms.abs(target.sub(actual));
+        return   Transforms.pow(abs,gamma).mul(alpha);
+    }
+
+    /**
+     * max(x, 0) - x * z + log(1 + exp(-abs(x)))
+     * @param labels
+     * @param logits
+     * @return
+     */
+    public static INDArray sigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits) {
+
+        INDArray z=labels.dup();
+
+        INDArray x=logits.dup();
+
+        INDArray abs=Transforms.abs(x);
+
+        abs=Transforms.neg(abs);
+
+        abs=Transforms.exp(abs);
+
+        abs=abs.add(1);
+
+        return Transforms.max(x,0).sub(x.mul(z)).add(Transforms.log(abs));
+    }
+
+    public  static  INDArray derivativeOfSigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits){
+
+        INDArray z=labels.dup();
+
+        INDArray x=logits.dup();
+
+        INDArray dividend=Transforms.neg(Transforms.exp(Transforms.neg(x)));
+
+        INDArray divisor=Transforms.exp(Transforms.neg(x)).add(1).mul(Math.log10(Math.E));
+
+        return  Transforms.neg(z).add(1.0).add(dividend.mul(divisor));
+    }
+
 }
