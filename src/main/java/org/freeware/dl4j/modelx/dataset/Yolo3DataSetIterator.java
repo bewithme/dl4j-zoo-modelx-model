@@ -231,6 +231,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			try {
 				//得到图片特征
 				INDArray imageFeature = nativeImageLoader.asMatrix(featureFile);
+				log.info(imageFeature.shapeInfoToString());
 				//得到当前图片对应的所有边界框
 				List<ImageObject> boundingBoxesList=getBoundingBoxes(featureFile);
                 //得到图片增强结果
@@ -328,13 +329,15 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	private void setExtraValues(int exampleCount, INDArray boxesCount, int labelIndex, INDArray scaledBoundingBox, INDArray label) {
 
 		int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
-
 		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
-
-		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
-
+		long gridWidth=label.shape()[1];
+		long gridHeight=label.shape()[2];
+		for (int gridWidthIndex=0;gridWidthIndex<gridWidth;gridWidthIndex++){
+			for (int gridHeightIndex=0;gridHeightIndex<gridHeight;gridHeightIndex++){
+				label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
+			}
+		}
 		bigMediumSmallScaledBoundingBoxIndex++;
-
 		boxesCount.put(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)},bigMediumSmallScaledBoundingBoxIndex);
 	}
 
@@ -815,19 +818,8 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		}
 		return value;
 	}
-	private double iou(ImageObject imageObject1,ImageObject imageObject2){
 
-	   DetectedObject detectedObject1=convertToDetectedObject(imageObject1);
 
-	   DetectedObject detectedObject2=convertToDetectedObject(imageObject2);
-
-	   return 0;
-   }
-
-   private DetectedObject convertToDetectedObject(ImageObject imageObject){
-
-	  return  new DetectedObject(0,  imageObject.getX2()/2,  imageObject.getY2()/2,  imageObject.getX2()-imageObject.getX1(),  imageObject.getY2()-imageObject.getY1(),null, 0);
-	}
 
 
 
@@ -882,16 +874,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
    }
 
 
-	@Data
-	@AllArgsConstructor
-	class MaxIouResult{
 
-		ImageObject maxBoundingBoxPriors=null;
-
-		int maxIndex=-1;
-
-		double maxIou=-1D;
-	}
 
 
 
