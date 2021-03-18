@@ -103,18 +103,15 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
         this.nativeImageLoader=new NativeImageLoader();
 
-		setPriorBoundingBoxes(bigPriorBoundingBoxes, mediumPriorBoundingBoxes, smallPriorBoundingBoxes);
-
+        setPriorBoundingBoxes(bigPriorBoundingBoxes, mediumPriorBoundingBoxes, smallPriorBoundingBoxes);
 		//检查并设置目录
 		checkAndSetDirectory(dataSetPath);
 
 		this.labelProvider=new VocLabelProvider(dataSetPath);
 
 		this.maxBoxPerImage=getMaxBoxPerImage();
-
 		//设置小批量大小
 		this.batchSize = batchSize;
-
 		//获取所有特征数据
     	this.featureFiles = ExtendedFileUtils.listFiles(featurePath, new String[] {"jpg","png"}, false);
     	//设置总的小批次数量
