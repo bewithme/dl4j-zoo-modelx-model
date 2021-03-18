@@ -57,10 +57,8 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         assertInputSet(true);
 
         Preconditions.checkState(getLabels() != null, "Cannot calculate gradients/score: labels are null");
-        //NCHW --> NWHC
-        input=input.permute(0,3,2,1);
-        //NHWC --> [batch, grid_h, grid_w, 3, 4+1+nb_class]
-        input=input.reshape(new long[]{input.size(0),input.size(1),input.size(2),3,input.size(3)/3});
+
+        reshapeInput();
 
         long batchSize=labels.shape()[0];
 
@@ -129,6 +127,13 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         classOneHotLoss=Nd4j.sum(classOneHotLoss);
 
         return gIouLoss.add(confidenceLoss).add(classOneHotLoss).toDoubleVector()[0];
+    }
+
+    private void reshapeInput() {
+        //NCHW --> NWHC
+        input=input.permute(0,3,2,1);
+        //NHWC --> [batch, grid_h, grid_w, 3, 4+1+nb_class]
+        input=input.reshape(new long[]{input.size(0),input.size(1),input.size(2),3,input.size(3)/3});
     }
 
     private INDArray getLabelBoxH(INDArray labelXyWh) {
