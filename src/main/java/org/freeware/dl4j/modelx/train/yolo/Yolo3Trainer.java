@@ -149,10 +149,10 @@ public class Yolo3Trainer {
             yolo3DataSetIterator.reset();
 
 
-            while (yolo3DataSetIterator.hasNext()){
+           /* while (yolo3DataSetIterator.hasNext()){
                 yolo3DataSetIterator.next();
-            }
-           // model.fit(yolo3DataSetIterator);
+            }*/
+           model.fit(yolo3DataSetIterator);
       
             //每完成一轮，保存一次模型
            // ModelSerializer.writeModel(model, modelSavePath.concat(yoloHyperparameter.getName()).concat("model.zip_")+i, true);
