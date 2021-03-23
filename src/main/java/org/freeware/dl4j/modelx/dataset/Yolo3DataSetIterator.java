@@ -260,7 +260,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
                         //[1,4]
 						INDArray expandDimsScaledBoundingBox=Nd4j.expandDims(scaledBoundingBox,0);
                         //[3]
-						INDArray scaledIou= YoloUtils.get2DBoxIou(threeBoundingBoxPriors,expandDimsScaledBoundingBox);
+						INDArray scaledIou= YoloUtils.getIou(threeBoundingBoxPriors,expandDimsScaledBoundingBox);
 
 						float[] scaledIouVector=scaledIou.toFloatVector();
 
@@ -329,11 +329,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
 		long gridWidth=label.shape()[1];
 		long gridHeight=label.shape()[2];
-		for (int gridWidthIndex=0;gridWidthIndex<gridWidth;gridWidthIndex++){
+		/*for (int gridWidthIndex=0;gridWidthIndex<gridWidth;gridWidthIndex++){
 			for (int gridHeightIndex=0;gridHeightIndex<gridHeight;gridHeightIndex++){
 				label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
 			}
-		}
+		}*/
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
+
 		bigMediumSmallScaledBoundingBoxIndex++;
 		boxesCount.put(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)},bigMediumSmallScaledBoundingBoxIndex);
 	}
@@ -452,6 +454,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		INDArray boundingBoxPrior= priorBoundingBoxes.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex),NDArrayIndex.all()});
 		//它的wh是在用户提供的先验框获取
 		threeBoundingBoxPriors.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.interval(2,4)},boundingBoxPrior);
+
 		return threeBoundingBoxPriors;
 	}
 
