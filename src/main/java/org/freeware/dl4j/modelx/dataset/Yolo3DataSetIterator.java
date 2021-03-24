@@ -228,7 +228,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			try {
 				//得到图片特征
 				INDArray imageFeature = nativeImageLoader.asMatrix(featureFile);
-				log.info(imageFeature.shapeInfoToString());
 				//得到当前图片对应的所有边界框
 				List<ImageObject> boundingBoxesList=getBoundingBoxes(featureFile);
                 //得到图片增强结果
