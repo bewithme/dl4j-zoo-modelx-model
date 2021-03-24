@@ -103,12 +103,16 @@ public class YoloUtils {
     public   static INDArray getGIou(INDArray predictBoxes,INDArray truthBoxes) {
 
         INDArrayIndex[] indexCenterX=getLastDimensionPointZero(predictBoxes);
-        INDArrayIndex[] indexCenterY=getLastDimensionPointOne(predictBoxes);
-        INDArrayIndex[] indexW=getLastDimensionPointTwo(predictBoxes);;
-        INDArrayIndex[] indexH=getLastDimensionPointThree(predictBoxes);
-        INDArrayIndex[] indexCenterXy=getLastDimensionPointFromZeroToTwo(predictBoxes);
-        INDArrayIndex[] indexWh=getLastDimensionPointFromTwoToFour(predictBoxes);
 
+        INDArrayIndex[] indexCenterY=getLastDimensionPointOne(predictBoxes);
+
+        INDArrayIndex[] indexW=getLastDimensionPointTwo(predictBoxes);;
+
+        INDArrayIndex[] indexH=getLastDimensionPointThree(predictBoxes);
+
+        INDArrayIndex[] indexCenterXy=getLastDimensionPointFromZeroToTwo(predictBoxes);
+
+        INDArrayIndex[] indexWh=getLastDimensionPointFromTwoToFour(predictBoxes);
         //左上角坐标
         INDArray predictBoxesLeftTop= predictBoxes.get(indexCenterXy).sub(predictBoxes.get(indexWh).mul(0.5));
         //右下角坐标
@@ -172,15 +176,17 @@ public class YoloUtils {
     }
 
     /**
-     * delta focal=2(truth-predict)(truth-1)
+     * focal的导数
+     * delta focal=-2(truth-predict)
      * @param truth
      * @param predict
      * @return
      */
     public static INDArray derivativeOfFocal( INDArray truth, INDArray predict){
-        float   gamma=2;
-        return truth.sub(predict).mul(truth.sub(1)).mul(gamma);
+
+        return truth.sub(predict).mul(-2);
     }
+
 
     /**
      * max(x, 0) - x * z + log(1 + exp(-abs(x)))
@@ -205,6 +211,12 @@ public class YoloUtils {
         return Transforms.max(x,0).sub(x.mul(z)).add(Transforms.log(abs));
     }
 
+    /**
+     * SigmoidCrossEntropyLossWithLogits的导数
+     * @param labels
+     * @param logits
+     * @return
+     */
     public  static  INDArray derivativeOfSigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits){
 
         INDArray z=labels.dup();
@@ -217,6 +229,8 @@ public class YoloUtils {
 
         return  Transforms.neg(z).add(1.0).add(dividend.mul(divisor));
     }
+
+
 
 
     private static INDArrayIndex[] getLastDimensionIndexes(INDArray array, INDArrayIndex lastDimensionIndex){
@@ -333,7 +347,6 @@ public class YoloUtils {
                         float truth_tblr_right=singleTruthBoxesArray[3];
 
                         float dxs=dx_box_iou(pred_tblr_top,pred_tblr_bot,pred_tblr_left,pred_tblr_right,truth_tblr_top,truth_tblr_bot,truth_tblr_left,truth_tblr_right,gIou);
-
 
                         derivative.put(getDerivativeOfIndexes(exampleIndex, gridWidthIndex, gridHeightIndex, priorBoundingBoxIndex),dxs);
 
