@@ -12,9 +12,6 @@ import org.datavec.api.io.filters.RandomPathFilter;
 import org.datavec.api.split.FileSplit;
 import org.datavec.api.split.InputSplit;
 import org.datavec.image.loader.NativeImageLoader;
-import org.datavec.image.recordreader.objdetect.ObjectDetectionRecordReader;
-import org.datavec.image.recordreader.objdetect.impl.VocLabelProvider;
-import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
@@ -22,15 +19,10 @@ import org.freeware.dl4j.modelx.utils.JsonUtils;
 import org.freeware.dl4j.modelx.dataset.Yolo3DataSetIterator;
 import org.freeware.dl4j.modelx.model.yolo.Yolo3;
 import org.freeware.dl4j.modelx.train.uitls.ModelTrainOptions;
-import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
-import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.beust.jcommander.JCommander;
-
-
 
 /**
  * Yolo3模型训练
@@ -193,47 +185,6 @@ public class Yolo3Trainer {
         		.sample(pathFilter, 0.9, 0.1);
 		return inputSplit;
 	}
-
-
-	
-	public static DataSetIterator getDataSetIterator(Yolo3Hyperparameter yolo2Hyperparameter, InputSplit inputSplit, int gridHeight, int gridWidth) throws IOException {
-		
-		
-		 //创建训练目标检测记录读取器
-        ObjectDetectionRecordReader objectDetectionRecordReader = new ObjectDetectionRecordReader(
-                INPUT_SHAPE[1],
-                INPUT_SHAPE[2],
-                INPUT_SHAPE[0],
-                gridHeight,
-                gridWidth,
-        		new VocLabelProvider(yolo2Hyperparameter.getDataDir()));
-        
-        //创建记录读取器监听器，可以在加载数据时进行相应处理
-       // RecordListener recordListener=new ObjectDetectRecordListener();
-        //设置读取器监听器
-        //objectDetectionRecordReader.setListeners(recordListener);
-        //初始化训练目标检测记录读取器
-        objectDetectionRecordReader.initialize(inputSplit);
-        //标签开始索引
-        int labelIndexFrom=1;
-        //标签结束索引
-        int labelIndexTo=1;
-        //是否为回归任务
-        boolean regression=true;
-
-        //创建训练记录读取数据集迭代器
-        DataSetIterator recordReaderDataSetIterator = new RecordReaderDataSetIterator(
-        		objectDetectionRecordReader, 
-        		yolo2Hyperparameter.getBatchSize(),
-        		labelIndexFrom,
-        		labelIndexTo, 
-        		regression);
-        //设置图片预处理器，将像素值归一化到0-1之间
-        recordReaderDataSetIterator.setPreProcessor(new ImagePreProcessingScaler(0, 1));
-        
-        return recordReaderDataSetIterator;
-   	}
-
 
 
 	private static void deleteUselessFile(File file) throws IOException {
