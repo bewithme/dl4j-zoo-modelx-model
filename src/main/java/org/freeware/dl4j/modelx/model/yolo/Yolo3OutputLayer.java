@@ -8,6 +8,7 @@ import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.gradient.DefaultGradient;
 import org.deeplearning4j.nn.gradient.Gradient;
 import org.deeplearning4j.nn.layers.AbstractLayer;
+import org.deeplearning4j.nn.workspace.ArrayType;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.freeware.dl4j.modelx.utils.YoloUtils;
 import org.jetbrains.annotations.NotNull;
@@ -442,6 +443,8 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         log.info(epsilon.shapeInfoToString());
 
         INDArray gradient=activation.backprop(input.dup(),epsilon).getFirst();
+
+      //  INDArray epsOut = workspaceMgr.createUninitialized(ArrayType.ACTIVATION_GRAD, this.input.dataType(), this.input.shape(), 'c');
 
         return new Pair<>(EMPTY_GRADIENT,gradient);
 
