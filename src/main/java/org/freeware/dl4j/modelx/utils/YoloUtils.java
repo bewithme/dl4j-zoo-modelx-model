@@ -1,11 +1,13 @@
 package org.freeware.dl4j.modelx.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.ops.transforms.Transforms;
 
+@Slf4j
 public class YoloUtils {
 
 
@@ -145,7 +147,6 @@ public class YoloUtils {
         INDArray unionArea=predictBoxesArea.add(truthBoxesArea).sub(interArea);
 
         INDArray iou=interArea.div(unionArea.add(1e-6));
-
         //计算boxes1和boxes2的最小凸集框的左上角和右下角坐标
         INDArray encloseBoundingBoxesLeftTop= Transforms.min(predictBoxes.get(indexCenterXy),truthBoxes.get(indexCenterXy));
 
@@ -284,6 +285,14 @@ public class YoloUtils {
 
         INDArray h=boxes.get(getLastDimensionPointThree(boxes));
 
+        x=Nd4j.expandDims(x,4);
+
+        y=Nd4j.expandDims(y,4);
+
+        w=Nd4j.expandDims(w,4);
+
+        h=Nd4j.expandDims(h,4);
+
         INDArray t=y.sub(h.div(2));
 
         INDArray b=y.add(h.div(2));
@@ -292,7 +301,9 @@ public class YoloUtils {
 
         INDArray r=x.add(w.div(2));
 
-        return Nd4j.concat(-1,t,b,l,r);
+        INDArray retArray=Nd4j.concat(-1,t,b,l,r);
+
+        return retArray;
     }
 
 
@@ -312,7 +323,7 @@ public class YoloUtils {
 
         long numberOfPriorBoundingBoxPerGridCell=shape[3];
 
-        INDArray derivative=Nd4j.zeros(new long[]{batchSize,gridWidth,gridHeight,numberOfPriorBoundingBoxPerGridCell,1});
+        INDArray derivative=Nd4j.zeros(new long[]{batchSize,gridWidth,gridHeight,numberOfPriorBoundingBoxPerGridCell,4});
 
         for(int exampleIndex=0;exampleIndex<batchSize;exampleIndex++){
 
@@ -346,9 +357,11 @@ public class YoloUtils {
 
                         float truth_tblr_right=singleTruthBoxesArray[3];
 
-                        float dxs=dx_box_iou(pred_tblr_top,pred_tblr_bot,pred_tblr_left,pred_tblr_right,truth_tblr_top,truth_tblr_bot,truth_tblr_left,truth_tblr_right,gIou);
+                        float[] dxs=dx_box_iou(pred_tblr_top,pred_tblr_bot,pred_tblr_left,pred_tblr_right,truth_tblr_top,truth_tblr_bot,truth_tblr_left,truth_tblr_right,gIou);
 
-                        derivative.put(getDerivativeOfIndexes(exampleIndex, gridWidthIndex, gridHeightIndex, priorBoundingBoxIndex),dxs);
+                        INDArray dxsArray=Nd4j.create(dxs).reshape(new int []{1,4});
+
+                        derivative.put(getDerivativeOfIndexes(exampleIndex, gridWidthIndex, gridHeightIndex, priorBoundingBoxIndex),dxsArray);
 
                     }
 
@@ -370,10 +383,10 @@ public class YoloUtils {
     }
 
     private static INDArrayIndex[] getDerivativeOfIndexes(int exampleIndex, int gridWidthIndex, int gridHeightIndex, int priorBoundingBoxIndex) {
-        return new INDArrayIndex[]{NDArrayIndex.point(exampleIndex),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.point(0)};
+        return new INDArrayIndex[]{NDArrayIndex.point(exampleIndex),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.all()};
     }
 
-    private static float dx_box_iou(float pred_tblr_top,float pred_tblr_bot,float pred_tblr_left,float pred_tblr_right,float truth_tblr_top,float truth_tblr_bot,float truth_tblr_left,float truth_tblr_right, Boolean iou_loss) {
+    private static float[] dx_box_iou(float pred_tblr_top,float pred_tblr_bot,float pred_tblr_left,float pred_tblr_right,float truth_tblr_top,float truth_tblr_bot,float truth_tblr_left,float truth_tblr_right, Boolean iou_loss) {
 
         float pred_t = Math.min(pred_tblr_top, pred_tblr_bot);
         float pred_b = Math.max(pred_tblr_top, pred_tblr_bot);
@@ -435,14 +448,11 @@ public class YoloUtils {
                 p_dr += ((C * dU_wrt_r) - (U * dC_wrt_r)) / (C * C);
             }
         }
-
         float dx_dt = pred_tblr_top < pred_tblr_bot ? p_dt : p_db;
         float dx_db = pred_tblr_top < pred_tblr_bot ? p_db : p_dt;
         float dx_dl = pred_tblr_left < pred_tblr_right ? p_dl : p_dr;
         float dx_dr = pred_tblr_left < pred_tblr_right ? p_dr : p_dl;
-
-
-        return dx_dt+dx_db+dx_dl+dx_dr;
+        return new float[]{dx_dt,dx_db,dx_dl,dx_dr};
 
     }
 

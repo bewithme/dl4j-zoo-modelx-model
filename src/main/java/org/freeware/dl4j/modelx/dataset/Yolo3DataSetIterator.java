@@ -311,6 +311,8 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		//按小批量维度拼接标签数据
 		INDArray imageFeature=Nd4j.concat(0,imageFeatureList);
 
+		imageFeature=imageFeature.div(255);
+
 		INDArray[] featuresArray=new INDArray[] {imageFeature};
 
 		MultiDataSet multiDataSet=new MultiDataSet(featuresArray,labelBigMediumSmall);
@@ -323,11 +325,24 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	}
 
 	private void setExtraValues(int exampleCount, INDArray boxesCount, int labelIndex, INDArray scaledBoundingBox, INDArray label) {
-		int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
+		/**int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
 		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
 		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
 		bigMediumSmallScaledBoundingBoxIndex++;
+		boxesCount.put(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)},bigMediumSmallScaledBoundingBoxIndex);**/
+
+		int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
+		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
+		long gridWidth=label.shape()[1];
+		long gridHeight=label.shape()[2];
+		for (int gridWidthIndex=0;gridWidthIndex<gridWidth;gridWidthIndex++){
+			for (int gridHeightIndex=0;gridHeightIndex<gridHeight;gridHeightIndex++){
+				label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
+			}
+		}
+		bigMediumSmallScaledBoundingBoxIndex++;
 		boxesCount.put(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)},bigMediumSmallScaledBoundingBoxIndex);
+
 	}
 
 	private void setLabelValues(INDArray label, int exampleCount, int priorBoundingBoxIndex, INDArray scaledBoundingBox, INDArray smoothClassOneHot) {
