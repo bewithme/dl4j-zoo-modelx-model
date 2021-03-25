@@ -6,7 +6,7 @@
 	"smallBoundingBoxPriors":[[68,131],[107,194],[183,164]],
 	"learningRate": 1.0E-4,
 	"dataDir": "/Users/wenfengxu/Downloads/dataset/people_fall_down",
-	"batchSize": 4,
+	"batchSize": 2,
 	"epochs": 1,
 	"randomSeed": 7854,
 	"lamdbaCoord": 1.0,
