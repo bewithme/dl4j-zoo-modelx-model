@@ -89,7 +89,6 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         INDArray rawPredictClassOneHot= getPredictClassOneHot(reshapeInput, classOneHotLength);
         //未处理真实标签
         INDArray groundTruthBoxesXyWh= getGroundTruthBoxesXyWh(numberOfPriorBoundingBoxPerGridCell);
-        log.info(groundTruthBoxesXyWh.shapeInfoToString());
         //giou损失
         INDArray gIouLoss = computeGIouLoss(inputSize, decodePredictBoxesXyWh, labelXyWh, responseBoxLabelConfidence);
         //置信度损失
