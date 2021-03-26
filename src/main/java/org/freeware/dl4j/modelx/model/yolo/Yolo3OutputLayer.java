@@ -318,7 +318,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     }
 
     private INDArray getPredictClassOneHot(INDArray input, long classOneHotLength) {
-        //log.info(input.shapeInfoToString());
+
         return input.get(new INDArrayIndex[]{all(), all(), all(), all(), NDArrayIndex.interval(5,5+classOneHotLength)});
     }
 
@@ -423,33 +423,26 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         INDArray labelClassOneHot= getLabelClassOneHot(classOneHotLength);
         //输入）预测分类
         INDArray rawPredictClassOneHot= getPredictClassOneHot(reshapeInput, classOneHotLength);
-        //giou损失
-        INDArray gIouLoss = derivativeOfGIouLoss(inputSize, decodePredictBoxesXyWh, labelXyWh, responseBoxLabelConfidence);
-        //置信度损失
-        INDArray confidenceLoss = derivativeOfConfidenceLoss(decodePredictConfidence, decodePredictBoxesXyWh, responseBoxLabelConfidence, numberOfPriorBoundingBoxPerGridCell,reshapeInput);
-        //分类损失
-        INDArray classLoss = derivativeOfClassLoss(responseBoxLabelConfidence, labelClassOneHot, rawPredictClassOneHot);
+        //giou损失梯度
+        INDArray derivativeOfgIouLoss = derivativeOfGIouLoss(inputSize, decodePredictBoxesXyWh, labelXyWh, responseBoxLabelConfidence);
+        //置信度损失梯度
+        INDArray derivativeOfConfidenceLoss = derivativeOfConfidenceLoss(decodePredictConfidence, decodePredictBoxesXyWh, responseBoxLabelConfidence, numberOfPriorBoundingBoxPerGridCell,reshapeInput);
+        //分类损失梯度
+        INDArray derivativeOfClassLoss = derivativeOfClassLoss(responseBoxLabelConfidence, labelClassOneHot, rawPredictClassOneHot);
 
-        epsilon=Nd4j.concat(-1,gIouLoss,confidenceLoss,classLoss);
-
-        log.info(epsilon.shapeInfoToString());
-        //[2,52,52,3,7]
+        epsilon=Nd4j.concat(-1,derivativeOfgIouLoss,derivativeOfConfidenceLoss,derivativeOfClassLoss);
+        //[batch, grid_h, grid_w, 3, 4+1+nb_class]--> [batch, grid_h, grid_w, 3*(4+1+nb_class)]
         epsilon=epsilon.reshape(new long[]{epsilon.shape()[0],epsilon.shape()[1],epsilon.shape()[2],epsilon.shape()[3]*epsilon.shape()[4]});
-
+        //NWHC-->NCHW to match the input shape
         epsilon=epsilon.permute(0,3,1,2);
 
         IActivation activation = new ActivationLReLU();
 
-        log.info(epsilon.shapeInfoToString());
-
         INDArray gradient=activation.backprop(input.dup(),epsilon).getFirst();
 
-      //  INDArray epsOut = workspaceMgr.createUninitialized(ArrayType.ACTIVATION_GRAD, this.input.dataType(), this.input.shape(), 'c');
+        INDArray epsOut = workspaceMgr.leverageTo(ArrayType.ACTIVATION_GRAD,gradient);
 
-        return new Pair<>(EMPTY_GRADIENT,gradient);
-
-
-
+        return new Pair<>(EMPTY_GRADIENT,epsOut);
 
     }
 
