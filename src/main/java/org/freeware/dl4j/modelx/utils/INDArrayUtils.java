@@ -5,7 +5,7 @@ import org.nd4j.linalg.indexing.BooleanIndexing;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.indexing.conditions.Conditions;
-import org.nd4j.nativeblas.Nd4jCpu;
+
 
 public class INDArrayUtils {
 
