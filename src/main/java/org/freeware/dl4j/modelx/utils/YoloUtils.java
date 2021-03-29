@@ -55,12 +55,12 @@ public class YoloUtils {
      */
     public  static INDArray getIou(INDArray predictBoxes,INDArray truthBoxes) {
 
-        INDArrayIndex[] indexCenterX=getLastDimensionPointZero(predictBoxes);
-        INDArrayIndex[] indexCenterY=getLastDimensionPointOne(predictBoxes);
-        INDArrayIndex[] indexW=getLastDimensionPointTwo(predictBoxes);;
-        INDArrayIndex[] indexH=getLastDimensionPointThree(predictBoxes);
-        INDArrayIndex[] indexCenterXy=getLastDimensionPointFromZeroToTwo(predictBoxes);
-        INDArrayIndex[] indexWh=getLastDimensionPointFromTwoToFour(predictBoxes);
+        INDArrayIndex[] indexCenterX=INDArrayUtils.getLastDimensionPointZero(predictBoxes);
+        INDArrayIndex[] indexCenterY=INDArrayUtils.getLastDimensionPointOne(predictBoxes);
+        INDArrayIndex[] indexW=INDArrayUtils.getLastDimensionPointTwo(predictBoxes);;
+        INDArrayIndex[] indexH=INDArrayUtils.getLastDimensionPointThree(predictBoxes);
+        INDArrayIndex[] indexCenterXy=INDArrayUtils.getLastDimensionPointFromZeroToTwo(predictBoxes);
+        INDArrayIndex[] indexWh=INDArrayUtils.getLastDimensionPointFromTwoToFour(predictBoxes);
 
         //计算第一个边界框的面积
         INDArray predictBoxesArea= predictBoxes.get(indexW).mul(predictBoxes.get(indexH));
@@ -104,17 +104,17 @@ public class YoloUtils {
      */
     public   static INDArray getGIou(INDArray predictBoxes,INDArray truthBoxes) {
 
-        INDArrayIndex[] indexCenterX=getLastDimensionPointZero(predictBoxes);
+        INDArrayIndex[] indexCenterX=INDArrayUtils.getLastDimensionPointZero(predictBoxes);
 
-        INDArrayIndex[] indexCenterY=getLastDimensionPointOne(predictBoxes);
+        INDArrayIndex[] indexCenterY=INDArrayUtils.getLastDimensionPointOne(predictBoxes);
 
-        INDArrayIndex[] indexW=getLastDimensionPointTwo(predictBoxes);;
+        INDArrayIndex[] indexW=INDArrayUtils.getLastDimensionPointTwo(predictBoxes);;
 
-        INDArrayIndex[] indexH=getLastDimensionPointThree(predictBoxes);
+        INDArrayIndex[] indexH=INDArrayUtils.getLastDimensionPointThree(predictBoxes);
 
-        INDArrayIndex[] indexCenterXy=getLastDimensionPointFromZeroToTwo(predictBoxes);
+        INDArrayIndex[] indexCenterXy=INDArrayUtils.getLastDimensionPointFromZeroToTwo(predictBoxes);
 
-        INDArrayIndex[] indexWh=getLastDimensionPointFromTwoToFour(predictBoxes);
+        INDArrayIndex[] indexWh=INDArrayUtils.getLastDimensionPointFromTwoToFour(predictBoxes);
         //左上角坐标
         INDArray predictBoxesLeftTop= predictBoxes.get(indexCenterXy).sub(predictBoxes.get(indexWh).mul(0.5));
         //右下角坐标
@@ -234,56 +234,16 @@ public class YoloUtils {
 
 
 
-    private static INDArrayIndex[] getLastDimensionIndexes(INDArray array, INDArrayIndex lastDimensionIndex){
-
-        INDArrayIndex[] indexes =new INDArrayIndex[array.shape().length];
-
-        for(int i=0;i<array.shape().length;i++){
-
-            if(i!=array.shape().length-1){
-
-                indexes[i]=NDArrayIndex.all();
-
-            }
-        }
-        indexes[array.shape().length-1]=lastDimensionIndex;
-
-        return indexes ;
-    }
-
-
-
-    private static INDArrayIndex[] getLastDimensionPointZero(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(0));
-    }
-    private static INDArrayIndex[] getLastDimensionPointOne(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(1));
-    }
-    private static INDArrayIndex[] getLastDimensionPointTwo(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(2));
-    }
-    private static INDArrayIndex[] getLastDimensionPointThree(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(3));
-    }
-    private static INDArrayIndex[] getLastDimensionPointFromZeroToTwo(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.interval(0,2));
-    }
-    private static INDArrayIndex[] getLastDimensionPointFromTwoToFour(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.interval(2,4));
-    }
-    private static INDArrayIndex[] getLastDimensionPoint(INDArray array,int point){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(point));
-    }
 
     private static INDArray convertToTopBottomLeftRight(INDArray boxes){
 
-        INDArray x=boxes.get(getLastDimensionPointZero(boxes));
+        INDArray x=boxes.get(INDArrayUtils.getLastDimensionPointZero(boxes));
 
-        INDArray y=boxes.get(getLastDimensionPointOne(boxes));
+        INDArray y=boxes.get(INDArrayUtils.getLastDimensionPointOne(boxes));
 
-        INDArray w=boxes.get(getLastDimensionPointTwo(boxes));
+        INDArray w=boxes.get(INDArrayUtils.getLastDimensionPointTwo(boxes));
 
-        INDArray h=boxes.get(getLastDimensionPointThree(boxes));
+        INDArray h=boxes.get(INDArrayUtils.getLastDimensionPointThree(boxes));
 
         x=Nd4j.expandDims(x,4);
 
