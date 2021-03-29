@@ -5,17 +5,17 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.opencv.opencv_core.Mat;
+import org.bytedeco.opencv.opencv_core.Size;
 import org.datavec.image.loader.Java2DNativeImageLoader;
 import org.datavec.image.loader.NativeImageLoader;
 import org.datavec.image.recordreader.objdetect.ImageObject;
 import org.datavec.image.recordreader.objdetect.ImageObjectLabelProvider;
 import org.datavec.image.recordreader.objdetect.impl.VocLabelProvider;
-import org.deeplearning4j.nn.layers.objdetect.DetectedObject;
 
 import org.freeware.dl4j.modelx.utils.ExtendedFileUtils;
+import org.freeware.dl4j.modelx.utils.INDArrayUtils;
 import org.freeware.dl4j.modelx.utils.YoloImageUtils;
 import org.freeware.dl4j.modelx.utils.YoloUtils;
-import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.impl.reduce.longer.MatchCondition;
 import org.nd4j.linalg.api.ops.impl.transforms.Pad;
@@ -210,7 +210,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 			endIndex=featureFiles.size();
 
-			startIndex=endIndex-batchSize;
 		}
 
 		int realBatchSize=endIndex-startIndex;
@@ -226,12 +225,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			File featureFile=featureFiles.get(exampleIndex);
 			
 			try {
-				//得到图片特征
+				//得到图片特征[N,C,H,W]
 				INDArray imageFeature = nativeImageLoader.asMatrix(featureFile);
+
 				//得到当前图片对应的所有边界框
 				List<ImageObject> boundingBoxesList=getBoundingBoxes(featureFile);
                 //得到图片增强结果
-				ImageAugmentResult imageAugmentResult=augmentImage(imageFeature,boundingBoxesList,inputShape[1],inputShape[2]);
+				ImageBoundingBoxes imageAugmentResult=augmentImage(imageFeature,boundingBoxesList,inputShape[1],inputShape[2]);
                 //设小批量中的置图片特征
 				imageFeatureList[exampleCount]=imageAugmentResult.getImage();
                 //得到图片增强后的边界框
@@ -324,12 +324,172 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	}
 
+
+	private ImageBoundingBoxes randomHorizontalFlip(INDArray image, List<ImageObject> boundingBoxesList){
+
+		if(random.nextFloat()>0.5){
+
+			return new ImageBoundingBoxes(image,boundingBoxesList);
+		}
+
+		INDArray flipImage=INDArrayUtils.horizontalFlip(image);
+
+		long width=image.shape()[image.shape().length-1];
+
+		List<ImageObject> flipBoundingBoxesList=new ArrayList<>(5);
+
+		for(ImageObject imageObject:boundingBoxesList){
+
+			int x1=Integer.parseInt(String.valueOf(width-imageObject.getX2()));
+
+			int x2=Integer.parseInt(String.valueOf(width-imageObject.getX1()));
+
+			ImageObject flipImageObject=new ImageObject(x1,imageObject.getY1(),x2,imageObject.getY2(),imageObject.getLabel());
+
+			flipBoundingBoxesList.add(flipImageObject);
+		}
+
+		ImageBoundingBoxes imageBoundingBoxes=new ImageBoundingBoxes(flipImage,flipBoundingBoxesList);
+
+		return imageBoundingBoxes;
+	}
+
+
+	private ImageBoundingBoxes randomCrop(INDArray image, List<ImageObject> boundingBoxesList){
+
+		if(random.nextFloat()>0.5){
+			return new ImageBoundingBoxes(image,boundingBoxesList);
+		}
+
+		ImageObject maxBox=getMaxBox(boundingBoxesList);
+
+		int width=Integer.parseInt(String.valueOf(image.shape()[image.shape().length-1]));
+
+		int height=Integer.parseInt(String.valueOf(image.shape()[image.shape().length-2]));
+
+		int max_l_trans = maxBox.getX1();
+
+		int max_u_trans = maxBox.getY1();
+
+		int max_r_trans = width - maxBox.getX2();
+
+		int max_d_trans = height  - maxBox.getY2();
+
+		int crop_xmin = Math.max(0, maxBox.getX1() - randomUniform(0, max_l_trans));
+
+		int crop_ymin = Math.max(0, maxBox.getY1() - randomUniform(0, max_u_trans));
+
+		int crop_xmax = Math.max(width,  maxBox.getX2() + randomUniform(0, max_r_trans));
+
+		int crop_ymax = Math.max(height, maxBox.getY2() + randomUniform(0, max_d_trans));
+
+		INDArrayIndex[] cropImageIndexes=INDArrayUtils.getLastTwoDimensionIndexes(image,crop_xmin,crop_xmax,crop_ymin,crop_ymax);
+
+		INDArray cropImage=image.get(cropImageIndexes);
+
+		List<ImageObject> cropBoundingBoxesList=new ArrayList<>(5);
+
+		for(ImageObject imageObject:boundingBoxesList){
+
+			int x1=imageObject.getX1()-crop_xmin;
+
+			int x2=imageObject.getX2()-crop_xmin;
+
+			int y1=imageObject.getY1()-crop_ymin;
+
+			int y2=imageObject.getY2()-crop_ymin;
+
+			ImageObject corpImageObject=new ImageObject(x1,y1,x2,y2,imageObject.getLabel());
+
+			cropBoundingBoxesList.add(corpImageObject);
+		}
+		ImageBoundingBoxes imageBoundingBoxes=new ImageBoundingBoxes(cropImage,cropBoundingBoxesList);
+
+		return imageBoundingBoxes;
+	}
+
+
+	private ImageObject getMaxBox(List<ImageObject> boundingBoxesList){
+		int minX1=-1;
+		int minY1=-1;
+		int maxX2=-1;
+		int maxY2=-1;
+		for(ImageObject imageObject:boundingBoxesList){
+
+			if(imageObject.getX1()<minX1){
+				minX1=imageObject.getX1();
+			}
+			if(imageObject.getY1()<minY1){
+				minY1=imageObject.getY1();
+			}
+			if(imageObject.getX2()>maxX2){
+				maxX2=imageObject.getX2();
+			}
+			if(imageObject.getY2()>maxY2){
+				maxY2=imageObject.getY2();
+			}
+
+		}
+		ImageObject maxImageObject=new ImageObject(minX1,minY1,maxX2,maxY2,"");
+
+		return maxImageObject;
+	}
+
+
+	private ImageBoundingBoxes randomTranslate(INDArray image, List<ImageObject> boundingBoxesList){
+
+		if(random.nextFloat()>0.5){
+			return new ImageBoundingBoxes(image,boundingBoxesList);
+		}
+
+		ImageObject maxBox=getMaxBox(boundingBoxesList);
+
+		int width=Integer.parseInt(String.valueOf(image.shape()[image.shape().length-1]));
+
+		int height=Integer.parseInt(String.valueOf(image.shape()[image.shape().length-2]));
+
+		int max_l_trans = maxBox.getX1();
+
+		int max_u_trans = maxBox.getY1();
+
+		int max_r_trans = width - maxBox.getX2();
+
+		int max_d_trans = height  - maxBox.getY2();
+
+		int tx =randomUniform(-(max_l_trans - 1), (max_r_trans - 1));
+
+		int ty =randomUniform(-(max_u_trans - 1), (max_d_trans - 1));
+
+		int[][] transMat=new int[][]{{1, 0, tx},{0, 1, ty}};
+
+		INDArray warpAffineImage=INDArrayUtils.cv2WarpAffine(image, width, height, transMat);
+
+		List<ImageObject> cropBoundingBoxesList=new ArrayList<>(5);
+
+		for(ImageObject imageObject:boundingBoxesList){
+
+			int x1=imageObject.getX1()+tx;
+
+			int x2=imageObject.getX2()+tx;
+
+			int y1=imageObject.getY1()+ty;
+
+			int y2=imageObject.getY2()+ty;
+
+			ImageObject corpImageObject=new ImageObject(x1,y1,x2,y2,imageObject.getLabel());
+
+			cropBoundingBoxesList.add(corpImageObject);
+		}
+
+		ImageBoundingBoxes imageBoundingBoxes=new ImageBoundingBoxes(warpAffineImage,cropBoundingBoxesList);
+
+		return imageBoundingBoxes;
+	}
+
+
+
+
 	private void setExtraValues(int exampleCount, INDArray boxesCount, int labelIndex, INDArray scaledBoundingBox, INDArray label) {
-		/**int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
-		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
-		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
-		bigMediumSmallScaledBoundingBoxIndex++;
-		boxesCount.put(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)},bigMediumSmallScaledBoundingBoxIndex);**/
 
 		int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
 		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
@@ -372,7 +532,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		return iouArray.reshape(-1).argMax(-1).toIntVector()[0];
 	}
 
-	@NotNull
+
 	private INDArray[] getLabelBigMediumSmall(int realBatchSize) {
 
 		INDArray labelBig= Nd4j.zeros(realBatchSize,13,13,3+maxBoxPerImage,4+1+labels.length);
@@ -439,7 +599,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	 * @param labelIndex
 	 * @return [3,4]
 	 */
-	@NotNull
+
 	private INDArray getThreeBoundingBoxPriors(INDArray bigMediumSmallScaledBoundingBox, int labelIndex) {
 		//创建一个保存三个先验框的数组
 		INDArray threeBoundingBoxPriors= Nd4j.zeros(new int[]{3,4});
@@ -500,7 +660,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	 * @param imageAugmentResult
 	 * @throws IOException
 	 */
-	private void saveImageAugmentResult(File featureFile, ImageAugmentResult imageAugmentResult) throws IOException {
+	private void saveImageAugmentResult(File featureFile, ImageBoundingBoxes imageAugmentResult) throws IOException {
 		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 		BufferedImage bufferedImage=java2DNativeImageLoader.asBufferedImage(imageAugmentResult.getImage());
 		YoloImageUtils.drawBoundingBoxes(bufferedImage,imageAugmentResult.getBoundingBoxesList(), Color.green);
@@ -522,6 +682,12 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		return boundingBoxList;
 	}
 
+
+
+
+
+
+
 	/**
 	 * 图片数据增强
 	 * @param image
@@ -531,7 +697,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	 * @return
 	 * @throws IOException
 	 */
-	private ImageAugmentResult augmentImage(INDArray image,List<ImageObject> boundingBoxesList,int inputHeight,int inputWidth) throws IOException {
+	private ImageBoundingBoxes augmentImage(INDArray image, List<ImageObject> boundingBoxesList, int inputHeight, int inputWidth) throws IOException {
 
 		long imageHeight = image.shape()[2];
 
@@ -569,7 +735,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		List<ImageObject> 	correctBoundingBoxesList=correctBoundingBoxes(boundingBoxesList,newInputWidth,newInputHeight,inputWidth,inputHeight,dx,dy,flip,imageWidth,imageHeight);
 
-		return new ImageAugmentResult(image,correctBoundingBoxesList);
+		return new ImageBoundingBoxes(image,correctBoundingBoxesList);
 	}
 
 
@@ -808,6 +974,16 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	}
 
 	/**
+	 * 获取随机数
+	 * @param min
+	 * @param max
+	 * @return
+	 */
+	private int randomUniform(int min,int max){
+		return min + ((max - min) * random.nextInt());
+	}
+
+	/**
 	 * 约束值的范围
 	 * @param min
 	 * @param max
@@ -873,7 +1049,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	@Data
 	@AllArgsConstructor
-   class ImageAugmentResult{
+   class ImageBoundingBoxes {
 	   private INDArray image;
 	   private List<ImageObject> boundingBoxesList;
    }
