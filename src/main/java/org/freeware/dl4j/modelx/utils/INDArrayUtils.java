@@ -4,6 +4,7 @@ import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Size;
 import org.datavec.image.loader.Java2DNativeImageLoader;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.api.ops.impl.transforms.Pad;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.BooleanIndexing;
 import org.nd4j.linalg.indexing.INDArrayIndex;
@@ -95,37 +96,23 @@ public class INDArrayUtils {
     }
 
     /**
-     * 仿射变换
-     * @param image
-     * @param width
-     * @param height
-     * @param transMat
+     * 按指定形状填充
+     * np.full
+     * @param shape
+     * @param value
      * @return
      */
-    public static INDArray cv2WarpAffine(INDArray image, int width, int height, int[][] transMat) {
+    public  static INDArray full(long[] shape,float value){
 
-        Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
+        INDArray array=Nd4j.zeros(shape);
 
-        Mat mat=java2DNativeImageLoader.asMat(image);
+        long lastDimensionLen=shape[shape.length-1];
 
-        INDArray transMatNDArray= Nd4j.create(transMat).reshape(2,3);
+        for(long lastDimensionIndex=0;lastDimensionIndex<lastDimensionLen;lastDimensionIndex++){
 
-        Mat transMatCvMat=java2DNativeImageLoader.asMat(transMatNDArray);
-
-        Mat result = new Mat();
-
-        INDArray 	warpAffineImage=null;
-
-        try {
-            warpAffine(mat,result,transMatCvMat,new Size(width,height));
-
-            warpAffineImage=java2DNativeImageLoader.asMatrix(result);
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            array.put(getLastDimensionPoint(array,lastDimensionIndex),value);
         }
-
-        return warpAffineImage;
+        return  array;
     }
 
 
