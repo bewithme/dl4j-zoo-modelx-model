@@ -93,8 +93,7 @@ public class Yolo3Trainer {
         //创建训练记录读取数据集迭代器
         MultiDataSetIterator yolo3DataSetIterator = new Yolo3DataSetIterator(yoloHyperparameter.getDataDir(),yoloHyperparameter.getBatchSize(),yoloHyperparameter.getLabels(),yoloHyperparameter.getBigBoundingBoxPriors(),yoloHyperparameter.getMediumBoundingBoxPriors(),yoloHyperparameter.getSmallBoundingBoxPriors());
 
-
-       //加载已有模型，如果本地不存在，则会从远程将预训练模型下载到当前用户的 
+        //加载已有模型，如果本地不存在，则会从远程将预训练模型下载到当前用户的
         //.deeplearning4j/models/tiny-yolo-voc_dl4j_inference.v2.zip 目录 
         ComputationGraph pretrainedComputationGraph =null;
         
@@ -111,14 +110,11 @@ public class Yolo3Trainer {
              pretrainedComputationGraph = ModelSerializer.restoreComputationGraph(latestModelFile,true);
         }
 
-       
         ComputationGraph model=pretrainedComputationGraph;
         
-
         log.info("\n Model Summary \n" + model.summary());
 
         log.info("Train model...");
-        
         //设置监听器，每次迭代打印一次得分
         model.setListeners(new ScoreIterationListener(1));
         
