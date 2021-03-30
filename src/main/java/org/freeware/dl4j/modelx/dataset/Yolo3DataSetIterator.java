@@ -341,13 +341,12 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	}
 
 
-
-		/**
-         * 随机水平翻转
-         * @param image
-         * @param boundingBoxesList
-         * @return
-         */
+	/**
+	 * 随机水平翻转
+	 * @param image
+	 * @param boundingBoxesList
+	 * @return
+	 */
 	private ImageAndBoundingBoxes randomHorizontalFlip(INDArray image, List<ImageObject> boundingBoxesList){
 
 		INDArray flipImage=INDArrayUtils.horizontalFlip(image);
@@ -518,7 +517,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		imagePadded.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(dh,nh+dh),NDArrayIndex.interval(dw,nw+dw)},imageResized);
 
-		//imagePadded=imagePadded.div(255.f);
+		imagePadded=imagePadded.div(255.f);
 
 		List<ImageObject> paddedBoundingBoxesList=new ArrayList<>(5);
 
