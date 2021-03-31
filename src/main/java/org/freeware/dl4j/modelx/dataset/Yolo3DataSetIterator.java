@@ -248,7 +248,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 					Boolean existPositive = Boolean.FALSE;
 
 					for(int labelCategoryIndex=0;labelCategoryIndex<labelBigMediumSmall.length;labelCategoryIndex++){
-
 						//[3,4]
 						INDArray threeBoundingBoxPriors = getThreeBoundingBoxPriors(bigMediumSmallScaledBoundingBox, labelCategoryIndex);
                         //[4] 得到当前边界框所在的经过缩放的xywh
@@ -310,7 +309,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 				log.error("",e);
 			}
-			log.info("-----------------------");
+
     	}
 		//按小批量维度拼接标签数据
 		INDArray imageFeature=Nd4j.concat(0,imageFeatureList);
@@ -695,7 +694,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(5,5+labels.length)},smoothClassOneHot);
 
-        log.info(gridX+","+gridY+" "+Arrays.toString(boundingBoxXyWh.toFloatVector()));
+       // log.info(gridX+","+gridY+" "+Arrays.toString(boundingBoxXyWh.toFloatVector()));
 	}
 
 	private int getBestPriorBoundingBoxIndex(List<INDArray> iouList) {
