@@ -4,7 +4,6 @@ package org.freeware.dl4j.modelx.dataset;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.bytedeco.opencv.opencv_core.Mat;
 import org.datavec.image.loader.Java2DNativeImageLoader;
 import org.datavec.image.loader.NativeImageLoader;
 import org.datavec.image.recordreader.objdetect.ImageObject;
@@ -12,15 +11,14 @@ import org.datavec.image.recordreader.objdetect.ImageObjectLabelProvider;
 import org.datavec.image.recordreader.objdetect.impl.VocLabelProvider;
 
 import org.freeware.dl4j.modelx.utils.*;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.impl.reduce.longer.MatchCondition;
-import org.nd4j.linalg.api.ops.impl.transforms.Pad;
 import org.nd4j.linalg.dataset.MultiDataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.MultiDataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.indexing.BooleanIndexing;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.indexing.conditions.Conditions;
@@ -33,8 +31,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
-
-import static org.bytedeco.opencv.global.opencv_core.flip;
 import static org.bytedeco.opencv.global.opencv_imgproc.*;
 
 
@@ -78,11 +74,12 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	private int[] strides={32,16,8};
 
+	private int[] gridSizes={inputShape[1]/32,inputShape[1]/16,inputShape[1]/8};
+
 	private String[] labels={};
     //shape=[3,3,2]保存所有先验框
 	private INDArray priorBoundingBoxes;
 
-	private float jitter=0.3f;
 	//每个单元格负责检测的先验框数量，一般为3
 	private  int numberOfPriorBoundingBoxPerGridCell=3;
 
@@ -207,7 +204,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 			endIndex=featureFiles.size();
 
 		}
-
 		int realBatchSize=endIndex-startIndex;
 		//特征存放，便于拼接
 		INDArray[] imageFeatureList=new INDArray[realBatchSize] ;
@@ -226,11 +222,16 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 				//得到当前图片对应的所有边界框
 				List<ImageObject> boundingBoxesList=getBoundingBoxes(featureFile);
                 //得到图片增强结果
-				ImageAndBoundingBoxes imageAugmentResult=augmentImage(imageFeature,boundingBoxesList,inputShape[1],inputShape[2]);
+				//ImageAndBoundingBoxes imageAndBoundingBoxes=augmentImage(imageFeature,boundingBoxesList);
+
+				ImageAndBoundingBoxes imageAndBoundingBoxes=new ImageAndBoundingBoxes(imageFeature,boundingBoxesList);
+				//预处理
+				imageAndBoundingBoxes = preProcess(imageAndBoundingBoxes);
+
 				//设小批量中的置图片特征
-				imageFeatureList[exampleCount]=imageAugmentResult.getImage();
+				imageFeatureList[exampleCount]=imageAndBoundingBoxes.getImage();
                 //得到图片增强后的边界框
-				boundingBoxesList=imageAugmentResult.getBoundingBoxesList();
+				boundingBoxesList=imageAndBoundingBoxes.getBoundingBoxesList();
                 //用来统计参与预测的大中小边界框
 				INDArray boxesCount=Nd4j.zeros(3);
 
@@ -238,19 +239,20 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
                     //[4]
 					INDArray  smoothClassOneHot=getSmoothClassOneHot(boundingBox);
 					//[4]
-					INDArray centerXyWhBoundingBox = getCenterXyWhBoundingBox(boundingBox);
+					INDArray boundingBoxXyWh = getBoundingBoxXyWh(boundingBox);
 					//[3,4]
-					INDArray bigMediumSmallScaledBoundingBox= getBigMediumSmallScaledBoundingBox(centerXyWhBoundingBox);
+					INDArray bigMediumSmallScaledBoundingBox= getBigMediumSmallScaledBoundingBox(boundingBoxXyWh);
 
 					List<INDArray> iouList=new ArrayList<>(10);
 
 					Boolean existPositive = Boolean.FALSE;
 
-					for(int labelIndex=0;labelIndex<labelBigMediumSmall.length;labelIndex++){
+					for(int labelCategoryIndex=0;labelCategoryIndex<labelBigMediumSmall.length;labelCategoryIndex++){
+
 						//[3,4]
-						INDArray threeBoundingBoxPriors = getThreeBoundingBoxPriors(bigMediumSmallScaledBoundingBox, labelIndex);
+						INDArray threeBoundingBoxPriors = getThreeBoundingBoxPriors(bigMediumSmallScaledBoundingBox, labelCategoryIndex);
                         //[4]
-						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex),NDArrayIndex.all()});
+						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(labelCategoryIndex),NDArrayIndex.all()});
                         //[1,4]
 						INDArray expandDimsScaledBoundingBox=Nd4j.expandDims(scaledBoundingBox,0);
                         //[3]
@@ -266,18 +268,18 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 						if(greaterThanScaledIouThresholdCount>0){
 
-							INDArray label=labelBigMediumSmall[labelIndex];
+							INDArray label=labelBigMediumSmall[labelCategoryIndex];
 
 							for(int scaledIouVectorIndex=0;scaledIouVectorIndex<scaledIouVector.length;scaledIouVectorIndex++){
 
 								if(scaledIouVector[scaledIouVectorIndex]>scaledIouThreshold){
 
-									setLabelValues(label, exampleCount,  scaledIouVectorIndex, scaledBoundingBox,smoothClassOneHot);
+									setLabelValues(label, exampleCount,scaledIouVectorIndex,labelCategoryIndex, boundingBoxXyWh,scaledBoundingBox,smoothClassOneHot);
 
 								}
 							}
 
-							setExtraValues(exampleCount, boxesCount, labelIndex, scaledBoundingBox, label);
+							setExtraValues(exampleCount, boxesCount, labelCategoryIndex, boundingBoxXyWh, label);
 
 							existPositive = Boolean.TRUE;
 						}
@@ -295,11 +297,12 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 						INDArray label=labelBigMediumSmall[bestPriorBoundingBoxCategoryIndex];
 
-						setLabelValues(label, exampleCount,  bestPriorBoundingBoxCategoryIndexMode, scaledBoundingBox,smoothClassOneHot);
+						setLabelValues(label, exampleCount, bestPriorBoundingBoxCategoryIndexMode, -1,boundingBoxXyWh,scaledBoundingBox,smoothClassOneHot);
 
-						setExtraValues(exampleCount, boxesCount, bestPriorBoundingBoxCategoryIndex, scaledBoundingBox, label);
+						setExtraValues(exampleCount, boxesCount, bestPriorBoundingBoxCategoryIndex, boundingBoxXyWh, label);
 
 					}
+
 				}
 				exampleCount=exampleCount+1;
 
@@ -323,19 +326,25 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	}
 
-	private ImageAndBoundingBoxes augmentImage(INDArray image, List<ImageObject> boundingBoxesList, int inputHeight, int inputWidth) throws IOException {
+	@NotNull
+	private ImageAndBoundingBoxes preProcess(ImageAndBoundingBoxes imageAndBoundingBoxes) throws IOException {
+
+		imageAndBoundingBoxes=ctvColorAndPadding(imageAndBoundingBoxes.getImage(),imageAndBoundingBoxes.getBoundingBoxesList(),inputShape[1],inputShape[2]);
+
+		List<ImageObject> clippedBoxes=clipBoxes(imageAndBoundingBoxes.getImage(),imageAndBoundingBoxes.getBoundingBoxesList());
+
+		imageAndBoundingBoxes.setBoundingBoxesList(clippedBoxes);
+
+		return imageAndBoundingBoxes;
+	}
+
+	private ImageAndBoundingBoxes augmentImage(INDArray image, List<ImageObject> boundingBoxesList) throws IOException {
 
 		ImageAndBoundingBoxes imageAndBoundingBoxes=randomHorizontalFlip(image,boundingBoxesList);
 
 		imageAndBoundingBoxes=randomCrop(imageAndBoundingBoxes.getImage(),imageAndBoundingBoxes.getBoundingBoxesList());
 
 		imageAndBoundingBoxes=randomTranslate(imageAndBoundingBoxes.getImage(),imageAndBoundingBoxes.getBoundingBoxesList());
-
-		imageAndBoundingBoxes=ctvColorAndPadding(imageAndBoundingBoxes.getImage(),imageAndBoundingBoxes.getBoundingBoxesList(),inputHeight,inputWidth);
-
-		List<ImageObject> clippedBoxes=clipBoxes(imageAndBoundingBoxes.getImage(),imageAndBoundingBoxes.getBoundingBoxesList());
-
-		imageAndBoundingBoxes.setBoundingBoxesList(clippedBoxes);
 
 		return imageAndBoundingBoxes;
 	}
@@ -393,13 +402,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		int max_d_trans = height  - maxBox.getY2();
 
-		int crop_xmin = Math.max(0, maxBox.getX1() - randomUniform(0, max_l_trans));
+		int crop_xmin = Math.max(0, maxBox.getX1() - RandomUtils.randomUniform(0, max_l_trans,random));
 
-		int crop_ymin = Math.max(0, maxBox.getY1() - randomUniform(0, max_u_trans));
+		int crop_ymin = Math.max(0, maxBox.getY1() - RandomUtils.randomUniform(0, max_u_trans,random));
 
-		int crop_xmax = Math.max(width,  maxBox.getX2() + randomUniform(0, max_r_trans));
+		int crop_xmax = Math.max(width,  maxBox.getX2() + RandomUtils.randomUniform(0, max_r_trans,random));
 
-		int crop_ymax = Math.max(height, maxBox.getY2() + randomUniform(0, max_d_trans));
+		int crop_ymax = Math.max(height, maxBox.getY2() + RandomUtils.randomUniform(0, max_d_trans,random));
 
 		INDArrayIndex[] cropImageIndexes=INDArrayUtils.getLastTwoDimensionIndexes(image,crop_xmin,crop_xmax,crop_ymin,crop_ymax);
 
@@ -449,9 +458,9 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		int max_d_trans = height  - maxBox.getY2();
 
-		int tx =randomUniform(-(max_l_trans - 1), (max_r_trans - 1));
+		int tx =RandomUtils.randomUniform(-(max_l_trans - 1), (max_r_trans - 1),random);
 
-		int ty =randomUniform(-(max_u_trans - 1), (max_d_trans - 1));
+		int ty =RandomUtils.randomUniform(-(max_u_trans - 1), (max_d_trans - 1),random);
 
 		int[][] transMat=new int[][]{{1, 0, tx},{0, 1, ty}};
 
@@ -495,7 +504,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		int ih=targetHeight;
 
-		image=ctvColor(image,COLOR_RGB2HSV);
+		image=ImageUtils.ctvColor(image,COLOR_RGB2HSV);
 
 		int width=Integer.parseInt(String.valueOf(image.shape()[image.shape().length-1]));
 
@@ -625,20 +634,28 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	private void setExtraValues(int exampleCount, INDArray boxesCount, int labelIndex, INDArray scaledBoundingBox, INDArray label) {
 
 		int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
+
 		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
+
 		long gridWidth=label.shape()[1];
+
 		long gridHeight=label.shape()[2];
+
 		for (int gridWidthIndex=0;gridWidthIndex<gridWidth;gridWidthIndex++){
+
 			for (int gridHeightIndex=0;gridHeightIndex<gridHeight;gridHeightIndex++){
+
 				label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
 			}
 		}
+
 		bigMediumSmallScaledBoundingBoxIndex++;
+
 		boxesCount.put(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)},bigMediumSmallScaledBoundingBoxIndex);
 
 	}
 
-	private void setLabelValues(INDArray label, int exampleCount, int priorBoundingBoxIndex, INDArray scaledBoundingBox, INDArray smoothClassOneHot) {
+	private void setLabelValues(INDArray label, int exampleCount, int priorBoundingBoxIndex,int labelCategoryIndex, INDArray boundingBox,INDArray scaledBoundingBox, INDArray smoothClassOneHot) {
 
 		INDArray  centerXy=scaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.interval(0,2)});
 
@@ -648,11 +665,27 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		int gridY=gridXy.toIntVector()[1];
 
-		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
+		if(labelCategoryIndex==-1){
+			//把处理特殊情况，有待解释
+			gridX=clip(gridX,0,12);
+
+			gridY=clip(gridY,0,12);
+
+		}else{
+			//把gridX和gridY限制在13或26或52内
+			gridX=clip(gridX,0,gridSizes[labelCategoryIndex]-1);
+
+			gridY=clip(gridY,0,gridSizes[labelCategoryIndex]-1);
+		}
+
+
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},boundingBox);
 
 		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(4,5)},1.0);
 
 		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(5,5+labels.length)},smoothClassOneHot);
+
+
 	}
 
 	private int getBestPriorBoundingBoxIndex(List<INDArray> iouList) {
@@ -660,9 +693,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		INDArray iouArray= Nd4j.create(new long[]{iouList.size(),numberOfPriorBoundingBoxPerGridCell});
 
 		for(int iouIndex=0;iouIndex<iouList.size();iouIndex++){
+
 			iouArray.put(new INDArrayIndex[]{NDArrayIndex.point(iouIndex),NDArrayIndex.all()},iouList.get(iouIndex));
+
 		}
-		return iouArray.reshape(-1).argMax(-1).toIntVector()[0];
+		iouArray=iouArray.reshape(-1);
+
+		return iouArray.argMax(-1).toIntVector()[0];
 	}
 
 
@@ -713,7 +750,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	 * @param boundingBox
 	 * @return
 	 */
-	private INDArray getCenterXyWhBoundingBox(ImageObject boundingBox) {
+	private INDArray getBoundingBoxXyWh(ImageObject boundingBox) {
 
 		INDArray coordinate= Nd4j.create(new float[]{boundingBox.getX1(),boundingBox.getY1(),boundingBox.getX2(),boundingBox.getY2()});
 
@@ -814,7 +851,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	 * @return
 	 */
 	private  List<ImageObject> getBoundingBoxes(File featureFile){
-
 		//通过特征文件名来得到标签文件名
 		String   labelFileName =labelPath.concat(featureFile.getName().replace(".jpg",".xml").replace(".png",".xml"));
 		//得到指定标签文件的所有边界框
@@ -828,293 +864,6 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 
 
-
-	/**
-	 * 图片数据增强
-	 * @param image
-	 * @param boundingBoxesList
-	 * @param inputHeight
-	 * @param inputWidth
-	 * @return
-	 * @throws IOException
-	 */
-	private ImageAndBoundingBoxes augmentImage1(INDArray image, List<ImageObject> boundingBoxesList, int inputHeight, int inputWidth) throws IOException {
-
-		long imageHeight = image.shape()[2];
-
-		long imageWidth= image.shape()[3];
-
-		float downImageWidth = jitter * imageWidth;
-
-		float downImageHeight = jitter * imageHeight;
-
-		float newAr = (imageWidth + randomUniform(-downImageWidth, downImageWidth)) / (imageHeight + randomUniform(-downImageHeight, downImageHeight));
-
-		float scale = randomUniform(0.25f, 2f);
-
-		int newInputHeight=0;
-
-		int newInputWidth=0;
-
-		if (newAr < 1) {
-			newInputHeight = (int) (scale * inputHeight);
-			newInputWidth = (int) (inputHeight * newAr);
-		}else{
-			newInputWidth = (int) (scale * inputWidth);
-			newInputHeight = (int) (inputWidth / newAr);
-		}
-		int dx = (int) randomUniform(0, inputWidth - newInputWidth);
-		int dy = (int) randomUniform(0, inputHeight - newInputHeight);
-
-        image=applyRandomScaleAndCrop(image, newInputWidth, newInputHeight, inputWidth, inputHeight, dx, dy);
-
-		image=randomDistortImage(image);
-
-		int flip= random.nextInt(2);
-
-		image=randomFLip(image,flip);
-
-		List<ImageObject> 	correctBoundingBoxesList=correctBoundingBoxes(boundingBoxesList,newInputWidth,newInputHeight,inputWidth,inputHeight,dx,dy,flip,imageWidth,imageHeight);
-
-		return new ImageAndBoundingBoxes(image,correctBoundingBoxesList);
-	}
-
-
-
-	/**
-	 * 修正边界框
-	 * @param imageObjectList
-	 * @param newInputWidth
-	 * @param newInputHeight
-	 * @param inputWidth
-	 * @param inputHeight
-	 * @param dx
-	 * @param dy
-	 * @param flip
-	 * @param imageWidth
-	 * @param imageHeight
-	 * @return
-	 */
-	private List<ImageObject> correctBoundingBoxes(List<ImageObject> imageObjectList, int newInputWidth, int newInputHeight, int inputWidth, int inputHeight, int dx,int  dy,int  flip, long  imageWidth, long imageHeight){
-
-		Collections.shuffle(imageObjectList);
-		float sx = Float.parseFloat(String.valueOf(newInputWidth))/imageWidth;
-		float sy=Float.parseFloat(String.valueOf(newInputHeight))/imageHeight;
-		List<ImageObject>  correctBoxesList = new ArrayList<>();
-		for(ImageObject imageObject:imageObjectList){
-			int xMin = constrain(0, inputWidth, (int) (imageObject.getX1()*sx + dx));
-			int xMax = constrain(0, inputWidth, (int) (imageObject.getX2()*sx + dx));
-			int yMin = constrain(0, inputHeight, (int) (imageObject.getY1()*sy + dy));
-			int yMax = constrain(0, inputHeight, (int) (imageObject.getY2()*sy + dy));
-			if (xMax<= xMin || yMax<= yMin){
-				continue;
-			}
-			if (flip == 1) {
-				int swap = xMin;
-				xMin = inputWidth - xMax;
-				xMax = inputWidth - swap;
-			}
-			correctBoxesList.add(new ImageObject(xMin,yMin,xMax,yMax,imageObject.getLabel()));
-		}
-
-		return correctBoxesList;
-	}
-
-
-	/**
-	 * 随机缩放与裁剪
-	 * @param image
-	 * @param newInputWidth
-	 * @param newInputHeight
-	 * @param netInputWidth
-	 * @param netInputHeight
-	 * @param dx
-	 * @param dy
-	 * @return
-	 * @throws IOException
-	 */
-	private INDArray applyRandomScaleAndCrop(INDArray image,int  newInputWidth, int newInputHeight, int netInputWidth, int netInputHeight, int dx, int dy) throws IOException {
-
-		INDArray resizedImage = ImageUtils.resize(image, newInputWidth, newInputHeight);
-
-		long[] shape=resizedImage.shape();
-
-		long imageHeight = shape[2];
-
-		long imageWidth= shape[3];
-
-		if (dx > 0) {
-			//resizedImage的宽左边加dx列并用127填充
-			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0,0},{dx,0}}, Pad.Mode.CONSTANT,127);
-		}else {
-			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(-dx,imageWidth)} );
-		}
-		if ((newInputWidth + dx) < netInputWidth){
-			//resizedImage的宽右边加netInputWidth - (newInputWidth+dx)列并用127填充
-			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0,0},{0,netInputWidth - (newInputWidth+dx)}}, Pad.Mode.CONSTANT,127);
-		}
-
-		if (dy > 0){
-			//把resizedImage高上边加dy行，并用127填充
-			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{dy,0},{0,0}}, Pad.Mode.CONSTANT,127);
-		}else{
-
-			resizedImage=resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(-dy,imageHeight),NDArrayIndex.all()} );
-		}
-		if ((newInputHeight + dy) < netInputHeight){
-			//把resizedImage高下边加netInputHeight - (newInputHeight+dy)行，并用127填充
-			resizedImage=Nd4j.pad(resizedImage,new int[][]{{0,0},{0,0},{0, netInputHeight - (newInputHeight+dy)},{0,0}}, Pad.Mode.CONSTANT,127);
-		}
-
-		return resizedImage.get(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.interval(0,netInputHeight),NDArrayIndex.interval(0,netInputWidth)});
-
-    }
-
-
-
-	/**
-	 * 随机扭曲图片
-	 * @param image
-	 * @return
-	 */
-	private INDArray randomDistortImage(INDArray image){
-
-		float hue=18f, saturation=1.5f, exposure=1.5f;
-
-		float dhue=randomUniform(-hue,hue);
-
-		float dsat=randScale(saturation);
-
-		float dexp=randScale(exposure);
-
-		image=ctvColor(image,COLOR_RGB2HSV);
-
-		INDArrayIndex[] dsatIndex=new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(1),NDArrayIndex.all(),NDArrayIndex.all()};
-		INDArrayIndex[] dexpIndex= new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(2),NDArrayIndex.all(),NDArrayIndex.all()};
-
-		INDArray dsatArray=image.get(dsatIndex).mul(dsat);
-		INDArray dexpArray=image.get(dexpIndex).mul(dexp);
-
-		image.put(dsatIndex,dsatArray);
-		image.put(dexpIndex,dexpArray);
-
-		INDArrayIndex[] dhueIndex= new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0),NDArrayIndex.all(),NDArrayIndex.all()};
-		INDArray dhueArray=image.get(dhueIndex).add(dhue);
-
-		INDArray replacedDhueArray=dhueArray.dup();
-		BooleanIndexing.replaceWhere(replacedDhueArray, 180, Conditions.greaterThan(180));
-		dhueArray=dhueArray.sub(replacedDhueArray);
-
-		replacedDhueArray=dhueArray.dup();
-		BooleanIndexing.replaceWhere(replacedDhueArray, 180, Conditions.lessThan(0));
-		dhueArray=dhueArray.add(replacedDhueArray);
-
-		image.put(dhueIndex,dhueArray);
-
-		image=ctvColor(image,COLOR_HSV2RGB);
-
-		return image;
-	}
-
-	/**
-	 * 改变颜色
-	 * @param image
-	 * @param code
-	 * @return
-	 */
-	private INDArray ctvColor(INDArray image,int code){
-
-		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
-
-		Mat mat=java2DNativeImageLoader.asMat(image);
-
-		Mat result = new Mat();
-
-		try {
-			cvtColor(mat, result, code);
-			return java2DNativeImageLoader.asMatrix(result);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * 随机翻转
-	 * @param image
-	 * @param flip
-	 * @return
-	 */
-	private INDArray randomFLip(INDArray image,int flip){
-
-		if(flip!=1){
-			return image;
-		}
-		Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
-		Mat mat=java2DNativeImageLoader.asMat(image);
-		Mat result = new Mat();
-		try {
-			flip(mat, result, flip);
-			return java2DNativeImageLoader.asMatrix(result);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * 随机缩放
-	 * @param scale
-	 * @return
-	 */
-	private float randScale(float scale){
-		scale=randomUniform(1,scale);
-		if(random.nextInt(2)==0){
-			return scale;
-		}
-		return 1.0f/scale;
-	}
-
-	/**
-	 * 获取随机数
-	 * @param min
-	 * @param max
-	 * @return
-	 */
-	private float randomUniform(float min,float max){
-
-		return min + ((max - min) * random.nextFloat());
-	}
-
-	/**
-	 * 获取随机数
-	 * @param min
-	 * @param max
-	 * @return
-	 */
-	private int randomUniform(int min,int max){
-		int bound=max - min+1;
-		if(bound<=0){
-          return 0;
-		}
-		int randomInt=random.nextInt(bound)+min;
-		return randomInt;
-	}
-
-	/**
-	 * 约束值的范围
-	 * @param min
-	 * @param max
-	 * @param value
-	 * @return
-	 */
-	private  int constrain(int min,int  max, int value){
-		if (value < min){
-			return min;
-		}
-		if (value > max){
-			return max;
-		}
-		return value;
-	}
 
 
 
