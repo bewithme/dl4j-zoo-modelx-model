@@ -210,13 +210,13 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {1,1}, inputShape[0],32, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {1,1}, inputShape[0],32,  Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {2,2},64, ConvolutionMode.Truncate, Boolean.TRUE,Boolean.TRUE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {2,2},64,  Boolean.TRUE,Boolean.TRUE);
 
-		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {1,1},new int[] {1,1},32, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {1,1},new int[] {1,1},32,  Boolean.TRUE,Boolean.TRUE);
 
-		String fourthLayerName=convBlock(graph, moduleName, moduleIndex,3, thirdLayerName, new int[] {3,3},new int[] {1,1},64, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String fourthLayerName=convBlock(graph, moduleName, moduleIndex,3, thirdLayerName, new int[] {3,3},new int[] {1,1},64,  Boolean.TRUE,Boolean.TRUE);
 
 		String fifthLayer=createLayerName(moduleName, ELEMENT_WISE_VERTEX,moduleIndex,4);
 
@@ -237,11 +237,11 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2},128, ConvolutionMode.Truncate, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2},128, Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},64, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},64,  Boolean.TRUE,Boolean.TRUE);
 
-		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {3,3},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {3,3},new int[] {1,1},128, Boolean.TRUE,Boolean.TRUE);
 
 		String fourthLayerName=createLayerName(moduleName, ELEMENT_WISE_VERTEX,moduleIndex,3);
 
@@ -262,9 +262,9 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},64, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},64,  Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {1,1},128,  Boolean.TRUE,Boolean.TRUE);
 
 		String thirdLayerName=createLayerName(moduleName, ELEMENT_WISE_VERTEX,moduleIndex,2);
 
@@ -285,11 +285,11 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2},256, ConvolutionMode.Truncate, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2},256,  Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},128,  Boolean.TRUE,Boolean.TRUE);
 
-		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {3,3},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {3,3},new int[] {1,1},256, Boolean.TRUE,Boolean.TRUE);
 
 		String fourthLayerName=createLayerName(moduleName, ELEMENT_WISE_VERTEX,moduleIndex,3);
 
@@ -308,9 +308,9 @@ public class Yolo3 extends ZooModel {
 
 		String moduleName="layer-16-to-36";
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},128,  Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
 		String thirdLayerName=createLayerName(moduleName, ELEMENT_WISE_VERTEX,moduleIndex,2);
 
@@ -352,11 +352,11 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2},512, ConvolutionMode.Truncate, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2},512,  Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
-		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {3,3},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {3,3},new int[] {1,1},512,  Boolean.TRUE,Boolean.TRUE);
 
 		String fourthLayerName=createLayerName(moduleName, ELEMENT_WISE_VERTEX,moduleIndex,3);
 
@@ -377,9 +377,9 @@ public class Yolo3 extends ZooModel {
 
 		String moduleName="layer-41-to-61";
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {1,1},512,  Boolean.TRUE,Boolean.TRUE);
 
 		String thirdLayerName=createLayerName(moduleName, ELEMENT_WISE_VERTEX,moduleIndex,2);
 
@@ -423,11 +423,11 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2},1024, ConvolutionMode.Truncate, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {2,2},1024,  Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},512,  Boolean.TRUE,Boolean.TRUE);
 
-		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {3,3},new int[] {1,1},1024, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String thirdLayerName=convBlock(graph, moduleName, moduleIndex,2, secondLayerName, new int[] {3,3},new int[] {1,1},1024,  Boolean.TRUE,Boolean.TRUE);
 
 		String fourthLayerName=createLayerName(moduleName, ELEMENT_WISE_VERTEX,moduleIndex,3);
 
@@ -447,9 +447,9 @@ public class Yolo3 extends ZooModel {
 
 		String moduleName="layer-66-to-74";
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},512,  Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {1,1},1024, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {3,3},new int[] {1,1},1024,  Boolean.TRUE,Boolean.TRUE);
 
 		String thirdLayerName=createLayerName(moduleName, ELEMENT_WISE_VERTEX,moduleIndex,2);
 
@@ -492,15 +492,15 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},512,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3},new int[] {1,1},1024, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3},new int[] {1,1},1024,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,2, input, new int[] {1,1},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,2, input, new int[] {1,1},new int[] {1,1},512, Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,3, input, new int[] {3,3},new int[] {1,1},1024, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,3, input, new int[] {3,3},new int[] {1,1},1024,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,4, input, new int[] {1,1},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,4, input, new int[] {1,1},new int[] {1,1},512,  Boolean.TRUE,Boolean.TRUE);
 
 
 		return input;
@@ -518,9 +518,9 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {1,1},1024, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {1,1},1024, Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)), ConvolutionMode.Same, Boolean.FALSE,Boolean.FALSE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)),  Boolean.FALSE,Boolean.FALSE);
 
 		return secondLayerName;
 	}
@@ -539,7 +539,7 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
         input=upSampling2D(graph,moduleName,moduleIndex,1,input);
 
@@ -556,15 +556,15 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3},new int[] {1,1},512,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,2, input, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,2, input, new int[] {1,1},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,3, input, new int[] {3,3},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,3, input, new int[] {3,3},new int[] {1,1},512,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,4, input, new int[] {1,1},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,4, input, new int[] {1,1},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
 		return input;
 	}
@@ -582,9 +582,9 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {1,1},512, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		String firstLayerName=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {3,3},new int[] {1,1},512,  Boolean.TRUE,Boolean.TRUE);
 
-		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)), ConvolutionMode.Same, Boolean.FALSE,Boolean.FALSE);
+		String secondLayerName=convBlock(graph, moduleName, moduleIndex,1, firstLayerName, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)),  Boolean.FALSE,Boolean.FALSE);
 
 		return secondLayerName;
 	}
@@ -604,7 +604,7 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},128,  Boolean.TRUE,Boolean.TRUE);
 
 		input=upSampling2D(graph,moduleName,moduleIndex,1,input);
 
@@ -622,19 +622,19 @@ public class Yolo3 extends ZooModel {
 
 		int moduleIndex=0;
 
-		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,0, input, new int[] {1,1},new int[] {1,1},128,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,1, input, new int[] {3,3},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,2, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,2, input, new int[] {1,1},new int[] {1,1},128,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,3, input, new int[] {3,3},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,3, input, new int[] {3,3},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,4, input, new int[] {1,1},new int[] {1,1},128, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,4, input, new int[] {1,1},new int[] {1,1},128, Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,5, input, new int[] {3,3},new int[] {1,1},256, ConvolutionMode.Same, Boolean.TRUE,Boolean.TRUE);
+		input=convBlock(graph, moduleName, moduleIndex,5, input, new int[] {3,3},new int[] {1,1},256,  Boolean.TRUE,Boolean.TRUE);
 
-		input=convBlock(graph, moduleName, moduleIndex,6, input, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)), ConvolutionMode.Same, Boolean.FALSE,Boolean.FALSE);
+		input=convBlock(graph, moduleName, moduleIndex,6, input, new int[] {1,1},new int[] {1,1},(3*(5+numClasses)),  Boolean.FALSE,Boolean.FALSE);
 
 		return input;
 	}
@@ -642,16 +642,20 @@ public class Yolo3 extends ZooModel {
 
 
 
-	private String convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int in,int out,ConvolutionMode convolutionMode,Boolean addBatchNorm,Boolean addLeakyRelu) {
+	private String convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int in,int out,Boolean addBatchNorm,Boolean addLeakyRelu) {
 
 		ConvolutionLayer.Builder builder=new ConvolutionLayer.Builder(
 				kernelSize,
-				stride);
+				stride );
 		if(in>0){
 			builder.nIn(in);
 		}
 
+		ConvolutionMode convolutionMode=ConvolutionMode.Same;
+
 		if(stride[0]>1){
+
+			convolutionMode=ConvolutionMode.Truncate;
 
             String zeroPaddingLayerName=createLayerName(moduleName, ZERO_PADDING,moduleIndex,blockIndex);
 
@@ -707,9 +711,9 @@ public class Yolo3 extends ZooModel {
 	}
 
 
-	private String convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int out,ConvolutionMode convolutionMode,Boolean addBatchNorm,Boolean addLeakyRelu) {
+	private String convBlock(ComputationGraphConfiguration.GraphBuilder graph,String moduleName,int moduleIndex,int blockIndex,String input,int[] kernelSize, int[] stride,int out,Boolean addBatchNorm,Boolean addLeakyRelu) {
 		int in=0;
-		return convBlock(graph, moduleName, moduleIndex,blockIndex, input, kernelSize, stride,in, out, convolutionMode,addBatchNorm,addLeakyRelu);
+		return convBlock(graph, moduleName, moduleIndex,blockIndex, input, kernelSize, stride,in, out,addBatchNorm,addLeakyRelu);
 	}
 
 
