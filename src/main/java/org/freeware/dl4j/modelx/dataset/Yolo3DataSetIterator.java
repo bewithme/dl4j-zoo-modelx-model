@@ -251,11 +251,11 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 						//[3,4]
 						INDArray threeBoundingBoxPriors = getThreeBoundingBoxPriors(bigMediumSmallScaledBoundingBox, labelCategoryIndex);
-                        //[4]
+                        //[4] 得到当前边界框所在的经过缩放的xywh
 						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(labelCategoryIndex),NDArrayIndex.all()});
-                        //[1,4]
+                        //[1,4] 增加一个维度
 						INDArray expandDimsScaledBoundingBox=Nd4j.expandDims(scaledBoundingBox,0);
-                        //[3]
+                        //[3]计算当前边界框与三个先验框的IOU
 						INDArray scaledIou= YoloUtils.getIou(threeBoundingBoxPriors,expandDimsScaledBoundingBox);
 
 						float[] scaledIouVector=scaledIou.toFloatVector();
@@ -310,7 +310,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 				log.error("",e);
 			}
-			
+			log.info("-----------------------");
     	}
 		//按小批量维度拼接标签数据
 		INDArray imageFeature=Nd4j.concat(0,imageFeatureList);
@@ -631,7 +631,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 
 
-	private void setExtraValues(int exampleCount, INDArray boxesCount, int labelIndex, INDArray scaledBoundingBox, INDArray label) {
+	private void setExtraValues(int exampleCount, INDArray boxesCount, int labelIndex, INDArray boundingBoxXyWh, INDArray label) {
 
 		int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
 
@@ -645,7 +645,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 			for (int gridHeightIndex=0;gridHeightIndex<gridHeight;gridHeightIndex++){
 
-				label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},scaledBoundingBox);
+				label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},boundingBoxXyWh);
 			}
 		}
 
@@ -655,9 +655,19 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 	}
 
-	private void setLabelValues(INDArray label, int exampleCount, int priorBoundingBoxIndex,int labelCategoryIndex, INDArray boundingBox,INDArray scaledBoundingBox, INDArray smoothClassOneHot) {
+	/**
+	 * 为标签设值
+	 * @param label
+	 * @param exampleCount
+	 * @param priorBoundingBoxIndex
+	 * @param labelCategoryIndex
+	 * @param boundingBoxXyWh
+	 * @param scaledBoundingBoxXyWh
+	 * @param smoothClassOneHot
+	 */
+	private void setLabelValues(INDArray label, int exampleCount, int priorBoundingBoxIndex,int labelCategoryIndex, INDArray boundingBoxXyWh,INDArray scaledBoundingBoxXyWh, INDArray smoothClassOneHot) {
 
-		INDArray  centerXy=scaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.interval(0,2)});
+		INDArray  centerXy=scaledBoundingBoxXyWh.get(new INDArrayIndex[]{NDArrayIndex.interval(0,2)});
 
 		INDArray  gridXy= Transforms.floor(centerXy);
 
@@ -679,13 +689,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 		}
 
 
-		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},boundingBox);
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},boundingBoxXyWh);
 
 		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(4,5)},1.0);
 
 		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(5,5+labels.length)},smoothClassOneHot);
 
-
+        log.info(gridX+","+gridY+" "+Arrays.toString(boundingBoxXyWh.toFloatVector()));
 	}
 
 	private int getBestPriorBoundingBoxIndex(List<INDArray> iouList) {
