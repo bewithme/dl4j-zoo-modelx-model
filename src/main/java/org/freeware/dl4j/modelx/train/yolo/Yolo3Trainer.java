@@ -24,6 +24,7 @@ import org.freeware.dl4j.modelx.dataset.Yolo3DataSetIterator;
 import org.freeware.dl4j.modelx.model.yolo.Yolo3;
 import org.freeware.dl4j.modelx.train.uitls.ModelTrainOptions;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
+import org.nd4j.linalg.learning.config.Adam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.beust.jcommander.JCommander;
@@ -106,6 +107,7 @@ public class Yolo3Trainer {
         if(latestModelFile==null) {
         	 pretrainedComputationGraph = (ComputationGraph) Yolo3.builder()
                      .numClasses(yoloHyperparameter.getLabels().length)
+                     .updater(new Adam(yoloHyperparameter.getLearningRate()))
                      .bigPriorBoundingBoxes(yoloHyperparameter.getBigBoundingBoxPriors())
                      .mediumPriorBoundingBoxes(yoloHyperparameter.getMediumBoundingBoxPriors())
                      .smallPriorBoundingBoxes(yoloHyperparameter.getSmallBoundingBoxPriors())
