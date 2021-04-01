@@ -36,7 +36,7 @@ import static org.bytedeco.opencv.global.opencv_imgproc.*;
 
 /**
  *
- * Data set Iterator for yolo3
+ * Data set Iterator for YOLO3
  * 1.迭代每个实例
  *    2.图片增强，归一化
  *    3.迭代每个实例中的所有边界框
