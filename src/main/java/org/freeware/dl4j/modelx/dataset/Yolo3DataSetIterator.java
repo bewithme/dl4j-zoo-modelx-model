@@ -304,7 +304,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 						INDArray label=labelBigMediumSmall[bestBoundingBoxGroupIndex];
 
-						setLabelValues(label, exampleCount, bestBoundingBoxIndexInPerBoundingBoxGroup, -1,boundingBoxXyWh,scaledBoundingBox,smoothClassOneHot);
+						setLabelValues(label, exampleCount, bestBoundingBoxIndexInPerBoundingBoxGroup, bestBoundingBoxGroupIndex,boundingBoxXyWh,scaledBoundingBox,smoothClassOneHot);
 
 						setExtraValues(exampleCount, boundingBoxesCounterByGroup, bestBoundingBoxGroupIndex, boundingBoxXyWh, label);
 
