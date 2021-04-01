@@ -5,12 +5,12 @@
 	"mediumBoundingBoxPriors":[[107,329],[277,132],[181,237]],
 	"smallBoundingBoxPriors":[[68,131],[107,194],[183,164]],
 	"learningRate": 1.0E-4,
-	"dataDir": "/Users/wenfengxu/Downloads/dataset/people_fall_down",
-	"batchSize": 2,
+	"dataDir": "/skymind/dataset/people_fall_down",
+	"batchSize": 16,
 	"epochs": 1,
 	"randomSeed": 7854,
 	"lamdbaCoord": 1.0,
 	"lamdbaNoObject": 0.5,
 	"imageFormat": ".jpg",
-	"modelSavePath":"/Users/wenfengxu/Downloads/people_fall_down"
+	"modelSavePath":"/skymind/people_fall_down"
 }
