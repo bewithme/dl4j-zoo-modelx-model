@@ -56,6 +56,8 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     @Override
     public double computeScore(double fullNetworkRegScore, boolean training, LayerWorkspaceMgr workspaceMgr) {
 
+        labels=labels.castTo(input.dataType());
+
         INDArray priorBoundingBoxes=layerConf().getPriorBoundingBoxes();
 
         assertInputSet(true);
@@ -395,6 +397,8 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     @Override
     public Pair<Gradient, INDArray> backpropGradient(INDArray epsilon, LayerWorkspaceMgr workspaceMgr) {
 
+        labels=labels.castTo(input.dataType());
+
         INDArray priorBoundingBoxes=layerConf().getPriorBoundingBoxes();
 
         assertInputSet(true);
@@ -406,9 +410,6 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         long batchSize=labels.shape()[0];
 
         long gridHeight=labels.shape()[1];
-
-        INDArray tl=labels.get(new INDArrayIndex[]{NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.all()});
-
 
         long numberOfPriorBoundingBoxPerGridCell=labels.shape()[3];
 
