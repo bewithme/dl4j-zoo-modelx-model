@@ -12,8 +12,12 @@ import org.datavec.api.io.filters.RandomPathFilter;
 import org.datavec.api.split.FileSplit;
 import org.datavec.api.split.InputSplit;
 import org.datavec.image.loader.NativeImageLoader;
+import org.deeplearning4j.core.storage.StatsStorage;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
+import org.deeplearning4j.ui.api.UIServer;
+import org.deeplearning4j.ui.model.stats.StatsListener;
+import org.deeplearning4j.ui.model.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
 import org.freeware.dl4j.modelx.utils.JsonUtils;
 import org.freeware.dl4j.modelx.dataset.Yolo3DataSetIterator;
@@ -115,8 +119,17 @@ public class Yolo3Trainer {
         log.info("\n Model Summary \n" + model.summary());
 
         log.info("Train model...");
+
+
+        UIServer uiServer = UIServer.getInstance();
+
+        StatsStorage statsStorage = new InMemoryStatsStorage();
+
+        uiServer.attach(statsStorage);
+
+        model.setListeners(new ScoreIterationListener(1),new StatsListener(statsStorage));
         //设置监听器，每次迭代打印一次得分
-        model.setListeners(new ScoreIterationListener(1));
+
         
         int startEpoch=0;
         
