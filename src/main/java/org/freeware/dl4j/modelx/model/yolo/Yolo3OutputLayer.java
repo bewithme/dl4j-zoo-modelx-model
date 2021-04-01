@@ -10,6 +10,7 @@ import org.deeplearning4j.nn.gradient.Gradient;
 import org.deeplearning4j.nn.layers.AbstractLayer;
 import org.deeplearning4j.nn.workspace.ArrayType;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
+import org.freeware.dl4j.modelx.utils.INDArrayUtils;
 import org.freeware.dl4j.modelx.utils.YoloUtils;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.common.base.Preconditions;
@@ -173,21 +174,21 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         INDArray responseBoxesBackgroundConfidence = getResponseBoxesBackgroundConfidence(decodePredictBoxesXyWh, responseBoxesLabelConfidence, groundTruthBoxesXyWh);
 
-        INDArray confidenceFocal=YoloUtils.focal(responseBoxesLabelConfidence,decodePredictConfidence);
-
         INDArray derivativeOfResponseBoxesBackgroundConfidence = getDerivativeOfResponseBoxesBackgroundConfidence(decodePredictBoxesXyWh, responseBoxesLabelConfidence, groundTruthBoxesXyWhForDerivative);
+
+        INDArray confidenceFocal=YoloUtils.focal(responseBoxesLabelConfidence,decodePredictConfidence);
 
         INDArray derivativeOfConfidenceFocal= YoloUtils.derivativeOfFocal(responseBoxesLabelConfidence, decodePredictConfidence);
 
-        INDArray f=YoloUtils.sigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence);
+        INDArray sceLoss=YoloUtils.sigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence);
 
-        INDArray df=YoloUtils.derivativeOfSigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence);
+        INDArray derivativeOfSceLoss=YoloUtils.derivativeOfSigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence);
 
-        INDArray d1=derivativeOfConfidenceFocal.mul(df).add(confidenceFocal.mul(f));
+        INDArray d1=derivativeOfConfidenceFocal.mul(sceLoss).add(confidenceFocal.mul(derivativeOfSceLoss)).mul(responseBoxesLabelConfidence);
 
-        INDArray d2=derivativeOfConfidenceFocal.mul(responseBoxesBackgroundConfidence).mul(f)
-                .add(confidenceFocal.mul(derivativeOfResponseBoxesBackgroundConfidence).mul(f))
-                .add(confidenceFocal.mul(responseBoxesBackgroundConfidence).mul(df));
+        INDArray d2=derivativeOfConfidenceFocal.mul(responseBoxesBackgroundConfidence).mul(sceLoss)
+                .add(confidenceFocal.mul(derivativeOfResponseBoxesBackgroundConfidence).mul(sceLoss))
+                .add(confidenceFocal.mul(responseBoxesBackgroundConfidence).mul(derivativeOfSceLoss));
 
         return d1.add(d2);
     }
@@ -254,6 +255,32 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         return responseBoxLabelConfidence.mul(lossScale).mul(Transforms.neg(gIou));
     }
 
+
+    private DecodeResult decode(INDArray input,INDArray priorBoundingBoxes,long classOneHotLength,long gridHeight,long batchSize,long stride){
+        //得到所有预测边界框的中心点坐标
+        INDArray predictBoxesXy= getPredictBoxesXy(input);
+        //得到所有预测边界框的高和宽
+        INDArray predictBoxesWh= getPredictBoxesWh(input);
+        //得到所有预测边界框的置信度
+        INDArray predictConfidence= getPredictConfidence(input);
+        //得到所有预测边界框的分类
+        INDArray predictClassOneHot= getPredictClassOneHot(input, classOneHotLength);
+        //得到每个grid相对于最左上角的坐标
+        INDArray cxCy=YoloUtils.getCxCy(Integer.parseInt(String.valueOf(gridHeight)),Integer.parseInt(String.valueOf(batchSize)),3);
+        //解码中心点坐标
+        INDArray decodePredictBoxesXy= Transforms.sigmoid(predictBoxesXy).add(cxCy).mul(stride);
+        //解码宽高
+        INDArray decodePredictBoxesWh= Transforms.exp(predictBoxesWh).mul(priorBoundingBoxes).mul(stride);
+        //解码置信度
+        INDArray decodePredictConfidence=Transforms.sigmoid(predictConfidence);
+        //解码类别
+        INDArray decodePredictClassOneHot=Transforms.sigmoid(predictClassOneHot);
+        //拼接解码的中心点坐标与宽高
+        INDArray decodePredictBoxesXyWh=Nd4j.concat(-1,decodePredictBoxesXy,decodePredictBoxesWh);
+
+        return new DecodeResult(decodePredictBoxesXy,decodePredictBoxesWh,decodePredictConfidence,decodePredictClassOneHot,decodePredictBoxesXyWh);
+    }
+
     private INDArray reshapeInput() {
         //NCHW --> NWHC
         INDArray reshapeInput=input.dup().permute(0,3,2,1);
@@ -292,46 +319,24 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     }
 
 
-    private DecodeResult decode(INDArray input,INDArray priorBoundingBoxes,long classOneHotLength,long gridHeight,long batchSize,long stride){
-        //得到所有边界框的中心点坐标
-        INDArray predictBoxesXy= getPredictBoxesXy(input);
-        //得到所有边界框的高和宽
-        INDArray predictBoxesWh= getPredictBoxesWh(input);
-
-        INDArray predictConfidence= getPredictConfidence(input);
-
-        INDArray predictClassOneHot= getPredictClassOneHot(input, classOneHotLength);
-
-        INDArray cxCy=YoloUtils.getCxCy(Integer.parseInt(String.valueOf(gridHeight)),Integer.parseInt(String.valueOf(batchSize)),3);
-        //解码中心点坐标
-        INDArray decodePredictBoxesXy= Transforms.sigmoid(predictBoxesXy).add(cxCy).mul(stride);
-        //解码宽高
-        INDArray decodePredictBoxesWh= Transforms.exp(predictBoxesWh).mul(priorBoundingBoxes).mul(stride);
-        //解码置信度
-        INDArray decodePredictConfidence=Transforms.sigmoid(predictConfidence);
-        //解码类别
-        INDArray decodePredictClassOneHot=Transforms.sigmoid(predictClassOneHot);
-        //拼接解码的中心点坐标与宽高
-        INDArray decodePredictBoxesXyWh=Nd4j.concat(-1,decodePredictBoxesXy,decodePredictBoxesWh);
-
-        return new DecodeResult(decodePredictBoxesXy,decodePredictBoxesWh,decodePredictConfidence,decodePredictClassOneHot,decodePredictBoxesXyWh);
-    }
-
     private INDArray getPredictClassOneHot(INDArray input, long classOneHotLength) {
-
-        return input.get(new INDArrayIndex[]{all(), all(), all(), all(), NDArrayIndex.interval(5,5+classOneHotLength)});
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(5,5+classOneHotLength));
+        return input.get(indexes);
     }
 
     private INDArray getPredictConfidence(INDArray input) {
-        return input.get(new INDArrayIndex[]{all(), all(), all(), all(), NDArrayIndex.interval(4,5)});
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(4,5));
+        return input.get(indexes);
     }
 
     private INDArray getPredictBoxesWh(INDArray input) {
-        return input.get(new INDArrayIndex[]{all(), all(), all(), all(), NDArrayIndex.interval(2,4)});
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(2,4));
+        return input.get(indexes);
     }
 
     private INDArray getPredictBoxesXy(INDArray input) {
-        return input.get(new INDArrayIndex[]{all(), all(), all(), all(), NDArrayIndex.interval(0,2)});
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(0,2));
+        return input.get(indexes);
     }
 
     @Override
@@ -401,6 +406,9 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         long batchSize=labels.shape()[0];
 
         long gridHeight=labels.shape()[1];
+
+        INDArray tl=labels.get(new INDArrayIndex[]{NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.point(0),NDArrayIndex.all()});
+
 
         long numberOfPriorBoundingBoxPerGridCell=labels.shape()[3];
 

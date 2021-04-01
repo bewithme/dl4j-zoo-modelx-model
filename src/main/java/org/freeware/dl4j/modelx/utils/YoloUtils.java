@@ -355,7 +355,7 @@ public class YoloUtils {
 
         float X = (pred_b - pred_t) * (pred_r - pred_l);
         float Xhat = (truth_tblr_bot - truth_tblr_top) * (truth_tblr_right - truth_tblr_left);
-        float Ih = Math.min(pred_b, truth_tblr_bot) - Math.max(pred_t, truth_tblr_top);
+        float Ih = Math.min(pred_b, truth_tblr_bot) -   Math.max(pred_t, truth_tblr_top);
         float Iw = Math.min(pred_r, truth_tblr_right) - Math.max(pred_l, truth_tblr_left);
         float I = Iw * Ih;
         float U = X + Xhat - I;
@@ -412,8 +412,18 @@ public class YoloUtils {
         float dx_db = pred_tblr_top < pred_tblr_bot ? p_db : p_dt;
         float dx_dl = pred_tblr_left < pred_tblr_right ? p_dl : p_dr;
         float dx_dr = pred_tblr_left < pred_tblr_right ? p_dr : p_dl;
-        return new float[]{dx_dt,dx_db,dx_dl,dx_dr};
 
+        float w=dx_dr-dx_dl;
+
+        float h=dx_dt-dx_db;
+
+        float x=dx_dl+w/2;
+
+        float y=dx_dt+h/2;
+
+        //return new float[]{dx_dt,dx_db,dx_dl,dx_dr};
+
+        return new float[]{x,y,w,h};
     }
 
 
