@@ -36,8 +36,17 @@ import static org.bytedeco.opencv.global.opencv_imgproc.*;
 
 /**
  *
- * Data set Iterator for yolo3
- *  @author wenfengxu
+ * Data set Iterator for YOLO3
+ * 1.迭代每个实例
+ *    2.图片增强，归一化
+ *    3.迭代每个实例中的所有边界框
+ *      4.迭代三个分组的先验框
+ *         5.把当前边界框缩放，然后与当前分组的先验框进行IOU计算
+ *         6.如果IOU大于指定阈值，则把原边界框信息存放到当前分组的[N,X,Y,A,5+classNum]中
+ *         7.把边界框xywh值保存到标签额外信息中
+ *      8.如果4-6结束后没有一个IOU大于指定值，则将IOU最大的边界框保存到小分组的[N,X,Y,A,5+classNum]中
+ *      9.把边界框xywh值保存到标签额外信息中
+ * @author wenfengxu
  *
  */
 @Slf4j
@@ -227,13 +236,12 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 				ImageAndBoundingBoxes imageAndBoundingBoxes=new ImageAndBoundingBoxes(imageFeature,boundingBoxesList);
 				//预处理
 				imageAndBoundingBoxes = preProcess(imageAndBoundingBoxes);
-
 				//设小批量中的置图片特征
 				imageFeatureList[exampleCount]=imageAndBoundingBoxes.getImage();
                 //得到图片增强后的边界框
 				boundingBoxesList=imageAndBoundingBoxes.getBoundingBoxesList();
                 //用来统计参与预测的大中小边界框
-				INDArray boxesCount=Nd4j.zeros(3);
+				INDArray boundingBoxesCounterByGroup=Nd4j.zeros(3);
 
 				for(ImageObject boundingBox:boundingBoxesList){
                     //[4]
@@ -247,17 +255,17 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 					Boolean existPositive = Boolean.FALSE;
 
-					for(int labelCategoryIndex=0;labelCategoryIndex<labelBigMediumSmall.length;labelCategoryIndex++){
+					for(int boundingBoxGroupIndex=0;boundingBoxGroupIndex<labelBigMediumSmall.length;boundingBoxGroupIndex++){
 						//[3,4]
-						INDArray threeBoundingBoxPriors = getThreeBoundingBoxPriors(bigMediumSmallScaledBoundingBox, labelCategoryIndex);
+						INDArray threeBoundingBoxPriors = getThreeBoundingBoxPriors(bigMediumSmallScaledBoundingBox, boundingBoxGroupIndex);
                         //[4] 得到当前边界框所在的经过缩放的xywh
-						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(labelCategoryIndex),NDArrayIndex.all()});
+						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(boundingBoxGroupIndex),NDArrayIndex.all()});
                         //[1,4] 增加一个维度
 						INDArray expandDimsScaledBoundingBox=Nd4j.expandDims(scaledBoundingBox,0);
                         //[3]计算当前边界框与三个先验框的IOU
 						INDArray scaledIou= YoloUtils.getIou(threeBoundingBoxPriors,expandDimsScaledBoundingBox);
 
-						float[] scaledIouVector=scaledIou.toFloatVector();
+						float[] scaledIouArray=scaledIou.toFloatVector();
 
 						float scaledIouThreshold=0.3f;
 
@@ -267,38 +275,38 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 						if(greaterThanScaledIouThresholdCount>0){
 
-							INDArray label=labelBigMediumSmall[labelCategoryIndex];
+							INDArray label=labelBigMediumSmall[boundingBoxGroupIndex];
 
-							for(int scaledIouVectorIndex=0;scaledIouVectorIndex<scaledIouVector.length;scaledIouVectorIndex++){
+							for(int scaledIouArrayIndex=0;scaledIouArrayIndex<scaledIouArray.length;scaledIouArrayIndex++){
 
-								if(scaledIouVector[scaledIouVectorIndex]>scaledIouThreshold){
+								if(scaledIouArray[scaledIouArrayIndex]>scaledIouThreshold){
 
-									setLabelValues(label, exampleCount,scaledIouVectorIndex,labelCategoryIndex, boundingBoxXyWh,scaledBoundingBox,smoothClassOneHot);
+									setLabelValues(label, exampleCount,scaledIouArrayIndex,boundingBoxGroupIndex, boundingBoxXyWh,scaledBoundingBox,smoothClassOneHot);
 
 								}
 							}
 
-							setExtraValues(exampleCount, boxesCount, labelCategoryIndex, boundingBoxXyWh, label);
+							setExtraValues(exampleCount, boundingBoxesCounterByGroup, boundingBoxGroupIndex, boundingBoxXyWh, label);
 
 							existPositive = Boolean.TRUE;
 						}
 					}
 
 					if(existPositive==Boolean.FALSE){
-
-						int bestPriorBoundingBoxIndex = getBestPriorBoundingBoxIndex(iouList);
-
-						int bestPriorBoundingBoxCategoryIndex=bestPriorBoundingBoxIndex/numberOfPriorBoundingBoxPerGridCell;
-
-						int bestPriorBoundingBoxCategoryIndexMode=bestPriorBoundingBoxIndex%numberOfPriorBoundingBoxPerGridCell;
+                        //IOU最大的边界框索引
+						int bestBoundingBoxIndex = getBestBoundingBoxIndex(iouList);
+						//IOU最大的边界框索引所在大中小分组的索引 因为一共有三个分组，所以取值为 0 1 2
+						int bestBoundingBoxGroupIndex=bestBoundingBoxIndex/numberOfPriorBoundingBoxPerGridCell;
+                        //IOU最大的边界框索引所在分组的内的索引 因为每个分组内有三个边界框，所以取值为 0 1 2
+						int bestBoundingBoxIndexInPerBoundingBoxGroup=bestBoundingBoxIndex%numberOfPriorBoundingBoxPerGridCell;
 						//[4]
-						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(bestPriorBoundingBoxCategoryIndex),NDArrayIndex.all()});
+						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(bestBoundingBoxGroupIndex),NDArrayIndex.all()});
 
-						INDArray label=labelBigMediumSmall[bestPriorBoundingBoxCategoryIndex];
+						INDArray label=labelBigMediumSmall[bestBoundingBoxGroupIndex];
 
-						setLabelValues(label, exampleCount, bestPriorBoundingBoxCategoryIndexMode, -1,boundingBoxXyWh,scaledBoundingBox,smoothClassOneHot);
+						setLabelValues(label, exampleCount, bestBoundingBoxIndexInPerBoundingBoxGroup, -1,boundingBoxXyWh,scaledBoundingBox,smoothClassOneHot);
 
-						setExtraValues(exampleCount, boxesCount, bestPriorBoundingBoxCategoryIndex, boundingBoxXyWh, label);
+						setExtraValues(exampleCount, boundingBoxesCounterByGroup, bestBoundingBoxGroupIndex, boundingBoxXyWh, label);
 
 					}
 
@@ -628,13 +636,24 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	}
 
 
+	/**
+	 * 为标签设置额外信息
+	 * 标签的形状为
+	 * [N,X,Y,3+maxBoxPerImage,5+classNum]
+	 * 其中[N,X,Y,maxBoxPerImage,4]用来存
+	 * 原始标签的xywh
+	 * @param exampleCount
+	 * @param boundingBoxesCounterByGroup
+	 * @param boundingBoxGroupIndex
+	 * @param boundingBoxXyWh
+	 * @param label
+	 */
+	private void setExtraValues(int exampleCount, INDArray boundingBoxesCounterByGroup, int boundingBoxGroupIndex, INDArray boundingBoxXyWh, INDArray label) {
 
-
-	private void setExtraValues(int exampleCount, INDArray boxesCount, int labelIndex, INDArray boundingBoxXyWh, INDArray label) {
-
-		int bigMediumSmallScaledBoundingBoxIndex=boxesCount.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)}).toIntVector()[0];
-
-		int priorBoundingBoxIndex=bigMediumSmallScaledBoundingBoxIndex%maxBoxPerImage;
+		//当前分组下的边界框统计数量
+		int boxesNumber=boundingBoxesCounterByGroup.get(new INDArrayIndex[]{NDArrayIndex.point(boundingBoxGroupIndex)}).toIntVector()[0];
+        //边界框在当前边界框分组内的索引
+		int boxIndexInPerBoundingBoxGroup=boxesNumber%maxBoxPerImage;
 
 		long gridWidth=label.shape()[1];
 
@@ -644,13 +663,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 			for (int gridHeightIndex=0;gridHeightIndex<gridHeight;gridHeightIndex++){
 
-				label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},boundingBoxXyWh);
+				label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(numberOfPriorBoundingBoxPerGridCell+boxIndexInPerBoundingBoxGroup),NDArrayIndex.interval(0,4)},boundingBoxXyWh);
 			}
 		}
 
-		bigMediumSmallScaledBoundingBoxIndex++;
+		boxesNumber++;
 
-		boxesCount.put(new INDArrayIndex[]{NDArrayIndex.point(labelIndex)},bigMediumSmallScaledBoundingBoxIndex);
+		boundingBoxesCounterByGroup.put(new INDArrayIndex[]{NDArrayIndex.point(boundingBoxGroupIndex)},boxesNumber);
 
 	}
 
@@ -658,13 +677,13 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	 * 为标签设值
 	 * @param label
 	 * @param exampleCount
-	 * @param priorBoundingBoxIndex
-	 * @param labelCategoryIndex
+	 * @param boundingBoxIndexInPerBoundingBoxGroup
+	 * @param boundingBoxGroupIndex
 	 * @param boundingBoxXyWh
 	 * @param scaledBoundingBoxXyWh
 	 * @param smoothClassOneHot
 	 */
-	private void setLabelValues(INDArray label, int exampleCount, int priorBoundingBoxIndex,int labelCategoryIndex, INDArray boundingBoxXyWh,INDArray scaledBoundingBoxXyWh, INDArray smoothClassOneHot) {
+	private void setLabelValues(INDArray label, int exampleCount, int boundingBoxIndexInPerBoundingBoxGroup,int boundingBoxGroupIndex, INDArray boundingBoxXyWh,INDArray scaledBoundingBoxXyWh, INDArray smoothClassOneHot) {
 
 		INDArray  centerXy=scaledBoundingBoxXyWh.get(new INDArrayIndex[]{NDArrayIndex.interval(0,2)});
 
@@ -674,7 +693,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		int gridY=gridXy.toIntVector()[1];
 
-		if(labelCategoryIndex==-1){
+		if(boundingBoxGroupIndex==-1){
 			//把处理特殊情况，有待解释
 			gridX=clip(gridX,0,12);
 
@@ -682,22 +701,27 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		}else{
 			//把gridX和gridY限制在13或26或52内
-			gridX=clip(gridX,0,gridSizes[labelCategoryIndex]-1);
+			gridX=clip(gridX,0,gridSizes[boundingBoxGroupIndex]-1);
 
-			gridY=clip(gridY,0,gridSizes[labelCategoryIndex]-1);
+			gridY=clip(gridY,0,gridSizes[boundingBoxGroupIndex]-1);
 		}
 
 
-		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(0,4)},boundingBoxXyWh);
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(boundingBoxIndexInPerBoundingBoxGroup),NDArrayIndex.interval(0,4)},boundingBoxXyWh);
 
-		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(4,5)},1.0);
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(boundingBoxIndexInPerBoundingBoxGroup),NDArrayIndex.interval(4,5)},1.0);
 
-		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(5,5+labels.length)},smoothClassOneHot);
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(boundingBoxIndexInPerBoundingBoxGroup),NDArrayIndex.interval(5,5+labels.length)},smoothClassOneHot);
 
        // log.info(gridX+","+gridY+" "+Arrays.toString(boundingBoxXyWh.toFloatVector()));
 	}
 
-	private int getBestPriorBoundingBoxIndex(List<INDArray> iouList) {
+	/**
+	 * 在所有IOU中找出最大IOU所在的索引
+	 * @param iouList
+	 * @return
+	 */
+	private int getBestBoundingBoxIndex(List<INDArray> iouList) {
 
 		INDArray iouArray= Nd4j.create(new long[]{iouList.size(),numberOfPriorBoundingBoxPerGridCell});
 
