@@ -98,8 +98,6 @@ public class Yolo3Trainer {
         //创建训练记录读取数据集迭代器
         MultiDataSetIterator yolo3DataSetIterator = new Yolo3DataSetIterator(yoloHyperparameter.getDataDir(),yoloHyperparameter.getBatchSize(),yoloHyperparameter.getLabels(),yoloHyperparameter.getBigBoundingBoxPriors(),yoloHyperparameter.getMediumBoundingBoxPriors(),yoloHyperparameter.getSmallBoundingBoxPriors());
 
-        //加载已有模型，如果本地不存在，则会从远程将预训练模型下载到当前用户的
-        //.deeplearning4j/models/tiny-yolo-voc_dl4j_inference.v2.zip 目录 
         ComputationGraph pretrainedComputationGraph =null;
         
         File latestModelFile=getLatestModelFile(yoloHyperparameter);
