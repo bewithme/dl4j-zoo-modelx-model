@@ -4,7 +4,7 @@
 	"bigBoundingBoxPriors":[[202,314],[311,193],[355,351]],
 	"mediumBoundingBoxPriors":[[76,157],[109,266],[165,136]],
 	"smallBoundingBoxPriors":[[24,39],[37,113],[76,65]],
-	"learningRate": 1.0E-3,
+	"learningRate": 1.0E-4,
 	"dataDir": "/Users/wenfengxu/Downloads/VOCdevkit_train/VOC2007_debug",
 	"batchSize": 1,
 	"epochs": 1000,
