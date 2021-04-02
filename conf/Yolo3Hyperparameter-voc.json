@@ -5,7 +5,7 @@
 	"mediumBoundingBoxPriors":[[76,157],[109,266],[165,136]],
 	"smallBoundingBoxPriors":[[24,39],[37,113],[76,65]],
 	"learningRate": 1.0E-4,
-	"dataDir": "/Users/wenfengxu/Downloads/VOCdevkit_train/VOC2007_debug",
+	"dataDir": "/skymind/dataset/VOCdevkit_train/VOC2007",
 	"batchSize": 1,
 	"epochs": 1000,
 	"randomSeed": 7854,
