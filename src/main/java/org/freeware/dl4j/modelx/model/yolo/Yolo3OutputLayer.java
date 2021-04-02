@@ -144,6 +144,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     }
 
     private INDArray getResponseBoxesBackgroundConfidence(INDArray decodePredictBoxesXyWh, INDArray responseBoxesLabelConfidence, INDArray groundTruthBoxesXyWh) {
+
         //shape=[batchSize,gridSize,gridSize,3,4]->[batchSize,gridSize,gridSize,3,1,4]
         INDArray decodePredictBoxesXyWhSixD= Nd4j.expandDims(decodePredictBoxesXyWh,4);
         // [batchSize,numberOfPriorBoundingBoxPerGridCell-3,4]->[batchSize,1,1,1,numberOfPriorBoundingBoxPerGridCell-3,4]
@@ -156,6 +157,13 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         return Transforms.neg(responseBoxesLabelConfidence).add(1.0).mul(maxIou);
     }
 
+    /**
+     *
+     * @param decodePredictBoxesXyWh=[N,X,Y,A,4]
+     * @param responseBoxesLabelConfidence=[N,X,Y,,4]
+     * @param groundTruthBoxesXyWh
+     * @return
+     */
     private INDArray getDerivativeOfResponseBoxesBackgroundConfidence(INDArray decodePredictBoxesXyWh, INDArray responseBoxesLabelConfidence, INDArray groundTruthBoxesXyWh) {
 
         //[batchSize,gridSize,gridSize,3,numberOfPriorBoundingBoxPerGridCell-3]
@@ -189,7 +197,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         INDArray d1=derivativeOfConfidenceFocal.mul(sceLoss).add(confidenceFocal.mul(derivativeOfSceLoss)).mul(responseBoxesLabelConfidence);
 
         INDArray d2=derivativeOfConfidenceFocal.mul(responseBoxesBackgroundConfidence).mul(sceLoss)
-                .add(confidenceFocal.mul(derivativeOfResponseBoxesBackgroundConfidence).mul(sceLoss))
+                //.add(confidenceFocal.mul(0).mul(sceLoss))
                 .add(confidenceFocal.mul(responseBoxesBackgroundConfidence).mul(derivativeOfSceLoss));
 
         return d1.add(d2);
