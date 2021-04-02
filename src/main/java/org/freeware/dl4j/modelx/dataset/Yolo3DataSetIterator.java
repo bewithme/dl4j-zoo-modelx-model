@@ -257,7 +257,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 					for(int boundingBoxGroupIndex=0;boundingBoxGroupIndex<labelBigMediumSmall.length;boundingBoxGroupIndex++){
 						//[3,4]
-						INDArray threeBoundingBoxPriors = getThreeBoundingBoxPriors(bigMediumSmallScaledBoundingBox, boundingBoxGroupIndex);
+						INDArray threeBoundingBoxPriors = setXyForPriorBoundingBox(bigMediumSmallScaledBoundingBox, boundingBoxGroupIndex);
                         //[4] 得到当前边界框所在的经过缩放的xywh
 						INDArray scaledBoundingBox=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(boundingBoxGroupIndex),NDArrayIndex.all()});
                         //[1,4] 增加一个维度
@@ -795,19 +795,19 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 	}
 
 	/**
-	 * 获取三个先验框的数组
+	 * 为3组先验框设置x,y
 	 * 它的centerX centerY是从缩放的边界框获取
 	 * 它的wh是在用户提供的先验框获取
 	 * @param bigMediumSmallScaledBoundingBox
-	 * @param labelIndex
+	 * @param boundingBoxGroupIndex
 	 * @return [3,4]
 	 */
 
-	private INDArray getThreeBoundingBoxPriors(INDArray bigMediumSmallScaledBoundingBox, int labelIndex) {
+	private INDArray setXyForPriorBoundingBox(INDArray bigMediumSmallScaledBoundingBox, int boundingBoxGroupIndex) {
 		//创建一个保存三个先验框的数组
-		INDArray threeBoundingBoxPriors= Nd4j.zeros(new int[]{3,4});
+		INDArray priorBoundingBoxPrior= Nd4j.zeros(new int[]{3,4});
 
-		INDArray scaledBoundingBoxXy=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex),NDArrayIndex.interval(0,2)});
+		INDArray scaledBoundingBoxXy=bigMediumSmallScaledBoundingBox.get(new INDArrayIndex[]{NDArrayIndex.point(boundingBoxGroupIndex),NDArrayIndex.interval(0,2)});
 
 		scaledBoundingBoxXy= Transforms.floor(scaledBoundingBoxXy).add(0.5);
 
@@ -815,15 +815,15 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		float centerY=scaledBoundingBoxXy.toFloatVector()[1];
 		//它的centerX  centerY是从缩放的边界框获取
-		threeBoundingBoxPriors.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0)},centerX);
+		priorBoundingBoxPrior.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(0)},centerX);
 
-		threeBoundingBoxPriors.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(1)},centerY);
+		priorBoundingBoxPrior.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.point(1)},centerY);
 
-		INDArray boundingBoxPrior= priorBoundingBoxes.get(new INDArrayIndex[]{NDArrayIndex.point(labelIndex),NDArrayIndex.all()});
+		INDArray boundingBoxPrior= priorBoundingBoxes.get(new INDArrayIndex[]{NDArrayIndex.point(boundingBoxGroupIndex),NDArrayIndex.all()});
 		//它的wh是在用户提供的先验框获取
-		threeBoundingBoxPriors.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.interval(2,4)},boundingBoxPrior);
+		priorBoundingBoxPrior.put(new INDArrayIndex[]{NDArrayIndex.all(),NDArrayIndex.interval(2,4)},boundingBoxPrior);
 
-		return threeBoundingBoxPriors;
+		return priorBoundingBoxPrior;
 	}
 
 
