@@ -19,6 +19,7 @@ import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.model.stats.StatsListener;
 import org.deeplearning4j.ui.model.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
+import org.freeware.dl4j.modelx.dataset.Yolo3DataSetIterator2;
 import org.freeware.dl4j.modelx.utils.JsonUtils;
 import org.freeware.dl4j.modelx.dataset.Yolo3DataSetIterator;
 import org.freeware.dl4j.modelx.model.yolo.Yolo3;
@@ -96,7 +97,7 @@ public class Yolo3Trainer {
         //测试集文件分割器
         InputSplit testDataInputSplit  = inputSplit[1];
         //创建训练记录读取数据集迭代器
-        MultiDataSetIterator yolo3DataSetIterator = new Yolo3DataSetIterator(yoloHyperparameter.getDataDir(),yoloHyperparameter.getBatchSize(),yoloHyperparameter.getLabels(),yoloHyperparameter.getBigBoundingBoxPriors(),yoloHyperparameter.getMediumBoundingBoxPriors(),yoloHyperparameter.getSmallBoundingBoxPriors());
+        MultiDataSetIterator yolo3DataSetIterator = new Yolo3DataSetIterator2(yoloHyperparameter.getDataDir(),yoloHyperparameter.getBatchSize(),yoloHyperparameter.getLabels(),yoloHyperparameter.getBigBoundingBoxPriors(),yoloHyperparameter.getMediumBoundingBoxPriors(),yoloHyperparameter.getSmallBoundingBoxPriors());
 
         ComputationGraph pretrainedComputationGraph =null;
         
