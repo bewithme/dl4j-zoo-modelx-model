@@ -149,7 +149,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         // [batchSize,numberOfPriorBoundingBoxPerGridCell-3,4]->[batchSize,1,1,1,numberOfPriorBoundingBoxPerGridCell-3,4]
         INDArray groundTruthBoxesXyWhSixD = expandDimsToSix(groundTruthBoxesXyWh);
         //[batchSize,gridSize,gridSize,3,numberOfPriorBoundingBoxPerGridCell-3]
-        INDArray iou= YoloUtils.getIou(decodePredictBoxesXyWhSixD,groundTruthBoxesXyWhSixD);
+        INDArray iou= YoloUtils.computeIou(decodePredictBoxesXyWhSixD,groundTruthBoxesXyWhSixD);
 
         INDArray maxIou = getMaxIou(iou);
 
@@ -293,7 +293,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     private INDArray reshapeInput() {
         //NCHW --> NWHC
         INDArray reshapeInput=input.dup().permute(0,3,2,1);
-        //NHWC --> [batch, grid_h, grid_w, 3, 4+1+nb_class]
+        //NWHC --> [batch, grid_h, grid_w, 3, 4+1+nb_class]
         reshapeInput=reshapeInput.reshape(new long[]{reshapeInput.size(0),reshapeInput.size(1),reshapeInput.size(2),3,reshapeInput.size(3)/3});
 
         return reshapeInput;
