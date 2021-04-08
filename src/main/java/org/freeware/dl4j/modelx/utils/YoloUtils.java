@@ -322,6 +322,10 @@ public class YoloUtils {
 
         SDVariable x=sd.var("x");
 
+        z.setArray(labels);
+
+        x.setArray(logits);
+
         SDVariable zero=sd.var("zero");
 
         SDVariable one=sd.var("one");
@@ -329,10 +333,6 @@ public class YoloUtils {
         zero.setArray(Nd4j.zeros(logits.shape()));
 
         one.setArray(Nd4j.ones(logits.shape()));
-
-        z.setArray(labels);
-
-        x.setArray(logits);
 
         SDVariable max=sd.math().max(x, zero);
 
