@@ -1,6 +1,7 @@
 package org.freeware.dl4j.modelx.utils;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.autodiff.samediff.SDIndex;
 import org.nd4j.autodiff.samediff.SDVariable;
 import org.nd4j.autodiff.samediff.SameDiff;
@@ -18,8 +19,7 @@ import java.util.Map;
 public class YoloUtils {
 
 
-    //构建SameDiff实例
-    public  static  SameDiff sd=SameDiff.create();
+
 
     /**
      * 获取每个单元格相对于最左上角的坐标
@@ -67,8 +67,29 @@ public class YoloUtils {
      * @param truthBoxes
      * @return
      */
-    public  static INDArray computeIou(INDArray predictBoxes,INDArray truthBoxes) {
+    public  static INDArray getIou(INDArray predictBoxes, INDArray truthBoxes) {
 
+        SameDiff sd = computeIou(predictBoxes, truthBoxes);
+
+        return sd.getArrForVarName("f");
+    }
+
+    public  static INDArray getGradientOfIou(INDArray predictBoxes, INDArray truthBoxes) {
+
+        SameDiff sd = computeIou(predictBoxes, truthBoxes);
+
+        Map<String,INDArray> gradients = sd.calculateGradients(null, "t", "p");
+        //对x求偏导
+        INDArray dLx = gradients.get("p");
+
+        return dLx;
+
+    }
+
+    @NotNull
+    private static SameDiff computeIou(INDArray predictBoxes, INDArray truthBoxes) {
+        //构建SameDiff实例
+        SameDiff sd=SameDiff.create();
         //创建变量x、p
         SDVariable t= sd.var("t");
 
@@ -126,7 +147,7 @@ public class YoloUtils {
 
         sd.output(Collections.<String, INDArray>emptyMap(), "f");
 
-        return sd.getArrForVarName("f");
+        return sd;
     }
 
 
@@ -242,8 +263,8 @@ public class YoloUtils {
      */
     public static INDArray focal( INDArray labels, INDArray predict){
         float  alpha=1, gamma=2;
-        INDArray abs=Transforms.abs(labels.sub(predict));
-        return   Transforms.pow(abs,gamma).mul(alpha);
+        SameDiff sd = computeFocal(labels, predict, alpha, gamma);
+        return  sd.getArrForVarName("f");
     }
 
     /**
@@ -257,6 +278,19 @@ public class YoloUtils {
 
         float  alpha=1, gamma=2;
 
+        SameDiff sd = computeFocal(labels, predict, alpha, gamma);
+
+        Map<String,INDArray> gradients = sd.calculateGradients(null, "t", "p");
+        //对x求偏导
+        INDArray dLp = gradients.get("p");
+
+        return dLp;
+    }
+
+    @NotNull
+    private static SameDiff computeFocal(INDArray labels, INDArray predict, float alpha, float gamma) {
+        //构建SameDiff实例
+        SameDiff sd=SameDiff.create();
         //创建变量x、z
         SDVariable t= sd.var("t");
 
@@ -276,13 +310,7 @@ public class YoloUtils {
 
         sd.output(Collections.<String, INDArray>emptyMap(), "f");
 
-        //log.info(sd.getArrForVarName("f").toString());
-
-        Map<String,INDArray> gradients = sd.calculateGradients(null, "t", "p");
-        //对x求偏导
-        INDArray dLp = gradients.get("p");
-
-        return dLp;
+        return sd;
     }
 
 
@@ -294,19 +322,7 @@ public class YoloUtils {
      */
     public static INDArray sigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits) {
 
-        INDArray z=labels.dup();
-
-        INDArray x=logits.dup();
-
-        INDArray abs=Transforms.abs(x);
-
-        abs=Transforms.neg(abs);
-
-        abs=Transforms.exp(abs);
-
-        abs=abs.add(1);
-
-        return Transforms.max(x,0).sub(x.mul(z)).add(Transforms.log(abs));
+         return computeSigmoidCrossEntropyLossWithLogits(labels, logits).getArrForVarName("f");
     }
 
     /**
@@ -317,6 +333,20 @@ public class YoloUtils {
      * @return
      */
     public  static  INDArray gradientOfSigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits){
+
+        SameDiff sd=computeSigmoidCrossEntropyLossWithLogits(labels, logits);
+
+        Map<String,INDArray> gradients = sd.calculateGradients(null, "x", "z");
+        //对x求偏导
+        INDArray dLx = gradients.get("x");
+
+        return dLx;
+    }
+
+    private static SameDiff computeSigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits) {
+
+        //构建SameDiff实例
+        SameDiff sd=SameDiff.create();
         //创建变量x、z
         SDVariable z= sd.var("z");
 
@@ -352,17 +382,8 @@ public class YoloUtils {
 
         sd.output(Collections.<String, INDArray>emptyMap(), "f");
 
-        Map<String,INDArray> gradients = sd.calculateGradients(null, "x", "z");
-        //对x求偏导
-        INDArray dLx = gradients.get("x");
-
-        return dLx;
+        return sd;
     }
-
-
-
-
-
 
 
     public static INDArray derivativeOfIou(INDArray predictBoxes,INDArray truthBoxes,Boolean gIou){
