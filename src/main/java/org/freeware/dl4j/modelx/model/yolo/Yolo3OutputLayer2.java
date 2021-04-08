@@ -1,8 +1,10 @@
 package org.freeware.dl4j.modelx.model.yolo;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-
 import org.deeplearning4j.nn.api.layers.IOutputLayer;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.gradient.DefaultGradient;
@@ -35,13 +37,13 @@ import static org.nd4j.linalg.indexing.NDArrayIndex.all;
 
 
 @Slf4j
-public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguration> implements Serializable, IOutputLayer {
+public class Yolo3OutputLayer2 extends AbstractLayer<Yolo3OutputLayerConfiguration> implements Serializable, IOutputLayer {
 
     private static final Gradient EMPTY_GRADIENT = new DefaultGradient();
     @Setter @Getter
     protected INDArray labels;
 
-    public Yolo3OutputLayer(NeuralNetConfiguration conf, DataType networkDataType) {
+    public Yolo3OutputLayer2(NeuralNetConfiguration conf, DataType networkDataType) {
         super(conf, networkDataType);
     }
 
@@ -129,11 +131,11 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
     private INDArray computeConfidenceLoss(INDArray decodePredictConfidence, INDArray decodePredictBoxesXyWh, INDArray responseBoxesLabelConfidence, INDArray groundTruthBoxesXyWh,INDArray input) {
 
-        INDArray rawPredictConfidence= getPredictConfidence(input);
-
         INDArray responseBoxesBackgroundConfidence = getResponseBoxesBackgroundConfidence(decodePredictBoxesXyWh, responseBoxesLabelConfidence, groundTruthBoxesXyWh);
 
         INDArray confidenceFocal=YoloUtils.focal(responseBoxesLabelConfidence,decodePredictConfidence);
+
+        INDArray rawPredictConfidence= getPredictConfidence(input);
 
         INDArray confidenceLoss1= responseBoxesLabelConfidence.mul(YoloUtils.sigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence));
 
