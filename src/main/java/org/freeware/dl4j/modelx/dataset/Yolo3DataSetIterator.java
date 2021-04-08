@@ -263,7 +263,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
                         //[1,4] 增加一个维度
 						INDArray expandDimsScaledBoundingBox=Nd4j.expandDims(scaledBoundingBox,0);
                         //[3]计算当前边界框与三个先验框的IOU
-						INDArray scaledIou= YoloUtils.getIou(threeBoundingBoxPriors,expandDimsScaledBoundingBox);
+						INDArray scaledIou= YoloUtils.computeIou(threeBoundingBoxPriors,expandDimsScaledBoundingBox);
 
 						float[] scaledIouArray=scaledIou.toFloatVector();
 

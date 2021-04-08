@@ -86,9 +86,9 @@ public class YoloUtils {
 
         zero.setArray(Nd4j.zeros(shape));
 
-        SDVariable trueBoxesXy=t.get(SameDiffUtils.getLastDimensionPointFromZeroToTwo(t));
+        SDVariable trueBoxesXy=t.get(SameDiffUtils.getLastDimensionPointFromZeroToTwo(shape));
 
-        SDVariable trueBoxesWh=t.get(SameDiffUtils.getLastDimensionPointFromTwoToFour(t));
+        SDVariable trueBoxesWh=t.get(SameDiffUtils.getLastDimensionPointFromTwoToFour(shape));
 
         SDVariable trueBoxesWhHalf=trueBoxesWh.div("trueBoxesWhHalf",2);
 
@@ -96,9 +96,9 @@ public class YoloUtils {
 
         SDVariable trueBoxesMax=trueBoxesXy.add("trueBoxesMax",trueBoxesWhHalf);
 
-        SDVariable predictBoxesXy=p.get(SameDiffUtils.getLastDimensionPointFromZeroToTwo(p));
+        SDVariable predictBoxesXy=p.get(SameDiffUtils.getLastDimensionPointFromZeroToTwo(shape));
 
-        SDVariable predictBoxesWh=p.get(SameDiffUtils.getLastDimensionPointFromTwoToFour(p));
+        SDVariable predictBoxesWh=p.get(SameDiffUtils.getLastDimensionPointFromTwoToFour(shape));
 
         SDVariable predictBoxesWhHalf=predictBoxesWh.div("predictBoxesWhHalf",2);
 
@@ -112,15 +112,15 @@ public class YoloUtils {
 
         SDVariable intersectWh=sd.math().max(intersectMax.sub(intersectMin),zero);
 
-        SDVariable intersectW=intersectWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(0));
+        SDVariable intersectW=intersectWh.get(SameDiffUtils.getLastDimensionPoint(shape,0));
 
-        SDVariable intersectH=intersectWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(1));
+        SDVariable intersectH=intersectWh.get(SameDiffUtils.getLastDimensionPoint(shape,1));
 
         SDVariable intersectArea=intersectW.mul(intersectH);
 
-        SDVariable predictBoxesArea=  predictBoxesWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(0)).mul(predictBoxesWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(1)));
+        SDVariable predictBoxesArea=  predictBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,0)).mul(predictBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,1)));
 
-        SDVariable trueBoxesArea=  trueBoxesWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(0)).mul(trueBoxesWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(1)));
+        SDVariable trueBoxesArea=  trueBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,0)).mul(trueBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,1)));
 
         SDVariable iou=intersectArea.div("f",predictBoxesArea.add(trueBoxesArea).sub(intersectArea));
 

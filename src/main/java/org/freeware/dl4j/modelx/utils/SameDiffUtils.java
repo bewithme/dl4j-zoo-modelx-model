@@ -1,16 +1,18 @@
 package org.freeware.dl4j.modelx.utils;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.autodiff.samediff.SDIndex;
-import org.nd4j.autodiff.samediff.SDVariable;
+
 
 
 @Slf4j
 public class SameDiffUtils {
 
-    public static SDIndex[] getLastDimensionIndexes(SDVariable array, SDIndex lastDimensionIndex){
 
-        long[] shape=array.getShape();
+
+    @NotNull
+    private static SDIndex[] getLastDimensionIndexes(long[] shape,SDIndex lastDimensionIndex) {
 
         int length=shape.length;
 
@@ -26,13 +28,12 @@ public class SameDiffUtils {
         }
         indexes[length-1]=lastDimensionIndex;
 
-        return indexes ;
+        return indexes;
     }
 
 
-    public static SDIndex[] getLastTwoDimensionIndexes(SDVariable array, SDIndex firstToLastDimensionIndex,SDIndex secondToLastDimensionIndex){
 
-        long[] shape=array.getShape();
+    private static SDIndex[] getLastTwoDimensionIndexes(long[] shape,SDIndex firstToLastDimensionIndex, SDIndex secondToLastDimensionIndex) {
 
         int length=shape.length;
 
@@ -48,34 +49,33 @@ public class SameDiffUtils {
         indexes[length-1]=firstToLastDimensionIndex;
 
         indexes[length-2]=secondToLastDimensionIndex;
-
-        return indexes ;
+        return indexes;
     }
 
 
-    public static SDIndex[] getLastDimensionPointZero(SDVariable array){
-        return getLastDimensionIndexes(array,SDIndex.point(0));
+    public static SDIndex[] getLastDimensionPointZero(long[] shape){
+        return getLastDimensionIndexes(shape,SDIndex.point(0));
     }
-    public static SDIndex[] getLastDimensionPointOne(SDVariable array){
-        return getLastDimensionIndexes(array,SDIndex.point(1));
+    public static SDIndex[] getLastDimensionPointOne(long[] shape){
+        return getLastDimensionIndexes(shape,SDIndex.point(1));
     }
-    public static SDIndex[] getLastDimensionPointTwo(SDVariable array){
-        return getLastDimensionIndexes(array,SDIndex.point(2));
+    public static SDIndex[] getLastDimensionPointTwo(long[] shape){
+        return getLastDimensionIndexes(shape,SDIndex.point(2));
     }
-    public static SDIndex[] getLastDimensionPointThree(SDVariable array){
-        return getLastDimensionIndexes(array,SDIndex.point(3));
+    public static SDIndex[] getLastDimensionPointThree(long[] shape){
+        return getLastDimensionIndexes(shape,SDIndex.point(3));
     }
-    public static SDIndex[] getLastDimensionPointFromZeroToTwo(SDVariable array){
-        return getLastDimensionIndexes(array,SDIndex.interval(0,2));
+    public static SDIndex[] getLastDimensionPointFromZeroToTwo(long[] shape){
+        return getLastDimensionIndexes(shape,SDIndex.interval(0,2));
     }
-    public static SDIndex[] getLastDimensionPointFromTwoToFour(SDVariable array){
-        return getLastDimensionIndexes(array,SDIndex.interval(2,4));
+    public static SDIndex[] getLastDimensionPointFromTwoToFour(long[] shape){
+        return getLastDimensionIndexes(shape,SDIndex.interval(2,4));
     }
-    public static SDIndex[] getLastDimensionPoint(SDVariable array,long point){
-        return getLastDimensionIndexes(array,SDIndex.point(point));
+    public static SDIndex[] getLastDimensionPoint(long[] shape,long point){
+        return getLastDimensionIndexes(shape,SDIndex.point(point));
     }
 
-    public static SDIndex[] getLastTwoDimensionIndexes(SDVariable array, long firstToLastDimensionIndexFrom,long firstToLastDimensionIndexTo,int secondToLastDimensionIndexFrom,int secondToLastDimensionIndexTo) {
-        return getLastTwoDimensionIndexes(array,SDIndex.interval(firstToLastDimensionIndexFrom,firstToLastDimensionIndexTo),SDIndex.interval(secondToLastDimensionIndexFrom,secondToLastDimensionIndexTo));
+    public static SDIndex[] getLastTwoDimensionIndexes(long[] shape, long firstToLastDimensionIndexFrom,long firstToLastDimensionIndexTo,int secondToLastDimensionIndexFrom,int secondToLastDimensionIndexTo) {
+        return getLastTwoDimensionIndexes(shape,SDIndex.interval(firstToLastDimensionIndexFrom,firstToLastDimensionIndexTo),SDIndex.interval(secondToLastDimensionIndexFrom,secondToLastDimensionIndexTo));
     }
 }
