@@ -1,6 +1,7 @@
 package org.freeware.dl4j.modelx.utils;
 
 import lombok.extern.slf4j.Slf4j;
+import org.nd4j.autodiff.samediff.SDIndex;
 import org.nd4j.autodiff.samediff.SDVariable;
 import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -9,6 +10,7 @@ import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.ops.transforms.Transforms;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
@@ -54,121 +56,181 @@ public class YoloUtils {
 
 
 
+
+
     /**
      * 批量计算两个边界框的IOU
+     * 参考https://github.com/qqwweee/keras-yolo3/blob/master/yolo3/model.py
+     * 中的IOU实现
      * A∩B/A∪B
      * @param predictBoxes
      * @param truthBoxes
      * @return
      */
-    public  static INDArray getIou(INDArray predictBoxes,INDArray truthBoxes) {
+    public  static INDArray computeIou(INDArray predictBoxes,INDArray truthBoxes) {
 
-        INDArrayIndex[] indexCenterX=INDArrayUtils.getLastDimensionPointZero(predictBoxes);
-        INDArrayIndex[] indexCenterY=INDArrayUtils.getLastDimensionPointOne(predictBoxes);
-        INDArrayIndex[] indexW=INDArrayUtils.getLastDimensionPointTwo(predictBoxes);;
-        INDArrayIndex[] indexH=INDArrayUtils.getLastDimensionPointThree(predictBoxes);
-        INDArrayIndex[] indexCenterXy=INDArrayUtils.getLastDimensionPointFromZeroToTwo(predictBoxes);
-        INDArrayIndex[] indexWh=INDArrayUtils.getLastDimensionPointFromTwoToFour(predictBoxes);
+        //创建变量x、p
+        SDVariable t= sd.var("t");
 
-        //计算第一个边界框的面积
-        INDArray predictBoxesArea= predictBoxes.get(indexW).mul(predictBoxes.get(indexH));
-        //计算第二个边界框的面积
-        INDArray truthBoxesArea= truthBoxes.get(indexW).mul(truthBoxes.get(indexH));
-        //左上角坐标
-        INDArray predictBoxesLeftTop= predictBoxes.get(indexCenterXy).sub(predictBoxes.get(indexWh).mul(0.5));
-        //右下角坐标
-        INDArray predictBoxesRightBottom= predictBoxes.get(indexCenterXy).add(predictBoxes.get(indexWh).mul(0.5));
-        //转换为(top x,top y,bottom x, bottom y) 格式的bounding box
-        predictBoxes=Nd4j.concat(-1,predictBoxesLeftTop,predictBoxesRightBottom);
+        SDVariable p=sd.var("p");
 
-        INDArray truthBoxesLeftTop= truthBoxes.get(indexCenterXy).sub(truthBoxes.get(indexWh).mul(0.5));
+        SDVariable zero=sd.var("zero");
 
-        INDArray truthBoxesRightBottom= truthBoxes.get(indexCenterXy).add(truthBoxes.get(indexWh).mul(0.5));
+        t.setArray(truthBoxes);
 
-        truthBoxes=Nd4j.concat(-1,truthBoxesLeftTop,truthBoxesRightBottom);
+        p.setArray(predictBoxes);
 
-        INDArray boundingBoxesLeftTop= Transforms.max(predictBoxes.get(indexCenterXy),truthBoxes.get(indexCenterXy));
+        long[] shape=truthBoxes.shape();
 
-        INDArray boundingBoxesRightBottom=Transforms.min(predictBoxes.get(indexWh),truthBoxes.get(indexWh));
+        shape[shape.length-1]=2;
 
-        INDArray interSection=Transforms.max(boundingBoxesRightBottom.sub(boundingBoxesLeftTop),0.0);
+        zero.setArray(Nd4j.zeros(shape));
 
-        INDArray interArea=interSection.get(indexCenterX).mul(interSection.get(indexCenterY));
+        SDVariable trueBoxesXy=t.get(SameDiffUtils.getLastDimensionPointFromZeroToTwo(t));
 
-        INDArray unionArea=predictBoxesArea.add(truthBoxesArea).sub(interArea);
+        SDVariable trueBoxesWh=t.get(SameDiffUtils.getLastDimensionPointFromTwoToFour(t));
 
-        INDArray iou=interArea.mul(1.0).div(unionArea.add(1e-6));
+        SDVariable trueBoxesWhHalf=trueBoxesWh.div("trueBoxesWhHalf",2);
 
-        return iou;
+        SDVariable trueBoxesMin=trueBoxesXy.sub("trueBoxesMin",trueBoxesWhHalf);
+
+        SDVariable trueBoxesMax=trueBoxesXy.add("trueBoxesMax",trueBoxesWhHalf);
+
+        SDVariable predictBoxesXy=p.get(SameDiffUtils.getLastDimensionPointFromZeroToTwo(p));
+
+        SDVariable predictBoxesWh=p.get(SameDiffUtils.getLastDimensionPointFromTwoToFour(p));
+
+        SDVariable predictBoxesWhHalf=predictBoxesWh.div("predictBoxesWhHalf",2);
+
+        SDVariable predictBoxesMin=predictBoxesXy.sub("predictBoxesMin",predictBoxesWhHalf);
+
+        SDVariable predictBoxesMax=predictBoxesXy.add("predictBoxesMax",predictBoxesWhHalf);
+
+        SDVariable intersectMin=sd.math().max("intersectMin",trueBoxesMin,predictBoxesMin);
+
+        SDVariable intersectMax=sd.math().min("intersectMax",trueBoxesMax,predictBoxesMax);
+
+        SDVariable intersectWh=sd.math().max(intersectMax.sub(intersectMin),zero);
+
+        SDVariable intersectW=intersectWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(0));
+
+        SDVariable intersectH=intersectWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(1));
+
+        SDVariable intersectArea=intersectW.mul(intersectH);
+
+        SDVariable predictBoxesArea=  predictBoxesWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(0)).mul(predictBoxesWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(1)));
+
+        SDVariable trueBoxesArea=  trueBoxesWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(0)).mul(trueBoxesWh.get(SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.all(),SDIndex.point(1)));
+
+        SDVariable iou=intersectArea.div("f",predictBoxesArea.add(trueBoxesArea).sub(intersectArea));
+
+        sd.output(Collections.<String, INDArray>emptyMap(), "f");
+
+        return sd.getArrForVarName("f");
     }
 
 
     /**
      * 批量计算两个边界框的GIOU
      * C-AUB/
-     * @param predictBoxes [batchSize,gridSize,gridSize,boundingBoxPriorsQuantityPerGridCell,(x,y,h,w,confidence,classNum)]
+     * @param predictBoxes [batchSize,gridSize,gridSize,boundingBoxPriorsQuantityPerGridCell,(x,y,w,h,confidence,classNum)]
      * @param truthBoxes
      * @return
      */
     public   static INDArray getGIou(INDArray predictBoxes,INDArray truthBoxes) {
 
-        INDArrayIndex[] indexCenterX=INDArrayUtils.getLastDimensionPointZero(predictBoxes);
+        INDArrayIndex[] indexPointZero=INDArrayUtils.getLastDimensionPointZero(predictBoxes);
 
-        INDArrayIndex[] indexCenterY=INDArrayUtils.getLastDimensionPointOne(predictBoxes);
+        INDArrayIndex[] indexPointOne=INDArrayUtils.getLastDimensionPointOne(predictBoxes);
 
-        INDArrayIndex[] indexW=INDArrayUtils.getLastDimensionPointTwo(predictBoxes);;
+        INDArrayIndex[] indexPointTwo=INDArrayUtils.getLastDimensionPointTwo(predictBoxes);;
 
-        INDArrayIndex[] indexH=INDArrayUtils.getLastDimensionPointThree(predictBoxes);
+        INDArrayIndex[] indexPointThree=INDArrayUtils.getLastDimensionPointThree(predictBoxes);
 
-        INDArrayIndex[] indexCenterXy=INDArrayUtils.getLastDimensionPointFromZeroToTwo(predictBoxes);
+        INDArrayIndex[] indexZeroToTwo=INDArrayUtils.getLastDimensionPointFromZeroToTwo(predictBoxes);
 
-        INDArrayIndex[] indexWh=INDArrayUtils.getLastDimensionPointFromTwoToFour(predictBoxes);
-        //左上角坐标
-        INDArray predictBoxesLeftTop= predictBoxes.get(indexCenterXy).sub(predictBoxes.get(indexWh).mul(0.5));
-        //右下角坐标
-        INDArray predictBoxesRightBottom= predictBoxes.get(indexCenterXy).add(predictBoxes.get(indexWh).mul(0.5));
+        INDArrayIndex[] indexTwoToFour=INDArrayUtils.getLastDimensionPointFromTwoToFour(predictBoxes);
+
         //转换为(top x,top y,bottom x, bottom y) 格式的bounding box
-        predictBoxes=Nd4j.concat(-1,predictBoxesLeftTop,predictBoxesRightBottom);
-
-        INDArray truthBoxesLeftTop= truthBoxes.get(indexCenterXy).sub(truthBoxes.get(indexWh).mul(0.5));
-
-        INDArray truthBoxesRightBottom= truthBoxes.get(indexCenterXy).add(truthBoxes.get(indexWh).mul(0.5));
+        predictBoxes=convertToLeftTopBottomRight(predictBoxes);
         //转换为(top x,top y,bottom x, bottom y) 格式的bounding box
-        truthBoxes=Nd4j.concat(-1,truthBoxesLeftTop,truthBoxesRightBottom);
+        truthBoxes=convertToLeftTopBottomRight(truthBoxes);
         //确保左上角的坐标小于右下角的坐标
-        predictBoxes=Nd4j.concat(-1,Transforms.min(predictBoxes.get(indexCenterXy),predictBoxes.get(indexWh)),Transforms.max(predictBoxes.get(indexCenterXy),predictBoxes.get(indexWh)));
+        predictBoxes=restrictBoxes(predictBoxes);
         //确保左上角的坐标小于右下角的坐标
-        truthBoxes=Nd4j.concat(-1,Transforms.min(truthBoxes.get(indexCenterXy),truthBoxes.get(indexWh)),Transforms.max(truthBoxes.get(indexCenterXy),truthBoxes.get(indexWh)));
+        truthBoxes=restrictBoxes(truthBoxes);
+
+        INDArray predictBoxesW= predictBoxes.get(indexPointTwo).sub(predictBoxes.get(indexPointZero));
+
+        INDArray predictBoxesH= predictBoxes.get(indexPointThree).sub(predictBoxes.get(indexPointOne));
+
+        INDArray truthBoxesW=   truthBoxes.get(indexPointTwo).sub(truthBoxes.get(indexPointZero));
+
+        INDArray truthBoxesH=   truthBoxes.get(indexPointThree).sub(truthBoxes.get(indexPointOne));
+
         //计算第一个边界框的面积
-        INDArray predictBoxesArea= predictBoxes.get(indexW).sub(predictBoxes.get(indexCenterX)).mul(predictBoxes.get(indexH).sub(predictBoxes.get(indexCenterY)));
+        INDArray predictBoxesArea= predictBoxesW.mul(predictBoxesH);
         //计算第二个边界框的面积
-        INDArray truthBoxesArea=truthBoxes.get(indexW).sub(truthBoxes.get(indexCenterX)).mul(truthBoxes.get(indexH).sub(truthBoxes.get(indexCenterY)));
+        INDArray truthBoxesArea=truthBoxesW.mul(truthBoxesH);
 
-        INDArray boundingBoxesLeftTop= Transforms.max(predictBoxes.get(indexCenterXy),truthBoxes.get(indexCenterXy));
+        INDArray boundingBoxesLeftTop= Transforms.max(predictBoxes.get(indexZeroToTwo),truthBoxes.get(indexZeroToTwo));
 
-        INDArray boundingBoxesRightBottom=Transforms.min(predictBoxes.get(indexWh),truthBoxes.get(indexWh));
+        INDArray boundingBoxesRightBottom=Transforms.min(predictBoxes.get(indexTwoToFour),truthBoxes.get(indexTwoToFour));
 
         INDArray interSection=Transforms.max(boundingBoxesRightBottom.sub(boundingBoxesLeftTop),0.0);
 
-        INDArray interArea=interSection.get(indexCenterX).mul(interSection.get(indexCenterY));
+        INDArray interArea=interSection.get(indexPointZero).mul(interSection.get(indexPointOne));
 
         INDArray unionArea=predictBoxesArea.add(truthBoxesArea).sub(interArea);
 
         INDArray iou=interArea.div(unionArea.add(1e-6));
         //计算boxes1和boxes2的最小凸集框的左上角和右下角坐标
-        INDArray encloseBoundingBoxesLeftTop= Transforms.min(predictBoxes.get(indexCenterXy),truthBoxes.get(indexCenterXy));
+        INDArray encloseBoundingBoxesLeftTop= Transforms.min(predictBoxes.get(indexZeroToTwo),truthBoxes.get(indexZeroToTwo));
 
-        INDArray encloseBoundingBoxesRightBottom=Transforms.max(predictBoxes.get(indexWh),truthBoxes.get(indexWh));
+        INDArray encloseBoundingBoxesRightBottom=Transforms.max(predictBoxes.get(indexTwoToFour),truthBoxes.get(indexTwoToFour));
         //计算最小凸集的边长
         INDArray enclose=Transforms.max(encloseBoundingBoxesRightBottom.sub(encloseBoundingBoxesLeftTop),0);
         //计算最小凸集的面积
-        INDArray encloseArea=enclose.get(indexCenterX).mul(enclose.get(indexCenterY));
+        INDArray encloseArea=enclose.get(indexPointZero).mul(enclose.get(indexPointOne));
         //【最小凸集内不属于两个框的区域】与【最小凸集】的比值
         INDArray rate=encloseArea.sub(unionArea).mul(1.0).div(encloseArea);
 
         INDArray gIou=iou.sub(rate);
 
         return gIou;
+    }
+
+    /**
+     * x,y,w,h 转换为(top x,top y,bottom x, bottom y) 格式的bounding box
+     * @param boxes
+     * @return
+     */
+    private static INDArray convertToLeftTopBottomRight(INDArray boxes){
+
+        INDArrayIndex[] indexZeroToTwo=INDArrayUtils.getLastDimensionPointFromZeroToTwo(boxes);
+
+        INDArrayIndex[] indexTwoToFour=INDArrayUtils.getLastDimensionPointFromTwoToFour(boxes);
+        //左上角坐标
+        INDArray boxesLeftTop= boxes.get(indexZeroToTwo).sub(boxes.get(indexTwoToFour).mul(0.5));
+        //右下角坐标
+        INDArray boxesRightBottom= boxes.get(indexZeroToTwo).add(boxes.get(indexTwoToFour).mul(0.5));
+        //转换为(top x,top y,bottom x, bottom y) 格式的bounding box
+        return Nd4j.concat(-1,boxesLeftTop,boxesRightBottom);
+    }
+
+    /**
+     * 确保左上角的坐标小于右下角的坐标
+     * @param boxes
+     * @return
+     */
+    private static INDArray restrictBoxes(INDArray boxes){
+
+        INDArrayIndex[] indexZeroToTwo=INDArrayUtils.getLastDimensionPointFromZeroToTwo(boxes);
+
+        INDArrayIndex[] indexTwoToFour=INDArrayUtils.getLastDimensionPointFromTwoToFour(boxes);
+
+        return Nd4j.concat(-1,Transforms.min(boxes.get(indexZeroToTwo),boxes.get(indexTwoToFour)),Transforms.max(boxes.get(indexZeroToTwo),boxes.get(indexTwoToFour)));
+
     }
 
 
