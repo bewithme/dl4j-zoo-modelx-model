@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.nd4j.autodiff.samediff.SDIndex;
 import org.nd4j.autodiff.samediff.SDVariable;
 
-import java.util.Arrays;
 
 @Slf4j
 public class SameDiffUtils {
@@ -12,8 +11,6 @@ public class SameDiffUtils {
     public static SDIndex[] getLastDimensionIndexes(SDVariable array, SDIndex lastDimensionIndex){
 
         long[] shape=array.getShape();
-
-        log.info("--->"+Arrays.toString(shape));
 
         int length=shape.length;
 
@@ -36,8 +33,6 @@ public class SameDiffUtils {
     public static SDIndex[] getLastTwoDimensionIndexes(SDVariable array, SDIndex firstToLastDimensionIndex,SDIndex secondToLastDimensionIndex){
 
         long[] shape=array.getShape();
-
-        log.info("--->>"+Arrays.toString(shape));
 
         int length=shape.length;
 
