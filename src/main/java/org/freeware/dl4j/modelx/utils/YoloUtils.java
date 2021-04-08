@@ -1,15 +1,23 @@
 package org.freeware.dl4j.modelx.utils;
 
 import lombok.extern.slf4j.Slf4j;
+import org.nd4j.autodiff.samediff.SDVariable;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.ops.transforms.Transforms;
 
+import java.util.Collections;
+import java.util.Map;
+
 @Slf4j
 public class YoloUtils {
 
+
+    //构建SameDiff实例
+    public  static  SameDiff sd=SameDiff.create();
 
     /**
      * 获取每个单元格相对于最左上角的坐标
@@ -165,27 +173,54 @@ public class YoloUtils {
 
 
     /**
-     * focal=|truth-predict|^2
-     * @param truth
+     * focal=|labels-predict|^2
+     * @param labels
      * @param predict
      * @return
      */
-    public static INDArray focal( INDArray truth, INDArray predict){
+    public static INDArray focal( INDArray labels, INDArray predict){
         float  alpha=1, gamma=2;
-        INDArray abs=Transforms.abs(truth.sub(predict));
+        INDArray abs=Transforms.abs(labels.sub(predict));
         return   Transforms.pow(abs,gamma).mul(alpha);
     }
 
     /**
-     * focal的导数
-     * delta focal=-2(truth-predict)
-     * @param truth
+     * focal的梯度
+     *
+     * @param labels
      * @param predict
      * @return
      */
-    public static INDArray derivativeOfFocal( INDArray truth, INDArray predict){
+    public static INDArray gradientOfOfFocal(INDArray labels, INDArray predict){
 
-        return truth.sub(predict).mul(-2);
+        float  alpha=1, gamma=2;
+
+        //创建变量x、z
+        SDVariable t= sd.var("t");
+
+        SDVariable p=sd.var("p");
+
+        t.setArray(labels);
+
+        p.setArray(predict);
+
+        SDVariable tSubB=sd.math().sub(t,p);
+
+        SDVariable absSubB=sd.math().abs(tSubB);
+
+        SDVariable powAbsSubB=sd.math().pow(absSubB,gamma);
+
+        SDVariable f=powAbsSubB.mul("f",alpha);
+
+        sd.output(Collections.<String, INDArray>emptyMap(), "f");
+
+        //log.info(sd.getArrForVarName("f").toString());
+
+        Map<String,INDArray> gradients = sd.calculateGradients(null, "t", "p");
+        //对x求偏导
+        INDArray dLp = gradients.get("p");
+
+        return dLp;
     }
 
 
@@ -213,58 +248,59 @@ public class YoloUtils {
     }
 
     /**
+     * max(x, 0) - x * z + log(1 + exp(-abs(x)))
      * SigmoidCrossEntropyLossWithLogits的导数
      * @param labels
      * @param logits
      * @return
      */
-    public  static  INDArray derivativeOfSigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits){
+    public  static  INDArray gradientOfSigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits){
+        //创建变量x、z
+        SDVariable z= sd.var("z");
 
-        INDArray z=labels.dup();
+        SDVariable x=sd.var("x");
 
-        INDArray x=logits.dup();
+        SDVariable zero=sd.var("zero");
 
-        INDArray dividend=Transforms.neg(Transforms.exp(Transforms.neg(x)));
+        SDVariable one=sd.var("one");
 
-        INDArray divisor=Transforms.exp(Transforms.neg(x)).add(1).mul(Math.log10(Math.E));
+        zero.setArray(Nd4j.zeros(logits.shape()));
 
-        return  Transforms.neg(z).add(1.0).add(dividend.mul(divisor));
+        one.setArray(Nd4j.ones(logits.shape()));
+
+        z.setArray(labels);
+
+        x.setArray(logits);
+
+        SDVariable max=sd.math().max(x, zero);
+
+        SDVariable xz=z.mul(x);
+
+        SDVariable absX=sd.math().abs(x);
+
+        SDVariable negAbsX=sd.math().neg(absX);
+
+        SDVariable expNegAbsX=sd.math().exp(negAbsX);
+
+        SDVariable onePlusExpNegAbsX=one.add(expNegAbsX);
+
+        SDVariable logOnePlusExpNegAbsX=sd.math().log(onePlusExpNegAbsX);
+
+        SDVariable f=max.sub(xz).add("f",logOnePlusExpNegAbsX);
+
+        sd.output(Collections.<String, INDArray>emptyMap(), "f");
+
+        Map<String,INDArray> gradients = sd.calculateGradients(null, "x", "z");
+        //对x求偏导
+        INDArray dLx = gradients.get("x");
+
+        return dLx;
     }
 
 
 
 
 
-    private static INDArray convertToTopBottomLeftRight(INDArray boxes){
-
-        INDArray x=boxes.get(INDArrayUtils.getLastDimensionPointZero(boxes));
-
-        INDArray y=boxes.get(INDArrayUtils.getLastDimensionPointOne(boxes));
-
-        INDArray w=boxes.get(INDArrayUtils.getLastDimensionPointTwo(boxes));
-
-        INDArray h=boxes.get(INDArrayUtils.getLastDimensionPointThree(boxes));
-
-        x=Nd4j.expandDims(x,4);
-
-        y=Nd4j.expandDims(y,4);
-
-        w=Nd4j.expandDims(w,4);
-
-        h=Nd4j.expandDims(h,4);
-
-        INDArray t=y.sub(h.div(2));
-
-        INDArray b=y.add(h.div(2));
-
-        INDArray l=x.sub(w.div(2));
-
-        INDArray r=x.add(w.div(2));
-
-        INDArray retArray=Nd4j.concat(-1,t,b,l,r);
-
-        return retArray;
-    }
 
 
     public static INDArray derivativeOfIou(INDArray predictBoxes,INDArray truthBoxes,Boolean gIou){
@@ -426,5 +462,37 @@ public class YoloUtils {
         return new float[]{x,y,w,h};
     }
 
+
+
+    private static INDArray convertToTopBottomLeftRight(INDArray boxes){
+
+        INDArray x=boxes.get(INDArrayUtils.getLastDimensionPointZero(boxes));
+
+        INDArray y=boxes.get(INDArrayUtils.getLastDimensionPointOne(boxes));
+
+        INDArray w=boxes.get(INDArrayUtils.getLastDimensionPointTwo(boxes));
+
+        INDArray h=boxes.get(INDArrayUtils.getLastDimensionPointThree(boxes));
+
+        x=Nd4j.expandDims(x,4);
+
+        y=Nd4j.expandDims(y,4);
+
+        w=Nd4j.expandDims(w,4);
+
+        h=Nd4j.expandDims(h,4);
+
+        INDArray t=y.sub(h.div(2));
+
+        INDArray b=y.add(h.div(2));
+
+        INDArray l=x.sub(w.div(2));
+
+        INDArray r=x.add(w.div(2));
+
+        INDArray retArray=Nd4j.concat(-1,t,b,l,r);
+
+        return retArray;
+    }
 
 }

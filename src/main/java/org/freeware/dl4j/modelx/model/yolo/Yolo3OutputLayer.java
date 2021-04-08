@@ -16,7 +16,6 @@ import org.jetbrains.annotations.NotNull;
 import org.nd4j.common.base.Preconditions;
 import org.nd4j.common.primitives.Pair;
 import org.nd4j.linalg.activations.IActivation;
-import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.nd4j.linalg.activations.impl.ActivationLReLU;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -124,8 +123,8 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     }
 
 
-    private INDArray derivativeOfClassLoss(INDArray responseBoxLabelConfidence, INDArray labelClassOneHot, INDArray rawPredictClassOneHot) {
-        return responseBoxLabelConfidence.mul(YoloUtils.derivativeOfSigmoidCrossEntropyLossWithLogits(labelClassOneHot, rawPredictClassOneHot));
+    private INDArray gradientOfClassLoss(INDArray responseBoxLabelConfidence, INDArray labelClassOneHot, INDArray rawPredictClassOneHot) {
+        return responseBoxLabelConfidence.mul(YoloUtils.gradientOfSigmoidCrossEntropyLossWithLogits(labelClassOneHot, rawPredictClassOneHot));
     }
 
     private INDArray computeConfidenceLoss(INDArray decodePredictConfidence, INDArray decodePredictBoxesXyWh, INDArray responseBoxesLabelConfidence, INDArray groundTruthBoxesXyWh,INDArray input) {
@@ -188,11 +187,11 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         INDArray confidenceFocal=YoloUtils.focal(responseBoxesLabelConfidence,decodePredictConfidence);
 
-        INDArray derivativeOfConfidenceFocal= YoloUtils.derivativeOfFocal(responseBoxesLabelConfidence, decodePredictConfidence);
+        INDArray derivativeOfConfidenceFocal= YoloUtils.gradientOfOfFocal(responseBoxesLabelConfidence, decodePredictConfidence);
 
         INDArray sceLoss=YoloUtils.sigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence);
 
-        INDArray derivativeOfSceLoss=YoloUtils.derivativeOfSigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence);
+        INDArray derivativeOfSceLoss=YoloUtils.gradientOfSigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence);
 
         INDArray d1=derivativeOfConfidenceFocal.mul(sceLoss).add(confidenceFocal.mul(derivativeOfSceLoss)).mul(responseBoxesLabelConfidence);
 
@@ -445,7 +444,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         //置信度损失梯度
         INDArray derivativeOfConfidenceLoss = derivativeOfConfidenceLoss(decodePredictConfidence, decodePredictBoxesXyWh, responseBoxLabelConfidence, numberOfPriorBoundingBoxPerGridCell,reshapeInput);
         //分类损失梯度
-        INDArray derivativeOfClassLoss = derivativeOfClassLoss(responseBoxLabelConfidence, labelClassOneHot, rawPredictClassOneHot);
+        INDArray derivativeOfClassLoss = gradientOfClassLoss(responseBoxLabelConfidence, labelClassOneHot, rawPredictClassOneHot);
 
         epsilon=Nd4j.concat(-1,derivativeOfgIouLoss,derivativeOfConfidenceLoss,derivativeOfClassLoss);
         //[batch, grid_h, grid_w, 3, 4+1+nb_class]--> [batch, grid_h, grid_w, 3*(4+1+nb_class)]
