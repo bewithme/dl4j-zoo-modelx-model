@@ -78,7 +78,7 @@ public class YoloUtils {
 
         SameDiff sd = computeIou(predictBoxes, truthBoxes);
 
-        Map<String,INDArray> gradients = sd.calculateGradients(null, "t", "p");
+        Map<String,INDArray> gradients = sd.calculateGradients(null,  "p");
         //对x求偏导
         INDArray dLx = gradients.get("p");
 

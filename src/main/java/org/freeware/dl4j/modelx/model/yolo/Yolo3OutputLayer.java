@@ -328,6 +328,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     }
 
 
+
     private INDArray getPredictClassOneHot(INDArray input, long classOneHotLength) {
         INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(5,5+classOneHotLength));
         return input.get(indexes);

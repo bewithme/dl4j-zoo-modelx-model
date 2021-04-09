@@ -14,7 +14,6 @@ import org.deeplearning4j.nn.workspace.ArrayType;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.freeware.dl4j.modelx.utils.INDArrayUtils;
 import org.freeware.dl4j.modelx.utils.YoloUtils;
-import org.jetbrains.annotations.NotNull;
 import org.nd4j.common.base.Preconditions;
 import org.nd4j.common.primitives.Pair;
 import org.nd4j.linalg.activations.IActivation;
@@ -28,6 +27,9 @@ import org.nd4j.linalg.indexing.BooleanIndexing;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.indexing.conditions.Conditions;
+import org.nd4j.linalg.lossfunctions.ILossFunction;
+import org.nd4j.linalg.lossfunctions.impl.LossBinaryXENT;
+import org.nd4j.linalg.lossfunctions.impl.LossL2;
 import org.nd4j.linalg.ops.transforms.Transforms;
 
 import java.io.Serializable;
@@ -80,190 +82,43 @@ public class Yolo3OutputLayer2 extends AbstractLayer<Yolo3OutputLayerConfigurati
         long stride=inputSize/gridHeight;
         //（输入）预测值编码
         DecodeResult decodeResult=decode(reshapeInput,priorBoundingBoxes,classOneHotLength,gridHeight,batchSize,stride);
-        //解码置信度
-        INDArray decodePredictConfidence=decodeResult.getDecodePredictConfidence();
         //拼接解码的中心点坐标与宽高
         INDArray decodePredictBoxesXyWh=decodeResult.getDecodePredictBoxesXyWh();
-        //标签的边界框信息
-        INDArray labelXyWh= getLabelXyWh();
+
+        INDArray boxLossScale=getBoxLossScale(inputSize);
         //标签置信度
-        INDArray responseBoxLabelConfidence= getLabelConfidence();
-        //标签置分类
-        INDArray labelClassOneHot= getLabelClassOneHot(classOneHotLength);
-        //输入）预测分类
-        INDArray rawPredictClassOneHot= getPredictClassOneHot(reshapeInput, classOneHotLength);
+        INDArray objectMask= getLabelConfidence();
         //未处理真实标签
         INDArray groundTruthBoxesXyWh= getGroundTruthBoxesXyWh(numberOfPriorBoundingBoxPerGridCell);
-        //giou损失
-        INDArray gIouLoss = computeGIouLoss(inputSize, decodePredictBoxesXyWh, labelXyWh, responseBoxLabelConfidence);
-        //置信度损失
-        INDArray confidenceLoss = computeConfidenceLoss(decodePredictConfidence, decodePredictBoxesXyWh, responseBoxLabelConfidence, groundTruthBoxesXyWh,reshapeInput);
-        //分类损失
-        INDArray classLoss = computeClassLoss(responseBoxLabelConfidence, labelClassOneHot, rawPredictClassOneHot);
-        //shape=[batchSize]
-        gIouLoss=gIouLoss.sum(1,2,3,4);
-        //shape=[batchSize]
-        confidenceLoss=confidenceLoss.sum(1,2,3,4);
-        //shape=[batchSize]
-        classLoss=classLoss.sum(1,2,3,4);
-        //shape=1
-        gIouLoss=gIouLoss.mean();
-        //shape=1
-        confidenceLoss=confidenceLoss.mean();
-        //shape=1
-        classLoss=classLoss.mean();
 
-        INDArray totalScoreArray=gIouLoss.add(confidenceLoss).add(classLoss);
+        INDArray ignoreMask=getIgnoreMask(decodePredictBoxesXyWh,objectMask,groundTruthBoxesXyWh);
+        //标签置分类
+        INDArray labelClassOneHot= getLabelClassOneHot(classOneHotLength);
 
-        double totalScore=totalScoreArray.sumNumber().doubleValue();
+        INDArray xyLoss=computeXyLoss(objectMask,boxLossScale,getLabelXy(),decodeResult.getDecodePredictBoxesXy());
+
+        INDArray whLoss=computeWhLoss(objectMask,boxLossScale,getLabelWh(),decodeResult.getDecodePredictBoxesWh());
+
+        INDArray confidentLoss=computeConfidenceLoss(objectMask,ignoreMask,decodeResult.getDecodePredictConfidence());
+
+        INDArray classLoss= computeClassLoss(objectMask,labelClassOneHot,decodeResult.getDecodePredictClassOneHot());
+
+        double totalScore=xyLoss.sumNumber().doubleValue()+whLoss.sumNumber().doubleValue()+confidentLoss.sumNumber().doubleValue()+classLoss.sumNumber().doubleValue();
 
         return totalScore;
     }
 
-    private INDArray computeClassLoss(INDArray responseBoxLabelConfidence, INDArray labelClassOneHot, INDArray rawPredictClassOneHot) {
-        return responseBoxLabelConfidence.mul(YoloUtils.sigmoidCrossEntropyLossWithLogits(labelClassOneHot, rawPredictClassOneHot));
-    }
-
-
-    private INDArray gradientOfClassLoss(INDArray responseBoxLabelConfidence, INDArray labelClassOneHot, INDArray rawPredictClassOneHot) {
-        return responseBoxLabelConfidence.mul(YoloUtils.gradientOfSigmoidCrossEntropyLossWithLogits(labelClassOneHot, rawPredictClassOneHot));
-    }
-
-    private INDArray computeConfidenceLoss(INDArray decodePredictConfidence, INDArray decodePredictBoxesXyWh, INDArray responseBoxesLabelConfidence, INDArray groundTruthBoxesXyWh,INDArray input) {
-
-        INDArray responseBoxesBackgroundConfidence = getResponseBoxesBackgroundConfidence(decodePredictBoxesXyWh, responseBoxesLabelConfidence, groundTruthBoxesXyWh);
-
-        INDArray confidenceFocal=YoloUtils.focal(responseBoxesLabelConfidence,decodePredictConfidence);
-
-        INDArray rawPredictConfidence= getPredictConfidence(input);
-
-        INDArray confidenceLoss1= responseBoxesLabelConfidence.mul(YoloUtils.sigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence));
-
-        INDArray confidenceLoss2= responseBoxesBackgroundConfidence.mul(YoloUtils.sigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence));
-
-        return confidenceFocal.mul(confidenceLoss1.add(confidenceLoss2));
-    }
-
-    private INDArray getResponseBoxesBackgroundConfidence(INDArray decodePredictBoxesXyWh, INDArray responseBoxesLabelConfidence, INDArray groundTruthBoxesXyWh) {
-
-        //shape=[batchSize,gridSize,gridSize,3,4]->[batchSize,gridSize,gridSize,3,1,4]
-        INDArray decodePredictBoxesXyWhSixD= Nd4j.expandDims(decodePredictBoxesXyWh,4);
-        // [batchSize,numberOfPriorBoundingBoxPerGridCell-3,4]->[batchSize,1,1,1,numberOfPriorBoundingBoxPerGridCell-3,4]
-        INDArray groundTruthBoxesXyWhSixD = expandDimsToSix(groundTruthBoxesXyWh);
-        //[batchSize,gridSize,gridSize,3,numberOfPriorBoundingBoxPerGridCell-3]
-        INDArray iou= YoloUtils.getIou(decodePredictBoxesXyWhSixD,groundTruthBoxesXyWhSixD);
-
-        INDArray maxIou = getMaxIou(iou);
-
-        return Transforms.neg(responseBoxesLabelConfidence).add(1.0).mul(maxIou);
-    }
-
-    /**
-     *
-     * @param decodePredictBoxesXyWh=[N,X,Y,A,4]
-     * @param responseBoxesLabelConfidence=[N,X,Y,,4]
-     * @param groundTruthBoxesXyWh
-     * @return
-     */
-    private INDArray getDerivativeOfResponseBoxesBackgroundConfidence(INDArray decodePredictBoxesXyWh, INDArray responseBoxesLabelConfidence, INDArray groundTruthBoxesXyWh) {
-
-        //[batchSize,gridSize,gridSize,3,numberOfPriorBoundingBoxPerGridCell-3]
-        INDArray iou= YoloUtils.derivativeOfIou(decodePredictBoxesXyWh, groundTruthBoxesXyWh,Boolean.FALSE);
-
-        INDArray maxIou = getMaxIou(iou);
-
-        return Transforms.neg(responseBoxesLabelConfidence).add(1.0).mul(maxIou);
-    }
-
-    private INDArray derivativeOfConfidenceLoss(INDArray decodePredictConfidence, INDArray decodePredictBoxesXyWh, INDArray responseBoxesLabelConfidence, long numberOfPriorBoundingBoxPerGridCell,INDArray input) {
-        //未处理真实标签
-        INDArray groundTruthBoxesXyWhForDerivative= getGroundTruthBoxesXyWhForDerivative(numberOfPriorBoundingBoxPerGridCell);
-        //未处理真实标签
-        INDArray groundTruthBoxesXyWh= getGroundTruthBoxesXyWh(numberOfPriorBoundingBoxPerGridCell);
-        //未编码预测置信度
-        INDArray rawPredictConfidence= getPredictConfidence(input);
-
-        INDArray responseBoxesBackgroundConfidence = getResponseBoxesBackgroundConfidence(decodePredictBoxesXyWh, responseBoxesLabelConfidence, groundTruthBoxesXyWh);
-
-        INDArray derivativeOfResponseBoxesBackgroundConfidence = getDerivativeOfResponseBoxesBackgroundConfidence(decodePredictBoxesXyWh, responseBoxesLabelConfidence, groundTruthBoxesXyWhForDerivative);
-
-        INDArray confidenceFocal=YoloUtils.focal(responseBoxesLabelConfidence,decodePredictConfidence);
-
-        INDArray derivativeOfConfidenceFocal= YoloUtils.gradientOfOfFocal(responseBoxesLabelConfidence, decodePredictConfidence);
-
-        INDArray sceLoss=YoloUtils.sigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence);
-
-        INDArray derivativeOfSceLoss=YoloUtils.gradientOfSigmoidCrossEntropyLossWithLogits(responseBoxesLabelConfidence, rawPredictConfidence);
-
-        INDArray d1=derivativeOfConfidenceFocal.mul(sceLoss).add(confidenceFocal.mul(derivativeOfSceLoss)).mul(responseBoxesLabelConfidence);
-
-        INDArray d2=derivativeOfConfidenceFocal.mul(responseBoxesBackgroundConfidence).mul(sceLoss)
-                //.add(confidenceFocal.mul(0).mul(sceLoss))
-                .add(confidenceFocal.mul(responseBoxesBackgroundConfidence).mul(derivativeOfSceLoss));
-
-        return d1.add(d2);
-    }
-
-
-
-    @NotNull
-    private INDArray getMaxIou(INDArray iou) {
-        //[batchSize,gridSize,gridSize,3]
-        INDArray maxIou=iou.max(-1);
-        //[batchSize,gridSize,gridSize,3,1]
-        maxIou= Nd4j.expandDims(maxIou,4);
-
-        float iouLossThreshold=0.5f;
-
-        BooleanIndexing.replaceWhere(maxIou,1, Conditions.lessThan(iouLossThreshold));
-
-        BooleanIndexing.replaceWhere(maxIou,0, Conditions.greaterThan(iouLossThreshold));
-
-        return maxIou;
-    }
-
-    /**
-     * 扩充维度到[batchSize,1,1,1,numberOfPriorBoundingBoxPerGridCell-3,4]
-     * @param groundTruthBoxesXyWh
-     * @return
-     */
-    private INDArray expandDimsToSix(INDArray groundTruthBoxesXyWh) {
-
-        groundTruthBoxesXyWh= Nd4j.expandDims(groundTruthBoxesXyWh,1);
-
-        groundTruthBoxesXyWh=Nd4j.expandDims(groundTruthBoxesXyWh,1);
-        //[batchSize,numberOfPriorBoundingBoxPerGridCell-3,4]->[batchSize,1,1,1,numberOfPriorBoundingBoxPerGridCell-3,4]
-        groundTruthBoxesXyWh=Nd4j.expandDims(groundTruthBoxesXyWh,1);
-
-        return groundTruthBoxesXyWh;
-    }
-
-    private INDArray computeGIouLoss(long inputSize, INDArray decodePredictBoxesXyWh, INDArray labelXyWh, INDArray responseBoxLabelConfidence) {
-
-        INDArray gIou= YoloUtils.getGIou(decodePredictBoxesXyWh,labelXyWh);
-
-        gIou= Nd4j.expandDims(gIou,4);
+    private INDArray getBoxLossScale(long inputSize) {
+        //标签的边界框信息
+        INDArray labelXyWh= getLabelXyWh();
 
         INDArray labelBoxW= getLabelBoxW(labelXyWh);
 
         INDArray labelBoxH= getLabelBoxH(labelXyWh);
 
-        INDArray lossScale= Transforms.neg(labelBoxW.mul(labelBoxH).mul(1.0).div(inputSize*inputSize)).add(2);
+        INDArray boxLossScale= Transforms.neg(labelBoxW.mul(labelBoxH).mul(1.0).div(inputSize*inputSize)).add(2);
 
-        return responseBoxLabelConfidence.mul(lossScale).mul(Transforms.neg(gIou).add(1));
-    }
-
-    private INDArray derivativeOfGIouLoss(long inputSize, INDArray decodePredictBoxesXyWh, INDArray labelXyWh, INDArray responseBoxLabelConfidence){
-
-        INDArray gIou= YoloUtils.derivativeOfIou(decodePredictBoxesXyWh,labelXyWh,Boolean.TRUE);
-
-        INDArray labelBoxW= getLabelBoxW(labelXyWh);
-
-        INDArray labelBoxH= getLabelBoxH(labelXyWh);
-
-        INDArray lossScale= Transforms.neg(labelBoxW.mul(labelBoxH).mul(1.0).div(inputSize*inputSize)).add(2);
-
-        return responseBoxLabelConfidence.mul(lossScale).mul(Transforms.neg(gIou));
+        return boxLossScale;
     }
 
 
@@ -292,6 +147,180 @@ public class Yolo3OutputLayer2 extends AbstractLayer<Yolo3OutputLayerConfigurati
         return new DecodeResult(decodePredictBoxesXy,decodePredictBoxesWh,decodePredictConfidence,decodePredictClassOneHot,decodePredictBoxesXyWh);
     }
 
+    private INDArray getIgnoreMask(INDArray decodePredictBoxesXyWh, INDArray objectMask, INDArray groundTruthBoxesXyWh) {
+
+        //shape=[batchSize,gridSize,gridSize,3,4]->[batchSize,gridSize,gridSize,3,1,4]
+        INDArray decodePredictBoxesXyWhSixD= Nd4j.expandDims(decodePredictBoxesXyWh,4);
+        // [batchSize,numberOfPriorBoundingBoxPerGridCell-3,4]->[batchSize,1,1,1,numberOfPriorBoundingBoxPerGridCell-3,4]
+        INDArray groundTruthBoxesXyWhSixD = expandDimsToSix(groundTruthBoxesXyWh);
+        //[batchSize,gridSize,gridSize,3,numberOfPriorBoundingBoxPerGridCell-3]
+        INDArray iou= YoloUtils.getIou(decodePredictBoxesXyWhSixD,groundTruthBoxesXyWhSixD);
+
+        INDArray maxIou = getMaxIou(iou);
+
+        return Transforms.neg(objectMask).add(1.0).mul(maxIou);
+    }
+
+    private INDArray getMaxIou(INDArray iou) {
+        //[batchSize,gridSize,gridSize,3]
+        INDArray maxIou=iou.max(-1);
+        //[batchSize,gridSize,gridSize,3,1]
+        maxIou= Nd4j.expandDims(maxIou,4);
+
+        float iouLossThreshold=0.5f;
+
+        BooleanIndexing.replaceWhere(maxIou,1, Conditions.lessThan(iouLossThreshold));
+
+        BooleanIndexing.replaceWhere(maxIou,0, Conditions.greaterThan(iouLossThreshold));
+
+        return maxIou;
+    }
+    /**
+     * 扩充维度到[batchSize,1,1,1,numberOfPriorBoundingBoxPerGridCell-3,4]
+     * @param groundTruthBoxesXyWh
+     * @return
+     */
+    private INDArray expandDimsToSix(INDArray groundTruthBoxesXyWh) {
+
+        groundTruthBoxesXyWh= Nd4j.expandDims(groundTruthBoxesXyWh,1);
+
+        groundTruthBoxesXyWh=Nd4j.expandDims(groundTruthBoxesXyWh,1);
+        //[batchSize,numberOfPriorBoundingBoxPerGridCell-3,4]->[batchSize,1,1,1,numberOfPriorBoundingBoxPerGridCell-3,4]
+        groundTruthBoxesXyWh=Nd4j.expandDims(groundTruthBoxesXyWh,1);
+
+        return groundTruthBoxesXyWh;
+    }
+
+    /**
+     * 计算XY损失
+     * @param objectMask
+     * @param boxLossScale
+     * @param rawTrueXy
+     * @param rawPredictXy
+     * @return
+     */
+    private INDArray computeXyLoss(INDArray objectMask ,INDArray boxLossScale,INDArray rawTrueXy,INDArray rawPredictXy){
+
+        ILossFunction lossFunction=new LossBinaryXENT();
+
+       return  objectMask.mul(boxLossScale).mul(lossFunction.computeScoreArray(rawTrueXy,rawPredictXy,new ActivationLReLU(),null));
+    }
+
+    /**
+     * 计算XY损失梯度
+     * @param objectMask
+     * @param boxLossScale
+     * @param rawTrueXy
+     * @param rawPredictXy
+     * @return
+     */
+    private INDArray computeGradientOfXyLoss(INDArray objectMask ,INDArray boxLossScale,INDArray rawTrueXy,INDArray rawPredictXy){
+
+        ILossFunction lossFunction=new LossBinaryXENT();
+
+        return  objectMask.mul(boxLossScale).mul(lossFunction.computeGradient(rawTrueXy,rawPredictXy,new ActivationLReLU(),null));
+    }
+
+    /**
+     *  计算WH损失
+     * @param objectMask
+     * @param boxLossScale
+     * @param rawTrueWh
+     * @param rawPredictWh
+     * @return
+     */
+    private INDArray computeWhLoss(INDArray objectMask ,INDArray boxLossScale,INDArray rawTrueWh,INDArray rawPredictWh){
+
+        ILossFunction lossFunction=new LossL2();
+
+        return  objectMask.mul(boxLossScale).mul(0.5).mul(lossFunction.computeScoreArray(rawTrueWh,rawPredictWh,new ActivationLReLU(),null));
+    }
+
+    /**
+     * 计算WH损失梯度
+     * @param objectMask
+     * @param boxLossScale
+     * @param rawTrueWh
+     * @param rawPredictWh
+     * @return
+     */
+    private INDArray computeGradientOfWhLoss(INDArray objectMask ,INDArray boxLossScale,INDArray rawTrueWh,INDArray rawPredictWh){
+
+        ILossFunction lossFunction=new LossL2();
+
+        return  objectMask.mul(boxLossScale).mul(0.5).mul(lossFunction.computeGradient(rawTrueWh,rawPredictWh,new ActivationLReLU(),null));
+    }
+
+
+    /**
+     * 计算置信度损失
+     * @param objectMask
+     * @param ignoreMask
+     * @param rawPredictConfidence
+     * @return
+     */
+    private INDArray computeConfidenceLoss(INDArray objectMask ,INDArray ignoreMask,INDArray rawPredictConfidence){
+
+        ILossFunction lossFunction=new LossBinaryXENT();
+
+        INDArray loss1=  objectMask.mul(lossFunction.computeScoreArray(objectMask,rawPredictConfidence,new ActivationLReLU(),null));
+
+        INDArray loss2=  Transforms.neg(objectMask).add(1).mul(ignoreMask).mul(lossFunction.computeScoreArray(objectMask,rawPredictConfidence,new ActivationLReLU(),null));
+
+        return loss1.add(loss2);
+    }
+
+    /**
+     * 计算置信度损失梯度
+     * @param objectMask
+     * @param ignoreMask
+     * @param rawPredictConfidence
+     * @return
+     */
+    private INDArray computeGradientOfConfidenceLoss(INDArray objectMask ,INDArray ignoreMask,INDArray rawPredictConfidence){
+
+        ILossFunction lossFunction=new LossBinaryXENT();
+
+        INDArray loss1=  objectMask.mul(lossFunction.computeGradient(objectMask,rawPredictConfidence,new ActivationLReLU(),null));
+
+        INDArray loss2=  Transforms.neg(objectMask).add(1).mul(ignoreMask).mul(lossFunction.computeGradient(objectMask,rawPredictConfidence,new ActivationLReLU(),null));
+
+        return loss1.add(loss2);
+    }
+
+
+    /**
+     * 计算类别损失
+     * @param objectMask
+     * @param trueClassProbability
+     * @param rawPredictClassProbability
+     * @return
+     */
+    private INDArray computeClassLoss(INDArray objectMask , INDArray trueClassProbability, INDArray rawPredictClassProbability){
+
+        ILossFunction lossFunction=new LossBinaryXENT();
+
+        return  objectMask.mul(lossFunction.computeScoreArray(trueClassProbability,rawPredictClassProbability,new ActivationLReLU(),null));
+    }
+
+    /**
+     * 计算类别损失梯度
+     * @param objectMask
+     * @param trueClassProbability
+     * @param rawPredictClassProbability
+     * @return
+     */
+    private INDArray computeGradientOfClassLoss(INDArray objectMask ,INDArray trueClassProbability,INDArray rawPredictClassProbability){
+
+        ILossFunction lossFunction=new LossBinaryXENT();
+
+        return  objectMask.mul(lossFunction.computeGradient(trueClassProbability,rawPredictClassProbability,new ActivationLReLU(),null));
+    }
+
+
+
+
+
     private INDArray reshapeInput() {
         //NCHW --> NWHC
         INDArray reshapeInput=input.dup().permute(0,3,2,1);
@@ -300,6 +329,9 @@ public class Yolo3OutputLayer2 extends AbstractLayer<Yolo3OutputLayerConfigurati
 
         return reshapeInput;
     }
+
+
+
 
     private INDArray getLabelBoxH(INDArray labelXyWh) {
         return labelXyWh.get(new INDArrayIndex[]{all(), all(), all(), all(), NDArrayIndex.interval(3,4)});
@@ -328,7 +360,12 @@ public class Yolo3OutputLayer2 extends AbstractLayer<Yolo3OutputLayerConfigurati
     private INDArray getLabelXyWh() {
         return labels.get(new INDArrayIndex[]{all(), all(), all(), NDArrayIndex.interval(0,3),NDArrayIndex.interval(0,4)});
     }
-
+    private INDArray getLabelXy() {
+        return labels.get(new INDArrayIndex[]{all(), all(), all(), NDArrayIndex.interval(0,3),NDArrayIndex.interval(0,2)});
+    }
+    private INDArray getLabelWh() {
+        return labels.get(new INDArrayIndex[]{all(), all(), all(), NDArrayIndex.interval(0,3),NDArrayIndex.interval(2,4)});
+    }
 
     private INDArray getPredictClassOneHot(INDArray input, long classOneHotLength) {
         INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(5,5+classOneHotLength));
@@ -429,26 +466,28 @@ public class Yolo3OutputLayer2 extends AbstractLayer<Yolo3OutputLayerConfigurati
         long stride=inputSize/gridHeight;
         //（输入）预测值编码
         DecodeResult decodeResult=decode(reshapeInput,priorBoundingBoxes,classOneHotLength,gridHeight,batchSize,stride);
-        //解码置信度
-        INDArray decodePredictConfidence=decodeResult.getDecodePredictConfidence();
         //拼接解码的中心点坐标与宽高
         INDArray decodePredictBoxesXyWh=decodeResult.getDecodePredictBoxesXyWh();
-        //标签的边界框信息
-        INDArray labelXyWh= getLabelXyWh();
+
+        INDArray boxLossScale=getBoxLossScale(inputSize);
         //标签置信度
-        INDArray responseBoxLabelConfidence= getLabelConfidence();
+        INDArray objectMask= getLabelConfidence();
+        //未处理真实标签
+        INDArray groundTruthBoxesXyWh= getGroundTruthBoxesXyWh(numberOfPriorBoundingBoxPerGridCell);
+
+        INDArray ignoreMask=getIgnoreMask(decodePredictBoxesXyWh,objectMask,groundTruthBoxesXyWh);
         //标签置分类
         INDArray labelClassOneHot= getLabelClassOneHot(classOneHotLength);
-        //输入）预测分类
-        INDArray rawPredictClassOneHot= getPredictClassOneHot(reshapeInput, classOneHotLength);
-        //giou损失梯度
-        INDArray derivativeOfgIouLoss = derivativeOfGIouLoss(inputSize, decodePredictBoxesXyWh, labelXyWh, responseBoxLabelConfidence);
-        //置信度损失梯度
-        INDArray derivativeOfConfidenceLoss = derivativeOfConfidenceLoss(decodePredictConfidence, decodePredictBoxesXyWh, responseBoxLabelConfidence, numberOfPriorBoundingBoxPerGridCell,reshapeInput);
-        //分类损失梯度
-        INDArray derivativeOfClassLoss = gradientOfClassLoss(responseBoxLabelConfidence, labelClassOneHot, rawPredictClassOneHot);
 
-        epsilon=Nd4j.concat(-1,derivativeOfgIouLoss,derivativeOfConfidenceLoss,derivativeOfClassLoss);
+        INDArray xyLossGradient=computeGradientOfXyLoss(objectMask,boxLossScale,getLabelXy(),decodeResult.getDecodePredictBoxesXy());
+
+        INDArray whLossGradient=computeGradientOfWhLoss(objectMask,boxLossScale,getLabelWh(),decodeResult.getDecodePredictBoxesWh());
+
+        INDArray confidentLossGradient=computeGradientOfConfidenceLoss(objectMask,ignoreMask,decodeResult.getDecodePredictConfidence());
+
+        INDArray classLossGradient=computeGradientOfClassLoss(objectMask,labelClassOneHot,decodeResult.getDecodePredictClassOneHot());
+
+        epsilon=Nd4j.concat(-1,xyLossGradient,whLossGradient,confidentLossGradient,classLossGradient);
         //[batch, grid_h, grid_w, 3, 4+1+nb_class]--> [batch, grid_h, grid_w, 3*(4+1+nb_class)]
         epsilon=epsilon.reshape(new long[]{epsilon.shape()[0],epsilon.shape()[1],epsilon.shape()[2],epsilon.shape()[3]*epsilon.shape()[4]});
         //NWHC-->NCHW to match the input shape

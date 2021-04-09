@@ -51,7 +51,7 @@ public class Yolo3OutputLayerConfiguration extends org.deeplearning4j.nn.conf.la
     @Override
     public Layer instantiate(NeuralNetConfiguration conf, Collection<TrainingListener> trainingListeners,
                              int layerIndex, INDArray layerParamsView, boolean initializeParams, DataType networkDataType) {
-        Yolo3OutputLayer ret = new Yolo3OutputLayer(conf, networkDataType);
+        Yolo3OutputLayer2 ret = new Yolo3OutputLayer2(conf, networkDataType);
         ret.setListeners(trainingListeners);
         ret.setIndex(layerIndex);
         ret.setParamsViewArray(layerParamsView);
