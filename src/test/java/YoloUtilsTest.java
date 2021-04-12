@@ -25,25 +25,29 @@ public class YoloUtilsTest {
         INDArray labels= Nd4j.create(1,1,1,1,4);
 
 
-        labels.put(INDArrayUtils.getLastDimensionPointZero(labels),21);
+        labels.put(INDArrayUtils.getLastDimensionPointZero(labels.shape()),21);
 
-        labels.put(INDArrayUtils.getLastDimensionPointOne(labels),45);
+        labels.put(INDArrayUtils.getLastDimensionPointOne(labels.shape()),45);
 
-        labels.put(INDArrayUtils.getLastDimensionPointTwo(labels),103);
+        labels.put(INDArrayUtils.getLastDimensionPointTwo(labels.shape()),103);
 
-        labels.put(INDArrayUtils.getLastDimensionPointThree(labels),172);
+        labels.put(INDArrayUtils.getLastDimensionPointThree(labels.shape()),172);
 
         INDArray predict=  Nd4j.create(1,1,1,1,4);
 
-        predict.put(INDArrayUtils.getLastDimensionPointZero(labels),59);
+        predict.put(INDArrayUtils.getLastDimensionPointZero(labels.shape()),59);
 
-        predict.put(INDArrayUtils.getLastDimensionPointOne(labels),106);
+        predict.put(INDArrayUtils.getLastDimensionPointOne(labels.shape()),106);
 
-        predict.put(INDArrayUtils.getLastDimensionPointTwo(labels),154);
+        predict.put(INDArrayUtils.getLastDimensionPointTwo(labels.shape()),154);
 
-        predict.put(INDArrayUtils.getLastDimensionPointThree(labels),230);
+        predict.put(INDArrayUtils.getLastDimensionPointThree(labels.shape()),230);
 
-        INDArray gIou= YoloUtils.getGradientOfIou(predict,labels);
+
+
+      
+
+        INDArray gIou= YoloUtils.getGIou(predict,labels);
 
 
         log.info(gIou.toString());
