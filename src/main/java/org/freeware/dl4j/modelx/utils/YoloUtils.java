@@ -148,9 +148,9 @@ public class YoloUtils {
 
     }
 
-    private static SDVariable computeGIou(SameDiff sd,INDArray predictBoxes, INDArray truthBoxes) {
+    private static SDVariable computeGIou(SameDiff sd,INDArray predictBoxes, INDArray labelBoxes) {
 
-        long[] shape=truthBoxes.shape();
+        long[] shape=labelBoxes.shape();
         INDArray predictBoxesX=predictBoxes.get(INDArrayUtils.getLastDimensionPointZero(predictBoxes.shape()));
         INDArray predictBoxesY=predictBoxes.get(INDArrayUtils.getLastDimensionPointOne(predictBoxes.shape()));
         INDArray predictBoxesW=predictBoxes.get(INDArrayUtils.getLastDimensionPointTwo(predictBoxes.shape()));
@@ -161,15 +161,15 @@ public class YoloUtils {
         predictBoxesW=Nd4j.expandDims(predictBoxesW,4);
         predictBoxesH=Nd4j.expandDims(predictBoxesH,4);
 
-        INDArray truthBoxesX=truthBoxes.get(INDArrayUtils.getLastDimensionPointZero(truthBoxes.shape()));
-        INDArray truthBoxesY=truthBoxes.get(INDArrayUtils.getLastDimensionPointOne(truthBoxes.shape()));
-        INDArray truthBoxesW=truthBoxes.get(INDArrayUtils.getLastDimensionPointTwo(truthBoxes.shape()));
-        INDArray truthBoxesH=truthBoxes.get(INDArrayUtils.getLastDimensionPointThree(truthBoxes.shape()));
+        INDArray labelBoxesX=labelBoxes.get(INDArrayUtils.getLastDimensionPointZero(labelBoxes.shape()));
+        INDArray labelBoxesY=labelBoxes.get(INDArrayUtils.getLastDimensionPointOne(labelBoxes.shape()));
+        INDArray labelBoxesW=labelBoxes.get(INDArrayUtils.getLastDimensionPointTwo(labelBoxes.shape()));
+        INDArray labelBoxesH=labelBoxes.get(INDArrayUtils.getLastDimensionPointThree(labelBoxes.shape()));
 
-        truthBoxesX=Nd4j.expandDims(truthBoxesX,4);
-        truthBoxesY=Nd4j.expandDims(truthBoxesY,4);
-        truthBoxesW=Nd4j.expandDims(truthBoxesW,4);
-        truthBoxesH=Nd4j.expandDims(truthBoxesH,4);
+        labelBoxesX=Nd4j.expandDims(labelBoxesX,4);
+        labelBoxesY=Nd4j.expandDims(labelBoxesY,4);
+        labelBoxesW=Nd4j.expandDims(labelBoxesW,4);
+        labelBoxesH=Nd4j.expandDims(labelBoxesH,4);
 
         //创建变量x、p
         SDVariable tX= sd.var("tX");
@@ -182,10 +182,10 @@ public class YoloUtils {
         SDVariable pW= sd.var("pW");
         SDVariable pH=sd.var("pH");
 
-        tX.setArray(truthBoxesX);
-        tY.setArray(truthBoxesY);
-        tW.setArray(truthBoxesW);
-        tH.setArray(truthBoxesH);
+        tX.setArray(labelBoxesX);
+        tY.setArray(labelBoxesY);
+        tW.setArray(labelBoxesW);
+        tH.setArray(labelBoxesH);
 
         pX.setArray(predictBoxesX);
         pY.setArray(predictBoxesY);
@@ -207,17 +207,17 @@ public class YoloUtils {
      * 计算IOU
      * @param sd
      * @param shape
-     * @param trueX
-     * @param trueY
-     * @param trueW
-     * @param trueH
+     * @param labelX
+     * @param labelY
+     * @param labelW
+     * @param labelH
      * @param predictX
      * @param predictY
      * @param predictW
      * @param predictH
      * @return
      */
-    public static SDVariable computeIou(SameDiff sd, long[] shape, SDVariable trueX, SDVariable trueY, SDVariable trueW, SDVariable trueH, SDVariable predictX, SDVariable predictY, SDVariable predictW, SDVariable predictH) {
+    public static SDVariable computeIou(SameDiff sd, long[] shape, SDVariable labelX, SDVariable labelY, SDVariable labelW, SDVariable labelH, SDVariable predictX, SDVariable predictY, SDVariable predictW, SDVariable predictH) {
 
         shape[shape.length-1]=2;
 
@@ -225,15 +225,15 @@ public class YoloUtils {
 
         zero.setArray(Nd4j.zeros(shape));
 
-        SDVariable trueBoxesXy=sd.concat(-1,trueX,trueY);
+        SDVariable labelBoxesXy=sd.concat(-1,labelX,labelY);
 
-        SDVariable trueBoxesWh=sd.concat(-1,trueW,trueH);
+        SDVariable labelBoxesWh=sd.concat(-1,labelW,labelH);
 
-        SDVariable trueBoxesWhHalf=trueBoxesWh.div(2);
+        SDVariable labelBoxesWhHalf=labelBoxesWh.div(2);
 
-        SDVariable trueBoxesMin=trueBoxesXy.sub(trueBoxesWhHalf);
+        SDVariable labelBoxesMin=labelBoxesXy.sub(labelBoxesWhHalf);
 
-        SDVariable trueBoxesMax=trueBoxesXy.add(trueBoxesWhHalf);
+        SDVariable labelBoxesMax=labelBoxesXy.add(labelBoxesWhHalf);
 
         SDVariable predictBoxesXy=sd.concat(-1,predictX,predictY);
 
@@ -245,9 +245,9 @@ public class YoloUtils {
 
         SDVariable predictBoxesMax=predictBoxesXy.add(predictBoxesWhHalf);
 
-        SDVariable intersectMin=sd.math().max(trueBoxesMin,predictBoxesMin);
+        SDVariable intersectMin=sd.math().max(labelBoxesMin,predictBoxesMin);
 
-        SDVariable intersectMax=sd.math().min(trueBoxesMax,predictBoxesMax);
+        SDVariable intersectMax=sd.math().min(labelBoxesMax,predictBoxesMax);
 
         SDVariable intersectWh=sd.math().max(intersectMax.sub(intersectMin),zero);
 
@@ -259,13 +259,13 @@ public class YoloUtils {
 
         SDVariable predictBoxesArea=  predictBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,0)).mul(predictBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,1)));
 
-        SDVariable trueBoxesArea=  trueBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,0)).mul(trueBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,1)));
+        SDVariable trueBoxesArea=  labelBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,0)).mul(labelBoxesWh.get(SameDiffUtils.getLastDimensionPoint(shape,1)));
 
         return intersectArea.div("computeIou",predictBoxesArea.add(trueBoxesArea).sub(intersectArea));
     }
 
 
-    public static SDVariable computeGIou(SameDiff sd, long[] shape, SDVariable trueX, SDVariable trueY, SDVariable trueW, SDVariable trueH, SDVariable predictX, SDVariable predictY, SDVariable predictW, SDVariable predictH) {
+    public static SDVariable computeGIou(SameDiff sd, long[] shape, SDVariable labelX, SDVariable labelY, SDVariable labelW, SDVariable labelH, SDVariable predictX, SDVariable predictY, SDVariable predictW, SDVariable predictH) {
 
         SDVariable zero=sd.var("gIou_zero");
 
@@ -285,44 +285,44 @@ public class YoloUtils {
 
         SDVariable predictBoxes=sd.concat(-1,predictX,predictY,predictW,predictH);
 
-        SDVariable truthBoxes=sd.concat(-1,trueX,trueY,trueW,trueH);
+        SDVariable labelBoxes=sd.concat(-1,labelX,labelY,labelW,labelH);
 
         predictBoxes=convertToTopLeftBottomRight(sd,predictBoxes,shape);
 
-        truthBoxes=convertToTopLeftBottomRight(sd,truthBoxes,shape);
+        labelBoxes=convertToTopLeftBottomRight(sd,labelBoxes,shape);
 
         predictBoxes=restrictBoxes(sd,predictBoxes,shape);
 
-        truthBoxes=restrictBoxes(sd,truthBoxes,shape);
+        labelBoxes=restrictBoxes(sd,labelBoxes,shape);
 
         SDVariable predictBoxesW= predictBoxes.get(indexPointTwo).sub(predictBoxes.get(indexPointZero));
 
         SDVariable predictBoxesH= predictBoxes.get(indexPointThree).sub(predictBoxes.get(indexPointOne));
 
-        SDVariable truthBoxesW=   truthBoxes.get(indexPointTwo).sub(truthBoxes.get(indexPointZero));
+        SDVariable labelBoxesW=   labelBoxes.get(indexPointTwo).sub(labelBoxes.get(indexPointZero));
 
-        SDVariable truthBoxesH=   truthBoxes.get(indexPointThree).sub(truthBoxes.get(indexPointOne));
+        SDVariable labelBoxesH=   labelBoxes.get(indexPointThree).sub(labelBoxes.get(indexPointOne));
 
         //计算第一个边界框的面积
         SDVariable predictBoxesArea= predictBoxesW.mul(predictBoxesH);
         //计算第二个边界框的面积
-        SDVariable truthBoxesArea=truthBoxesW.mul(truthBoxesH);
+        SDVariable labelBoxesArea=labelBoxesW.mul(labelBoxesH);
 
-        SDVariable boundingBoxesLeftTop= sd.math.max(predictBoxes.get(indexZeroToTwo),truthBoxes.get(indexZeroToTwo));
+        SDVariable boundingBoxesLeftTop= sd.math.max(predictBoxes.get(indexZeroToTwo),labelBoxes.get(indexZeroToTwo));
 
-        SDVariable boundingBoxesRightBottom= sd.math.min(predictBoxes.get(indexTwoToFour),truthBoxes.get(indexTwoToFour));
+        SDVariable boundingBoxesRightBottom= sd.math.min(predictBoxes.get(indexTwoToFour),labelBoxes.get(indexTwoToFour));
 
         SDVariable interSection= sd.math.max(boundingBoxesRightBottom.sub(boundingBoxesLeftTop),zero);
 
         SDVariable interArea=interSection.get(indexPointZero).mul(interSection.get(indexPointOne));
 
-        SDVariable unionArea=predictBoxesArea.add(truthBoxesArea).sub(interArea);
+        SDVariable unionArea=predictBoxesArea.add(labelBoxesArea).sub(interArea);
 
         SDVariable iou=interArea.div(unionArea.add(1e-6));
         //计算boxes1和boxes2的最小凸集框的左上角和右下角坐标
-        SDVariable encloseBoundingBoxesLeftTop=  sd.math.min(predictBoxes.get(indexZeroToTwo),truthBoxes.get(indexZeroToTwo));
+        SDVariable encloseBoundingBoxesLeftTop=  sd.math.min(predictBoxes.get(indexZeroToTwo),labelBoxes.get(indexZeroToTwo));
 
-        SDVariable encloseBoundingBoxesRightBottom= sd.math.max(predictBoxes.get(indexTwoToFour),truthBoxes.get(indexTwoToFour));
+        SDVariable encloseBoundingBoxesRightBottom= sd.math.max(predictBoxes.get(indexTwoToFour),labelBoxes.get(indexTwoToFour));
         //计算最小凸集的边长
         SDVariable enclose= sd.math.max(encloseBoundingBoxesRightBottom.sub(encloseBoundingBoxesLeftTop),zero);
         //计算最小凸集的面积
@@ -386,22 +386,26 @@ public class YoloUtils {
      */
     public static INDArray focal( INDArray labels, INDArray predict){
         float  alpha=1, gamma=2;
-        SameDiff sd = computeFocal(labels, predict, alpha, gamma);
-        return  sd.getArrForVarName("f");
+        //构建SameDiff实例
+        SameDiff sd=SameDiff.create();
+        computeFocal(sd,labels, predict, alpha, gamma);
+        return  sd.getArrForVarName("computeFocal");
     }
 
     /**
      * focal的梯度
      *
-     * @param labels
+     * @param truth
      * @param predict
      * @return
      */
-    public static INDArray gradientOfOfFocal(INDArray labels, INDArray predict){
+    public static INDArray gradientOfOfFocal(INDArray truth, INDArray predict){
 
         float  alpha=1, gamma=2;
+        //构建SameDiff实例
+        SameDiff sd=SameDiff.create();
 
-        SameDiff sd = computeFocal(labels, predict, alpha, gamma);
+        computeFocal(sd,truth, predict, alpha, gamma);
 
         Map<String,INDArray> gradients = sd.calculateGradients(null, "t", "p");
         //对x求偏导
@@ -411,9 +415,8 @@ public class YoloUtils {
     }
 
     @NotNull
-    private static SameDiff computeFocal(INDArray labels, INDArray predict, float alpha, float gamma) {
-        //构建SameDiff实例
-        SameDiff sd=SameDiff.create();
+    private static SDVariable computeFocal(  SameDiff sd,INDArray labels, INDArray predict, float alpha, float gamma) {
+
         //创建变量x、z
         SDVariable t= sd.var("t");
 
@@ -423,17 +426,24 @@ public class YoloUtils {
 
         p.setArray(predict);
 
+        SDVariable f=computeFocal(alpha, gamma, sd, t, p);
+
+        sd.output(Collections.<String, INDArray>emptyMap(), "computeFocal");
+
+        return f;
+    }
+
+    private static SDVariable computeFocal(float alpha, float gamma, SameDiff sd, SDVariable t, SDVariable p) {
+
         SDVariable tSubB=sd.math().sub(t,p);
 
         SDVariable absSubB=sd.math().abs(tSubB);
 
         SDVariable powAbsSubB=sd.math().pow(absSubB,gamma);
 
-        SDVariable f=powAbsSubB.mul("f",alpha);
+        SDVariable f=powAbsSubB.mul("computeFocal",alpha);
 
-        sd.output(Collections.<String, INDArray>emptyMap(), "f");
-
-        return sd;
+        return f;
     }
 
 
@@ -444,8 +454,9 @@ public class YoloUtils {
      * @return
      */
     public static INDArray sigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits) {
-
-         return computeSigmoidCrossEntropyLossWithLogits(labels, logits).getArrForVarName("f");
+         SameDiff sd=SameDiff.create();
+         computeSigmoidCrossEntropyLossWithLogits(sd,labels, logits);
+         return sd.getArrForVarName("computeSigmoidCrossEntropyLossWithLogits");
     }
 
     /**
@@ -456,8 +467,10 @@ public class YoloUtils {
      * @return
      */
     public  static  INDArray gradientOfSigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits){
+        //构建SameDiff实例
+        SameDiff sd=SameDiff.create();
 
-        SameDiff sd=computeSigmoidCrossEntropyLossWithLogits(labels, logits);
+        computeSigmoidCrossEntropyLossWithLogits(sd,labels, logits);
 
         Map<String,INDArray> gradients = sd.calculateGradients(null, "x", "z");
         //对x求偏导
@@ -466,10 +479,10 @@ public class YoloUtils {
         return dLx;
     }
 
-    private static SameDiff computeSigmoidCrossEntropyLossWithLogits(INDArray labels, INDArray logits) {
+    private static SDVariable computeSigmoidCrossEntropyLossWithLogits(SameDiff sd,INDArray labels, INDArray logits) {
 
-        //构建SameDiff实例
-        SameDiff sd=SameDiff.create();
+        long[] shape=logits.shape();
+
         //创建变量x、z
         SDVariable z= sd.var("z");
 
@@ -479,13 +492,30 @@ public class YoloUtils {
 
         x.setArray(logits);
 
-        SDVariable zero=sd.var("zero");
+        SDVariable f= computeSigmoidCrossEntropyLossWithLogits(shape, sd, z, x);
 
-        SDVariable one=sd.var("one");
+        sd.output(Collections.<String, INDArray>emptyMap(), "computeSigmoidCrossEntropyLossWithLogits");
 
-        zero.setArray(Nd4j.zeros(logits.shape()));
+        return f;
+    }
 
-        one.setArray(Nd4j.ones(logits.shape()));
+    /**
+     *
+     * @param shape
+     * @param sd
+     * @param z labels
+     * @param x logits
+     * @return
+     */
+    public static SDVariable computeSigmoidCrossEntropyLossWithLogits(long[] shape, SameDiff sd, SDVariable z, SDVariable x) {
+
+        SDVariable zero=sd.var("computeSigmoidCrossEntropyLossWithLogits_zero");
+
+        SDVariable one=sd.var("computeSigmoidCrossEntropyLossWithLogits_one");
+
+        zero.setArray(Nd4j.zeros(shape));
+
+        one.setArray(Nd4j.ones(shape));
 
         SDVariable max=sd.math().max(x, zero);
 
@@ -501,204 +531,16 @@ public class YoloUtils {
 
         SDVariable logOnePlusExpNegAbsX=sd.math().log(onePlusExpNegAbsX);
 
-        SDVariable f=max.sub(xz).add("f",logOnePlusExpNegAbsX);
+        SDVariable f=max.sub(xz).add("computeSigmoidCrossEntropyLossWithLogits",logOnePlusExpNegAbsX);
 
-        sd.output(Collections.<String, INDArray>emptyMap(), "f");
-
-        return sd;
-    }
-
-
-    public static INDArray derivativeOfIou(INDArray predictBoxes,INDArray truthBoxes,Boolean gIou){
-
-        INDArray predictBoxesTopBottomLeftRight=convertToTopBottomLeftRight(predictBoxes);
-
-        INDArray truthBoxesTopBottomLeftRight=convertToTopBottomLeftRight(truthBoxes);
-
-        long[] shape=predictBoxesTopBottomLeftRight.shape();
-
-        long batchSize=shape[0];
-
-        long gridWidth=shape[1];
-
-        long gridHeight=shape[2];
-
-        long numberOfPriorBoundingBoxPerGridCell=shape[3];
-
-        INDArray derivative=Nd4j.zeros(new long[]{batchSize,gridWidth,gridHeight,numberOfPriorBoundingBoxPerGridCell,4});
-
-        for(int exampleIndex=0;exampleIndex<batchSize;exampleIndex++){
-
-            for(int gridWidthIndex=0;gridWidthIndex<gridWidth;gridWidthIndex++){
-
-                for(int gridHeightIndex=0;gridHeightIndex<gridHeight;gridHeightIndex++){
-
-                    for(int priorBoundingBoxIndex=0;priorBoundingBoxIndex<numberOfPriorBoundingBoxPerGridCell;priorBoundingBoxIndex++){
-
-                        INDArray  singlePredictBoxes=predictBoxesTopBottomLeftRight.get(getSinglePredictBoxesIndexes(exampleIndex, gridWidthIndex, gridHeightIndex, priorBoundingBoxIndex));
-
-                        INDArray  singleTruthBoxes=truthBoxesTopBottomLeftRight.get(getSinglePredictBoxesIndexes(exampleIndex, gridWidthIndex, gridHeightIndex, priorBoundingBoxIndex));
-
-                        float[] singlePredictBoxesArray=singlePredictBoxes.toFloatVector();
-
-                        float[] singleTruthBoxesArray=singleTruthBoxes.toFloatVector();
-
-                        float pred_tblr_top=singlePredictBoxesArray[0];
-
-                        float pred_tblr_bot=singlePredictBoxesArray[1];
-
-                        float pred_tblr_left=singlePredictBoxesArray[2];
-
-                        float pred_tblr_right=singlePredictBoxesArray[3];
-
-                        float truth_tblr_top=singleTruthBoxesArray[0];
-
-                        float truth_tblr_bot=singleTruthBoxesArray[1];
-
-                        float truth_tblr_left=singleTruthBoxesArray[2];
-
-                        float truth_tblr_right=singleTruthBoxesArray[3];
-
-                        float[] dxs=dx_box_iou(pred_tblr_top,pred_tblr_bot,pred_tblr_left,pred_tblr_right,truth_tblr_top,truth_tblr_bot,truth_tblr_left,truth_tblr_right,gIou);
-
-                        INDArray dxsArray=Nd4j.create(dxs).reshape(new int []{1,4});
-
-                        derivative.put(getDerivativeOfIndexes(exampleIndex, gridWidthIndex, gridHeightIndex, priorBoundingBoxIndex),dxsArray);
-
-                    }
-
-                }
-
-
-            }
-
-        }
-
-
-
-        return derivative;
-    }
-
-
-    private static INDArrayIndex[] getSinglePredictBoxesIndexes(int exampleIndex, int gridWidthIndex, int gridHeightIndex, int priorBoundingBoxIndex) {
-        return new INDArrayIndex[]{NDArrayIndex.point(exampleIndex),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.interval(0,4)};
-    }
-
-    private static INDArrayIndex[] getDerivativeOfIndexes(int exampleIndex, int gridWidthIndex, int gridHeightIndex, int priorBoundingBoxIndex) {
-        return new INDArrayIndex[]{NDArrayIndex.point(exampleIndex),NDArrayIndex.point(gridWidthIndex),NDArrayIndex.point(gridHeightIndex),NDArrayIndex.point(priorBoundingBoxIndex),NDArrayIndex.all()};
-    }
-
-    private static float[] dx_box_iou(float pred_tblr_top,float pred_tblr_bot,float pred_tblr_left,float pred_tblr_right,float truth_tblr_top,float truth_tblr_bot,float truth_tblr_left,float truth_tblr_right, Boolean iou_loss) {
-
-        float pred_t = Math.min(pred_tblr_top, pred_tblr_bot);
-        float pred_b = Math.max(pred_tblr_top, pred_tblr_bot);
-        float pred_l = Math.min(pred_tblr_left, pred_tblr_right);
-        float pred_r = Math.max(pred_tblr_left, pred_tblr_right);
-
-        float X = (pred_b - pred_t) * (pred_r - pred_l);
-        float Xhat = (truth_tblr_bot - truth_tblr_top) * (truth_tblr_right - truth_tblr_left);
-        float Ih = Math.min(pred_b, truth_tblr_bot) -   Math.max(pred_t, truth_tblr_top);
-        float Iw = Math.min(pred_r, truth_tblr_right) - Math.max(pred_l, truth_tblr_left);
-        float I = Iw * Ih;
-        float U = X + Xhat - I;
-
-        float Cw = Math.max(pred_r, truth_tblr_right) - Math.min(pred_l, truth_tblr_left);
-        float Ch = Math.max(pred_b, truth_tblr_bot) - Math.min(pred_t, truth_tblr_top);
-        float C = Cw * Ch;
-
-        // float IoU = I / U;
-        // Partial Derivatives, derivatives
-        float dX_wrt_t = -1 * (pred_r - pred_l);
-        float dX_wrt_b = pred_r - pred_l;
-        float dX_wrt_l = -1 * (pred_b - pred_t);
-        float dX_wrt_r = pred_b - pred_t;
-
-        // gradient of I min/max in IoU calc (prediction)
-        float dI_wrt_t = pred_t > truth_tblr_top ? (-1 * Iw) : 0;
-        float dI_wrt_b = pred_b < truth_tblr_bot ? Iw : 0;
-        float dI_wrt_l = pred_l > truth_tblr_left ? (-1 * Ih) : 0;
-        float dI_wrt_r = pred_r < truth_tblr_right ? Ih : 0;
-        // derivative of U with regard to x
-        float dU_wrt_t = dX_wrt_t - dI_wrt_t;
-        float dU_wrt_b = dX_wrt_b - dI_wrt_b;
-        float dU_wrt_l = dX_wrt_l - dI_wrt_l;
-        float dU_wrt_r = dX_wrt_r - dI_wrt_r;
-        // gradient of C min/max in IoU calc (prediction)
-        float dC_wrt_t = pred_t < truth_tblr_top ? (-1 * Cw) : 0;
-        float dC_wrt_b = pred_b > truth_tblr_bot ? Cw : 0;
-        float dC_wrt_l = pred_l < truth_tblr_left ? (-1 * Ch) : 0;
-        float dC_wrt_r = pred_r > truth_tblr_right ? Ch : 0;
-
-        // Final IOU loss (prediction) (negative of IOU gradient, we want the negative loss)
-        float p_dt = 0;
-        float p_db = 0;
-        float p_dl = 0;
-        float p_dr = 0;
-        if (U > 0) {
-            p_dt = ((U * dI_wrt_t) - (I * dU_wrt_t)) / (U * U);
-            p_db = ((U * dI_wrt_b) - (I * dU_wrt_b)) / (U * U);
-            p_dl = ((U * dI_wrt_l) - (I * dU_wrt_l)) / (U * U);
-            p_dr = ((U * dI_wrt_r) - (I * dU_wrt_r)) / (U * U);
-        }
-
-        if (iou_loss == Boolean.TRUE) {
-            if (C > 0) {
-                // apply "C" term from gIOU
-                p_dt += ((C * dU_wrt_t) - (U * dC_wrt_t)) / (C * C);
-                p_db += ((C * dU_wrt_b) - (U * dC_wrt_b)) / (C * C);
-                p_dl += ((C * dU_wrt_l) - (U * dC_wrt_l)) / (C * C);
-                p_dr += ((C * dU_wrt_r) - (U * dC_wrt_r)) / (C * C);
-            }
-        }
-        float dx_dt = pred_tblr_top < pred_tblr_bot ? p_dt : p_db;
-        float dx_db = pred_tblr_top < pred_tblr_bot ? p_db : p_dt;
-        float dx_dl = pred_tblr_left < pred_tblr_right ? p_dl : p_dr;
-        float dx_dr = pred_tblr_left < pred_tblr_right ? p_dr : p_dl;
-
-        float w=dx_dr-dx_dl;
-
-        float h=dx_dt-dx_db;
-
-        float x=dx_dl+w/2;
-
-        float y=dx_dt+h/2;
-
-        //return new float[]{dx_dt,dx_db,dx_dl,dx_dr};
-
-        return new float[]{x,y,w,h};
+        return f;
     }
 
 
 
-    private static INDArray convertToTopBottomLeftRight(INDArray boxes){
 
-        INDArray x=boxes.get(INDArrayUtils.getLastDimensionPointZero(boxes.shape()));
 
-        INDArray y=boxes.get(INDArrayUtils.getLastDimensionPointOne(boxes.shape()));
 
-        INDArray w=boxes.get(INDArrayUtils.getLastDimensionPointTwo(boxes.shape()));
 
-        INDArray h=boxes.get(INDArrayUtils.getLastDimensionPointThree(boxes.shape()));
-
-        x=Nd4j.expandDims(x,4);
-
-        y=Nd4j.expandDims(y,4);
-
-        w=Nd4j.expandDims(w,4);
-
-        h=Nd4j.expandDims(h,4);
-
-        INDArray t=y.sub(h.div(2));
-
-        INDArray b=y.add(h.div(2));
-
-        INDArray l=x.sub(w.div(2));
-
-        INDArray r=x.add(w.div(2));
-
-        INDArray retArray=Nd4j.concat(-1,t,b,l,r);
-
-        return retArray;
-    }
 
 }
