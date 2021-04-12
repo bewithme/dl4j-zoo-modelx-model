@@ -417,7 +417,7 @@ public class Yolo3DataSetIterator implements MultiDataSetIterator {
 
 		int crop_ymax = Math.max(height, maxBox.getY2() + RandomUtils.randomUniform(0, max_d_trans,random));
 
-		INDArrayIndex[] cropImageIndexes=INDArrayUtils.getLastTwoDimensionIndexes(image,crop_xmin,crop_xmax,crop_ymin,crop_ymax);
+		INDArrayIndex[] cropImageIndexes=INDArrayUtils.getLastTwoDimensionIndexes(image.shape(),crop_xmin,crop_xmax,crop_ymin,crop_ymax);
 
 		INDArray cropImage=image.get(cropImageIndexes);
 

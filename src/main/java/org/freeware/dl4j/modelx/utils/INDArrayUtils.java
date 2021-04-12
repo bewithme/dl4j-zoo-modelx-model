@@ -1,17 +1,14 @@
 package org.freeware.dl4j.modelx.utils;
 
-import org.bytedeco.opencv.opencv_core.Mat;
-import org.bytedeco.opencv.opencv_core.Size;
-import org.datavec.image.loader.Java2DNativeImageLoader;
+
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.api.ops.impl.transforms.Pad;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.BooleanIndexing;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.indexing.conditions.Conditions;
 
-import static org.bytedeco.opencv.global.opencv_imgproc.warpAffine;
+
 
 
 public class INDArrayUtils {
@@ -81,7 +78,7 @@ public class INDArrayUtils {
 
         for(long lastDimensionIndex=0;lastDimensionIndex<lastDimensionLen;lastDimensionIndex++){
 
-            INDArray col= array.get(getLastDimensionPoint(array,lastDimensionIndex));
+            INDArray col= array.get(getLastDimensionPoint(shape,lastDimensionIndex));
 
             long[] colShape=col.shape();
 
@@ -89,7 +86,7 @@ public class INDArrayUtils {
 
             long newArrayIndex=lastDimensionLen-1-lastDimensionIndex;
 
-            newArray.put(getLastDimensionPoint(newArray,newArrayIndex),col);
+            newArray.put(getLastDimensionPoint(shape,newArrayIndex),col);
         }
 
         return newArray;
@@ -110,75 +107,133 @@ public class INDArrayUtils {
 
         for(long lastDimensionIndex=0;lastDimensionIndex<lastDimensionLen;lastDimensionIndex++){
 
-            array.put(getLastDimensionPoint(array,lastDimensionIndex),value);
+            array.put(getLastDimensionPoint(shape,lastDimensionIndex),value);
         }
         return  array;
     }
 
 
+    /**
+     * 获取最后一个维度的索引
+     * @param shape
+     * @param lastDimensionIndex
+     * @return
+     */
+    public static INDArrayIndex[] getLastDimensionIndexes(long[] shape, INDArrayIndex lastDimensionIndex){
 
+        INDArrayIndex[] indexes =new INDArrayIndex[shape.length];
 
-    public static INDArrayIndex[] getLastDimensionIndexes(INDArray array, INDArrayIndex lastDimensionIndex){
+        for(int i=0;i<shape.length;i++){
 
-        INDArrayIndex[] indexes =new INDArrayIndex[array.shape().length];
-
-        for(int i=0;i<array.shape().length;i++){
-
-            if(i!=array.shape().length-1){
-
-                indexes[i]=NDArrayIndex.all();
-
-            }
-        }
-        indexes[array.shape().length-1]=lastDimensionIndex;
-
-        return indexes ;
-    }
-
-
-    public static INDArrayIndex[] getLastTwoDimensionIndexes(INDArray array, INDArrayIndex firstToLastDimensionIndex,INDArrayIndex secondToLastDimensionIndex){
-
-        INDArrayIndex[] indexes =new INDArrayIndex[array.shape().length];
-
-        for(int i=0;i<array.shape().length;i++){
-
-            if(i<array.shape().length-2){
+            if(i!=shape.length-1){
 
                 indexes[i]=NDArrayIndex.all();
 
             }
         }
-        indexes[array.shape().length-1]=firstToLastDimensionIndex;
-        indexes[array.shape().length-2]=secondToLastDimensionIndex;
+        indexes[shape.length-1]=lastDimensionIndex;
+
         return indexes ;
     }
 
 
-    public static INDArrayIndex[] getLastDimensionPointZero(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(0));
-    }
-    public static INDArrayIndex[] getLastDimensionPointOne(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(1));
-    }
-    public static INDArrayIndex[] getLastDimensionPointTwo(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(2));
-    }
-    public static INDArrayIndex[] getLastDimensionPointThree(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(3));
-    }
-    public static INDArrayIndex[] getLastDimensionPointFromZeroToTwo(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.interval(0,2));
-    }
-    public static INDArrayIndex[] getLastDimensionPointFromTwoToFour(INDArray array){
-        return getLastDimensionIndexes(array,NDArrayIndex.interval(2,4));
-    }
-    public static INDArrayIndex[] getLastDimensionPoint(INDArray array,long point){
-        return getLastDimensionIndexes(array,NDArrayIndex.point(point));
+    /**
+     * 获取最后两个维度的索引
+     * @param shape
+     * @param firstToLastDimensionIndex
+     * @param secondToLastDimensionIndex
+     * @return
+     */
+    public static INDArrayIndex[] getLastTwoDimensionIndexes(long[] shape, INDArrayIndex firstToLastDimensionIndex,INDArrayIndex secondToLastDimensionIndex){
+
+        INDArrayIndex[] indexes =new INDArrayIndex[shape.length];
+
+        for(int i=0;i<shape.length;i++){
+
+            if(i<shape.length-2){
+
+                indexes[i]=NDArrayIndex.all();
+
+            }
+        }
+        indexes[shape.length-1]=firstToLastDimensionIndex;
+        indexes[shape.length-2]=secondToLastDimensionIndex;
+        return indexes ;
     }
 
-    public static INDArrayIndex[] getLastTwoDimensionIndexes(INDArray array, long firstToLastDimensionIndexFrom,long firstToLastDimensionIndexTo,int secondToLastDimensionIndexFrom,int secondToLastDimensionIndexTo) {
-
-        return getLastTwoDimensionIndexes(array,NDArrayIndex.interval(firstToLastDimensionIndexFrom,firstToLastDimensionIndexTo),NDArrayIndex.interval(secondToLastDimensionIndexFrom,secondToLastDimensionIndexTo));
+    /**
+     * 获取最后一个维度的第0个索引
+     * @param shape
+     * @return
+     */
+    public static INDArrayIndex[] getLastDimensionPointZero(long[] shape){
+        return getLastDimensionIndexes(shape,NDArrayIndex.point(0));
+    }
+    /**
+     * 获取最后一个维度的第1个索引
+     * @param shape
+     * @return
+     */
+    public static INDArrayIndex[] getLastDimensionPointOne(long[] shape){
+        return getLastDimensionIndexes(shape,NDArrayIndex.point(1));
+    }
+    /**
+     * 获取最后一个维度的第2个索引
+     * @param shape
+     * @return
+     */
+    public static INDArrayIndex[] getLastDimensionPointTwo(long[] shape){
+        return getLastDimensionIndexes(shape,NDArrayIndex.point(2));
+    }
+    /**
+     * 获取最后一个维度的第3个索引
+     * @param shape
+     * @return
+     */
+    public static INDArrayIndex[] getLastDimensionPointThree(long[] shape){
+        return getLastDimensionIndexes(shape,NDArrayIndex.point(3));
+    }
+    /**
+     * 获取最后一个维度的第0-2个索引
+     * @param shape
+     * @return
+     */
+    public static INDArrayIndex[] getLastDimensionPointFromZeroToTwo(long[] shape){
+        return getLastDimensionIndexes(shape,NDArrayIndex.interval(0,2));
+    }
+    /**
+     * 获取最后一个维度的第2-4个索引
+     * @param shape
+     * @return
+     */
+    public static INDArrayIndex[] getLastDimensionPointFromTwoToFour(long[] shape){
+        return getLastDimensionIndexes(shape,NDArrayIndex.interval(2,4));
     }
 
+    /**
+     * 获取最后一个维度的第point个索引
+     * @param shape
+     * @param point
+     * @return
+     */
+    public static INDArrayIndex[] getLastDimensionPoint(long[] shape,long point){
+        return getLastDimensionIndexes(shape,NDArrayIndex.point(point));
     }
+
+    /**
+     * 获取倒数第二个维度的第firstToLastDimensionIndexFrom到firstToLastDimensionIndexTo个索引
+     * 倒数第一个维度的第secondToLastDimensionIndexFrom到secondToLastDimensionIndexTo个索引
+     * @param shape
+     * @param firstToLastDimensionIndexFrom
+     * @param firstToLastDimensionIndexTo
+     * @param secondToLastDimensionIndexFrom
+     * @param secondToLastDimensionIndexTo
+     * @return
+     */
+    public static INDArrayIndex[] getLastTwoDimensionIndexes(long[] shape, long firstToLastDimensionIndexFrom,long firstToLastDimensionIndexTo,int secondToLastDimensionIndexFrom,int secondToLastDimensionIndexTo) {
+
+        return getLastTwoDimensionIndexes(shape,NDArrayIndex.interval(firstToLastDimensionIndexFrom,firstToLastDimensionIndexTo),NDArrayIndex.interval(secondToLastDimensionIndexFrom,secondToLastDimensionIndexTo));
+    }
+
+
+}

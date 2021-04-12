@@ -103,7 +103,15 @@ public class Yolo3OutputLayer2 extends AbstractLayer<Yolo3OutputLayerConfigurati
 
         INDArray classLoss= computeClassLoss(objectMask,labelClassOneHot,decodeResult.getDecodePredictClassOneHot());
 
-        double totalScore=xyLoss.sumNumber().doubleValue()+whLoss.sumNumber().doubleValue()+confidentLoss.sumNumber().doubleValue()+classLoss.sumNumber().doubleValue();
+        double xyLossNum=xyLoss.sumNumber().doubleValue();
+
+        double whLossNum=whLoss.sumNumber().doubleValue();
+
+        double confidentLossNum=confidentLoss.sumNumber().doubleValue();
+
+        double classLossNum=classLoss.sumNumber().doubleValue();
+
+        double totalScore=xyLossNum+whLossNum+confidentLossNum+classLossNum;
 
         return totalScore;
     }
@@ -368,22 +376,22 @@ public class Yolo3OutputLayer2 extends AbstractLayer<Yolo3OutputLayerConfigurati
     }
 
     private INDArray getPredictClassOneHot(INDArray input, long classOneHotLength) {
-        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(5,5+classOneHotLength));
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input.shape(),NDArrayIndex.interval(5,5+classOneHotLength));
         return input.get(indexes);
     }
 
     private INDArray getPredictConfidence(INDArray input) {
-        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(4,5));
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input.shape(),NDArrayIndex.interval(4,5));
         return input.get(indexes);
     }
 
     private INDArray getPredictBoxesWh(INDArray input) {
-        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(2,4));
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input.shape(),NDArrayIndex.interval(2,4));
         return input.get(indexes);
     }
 
     private INDArray getPredictBoxesXy(INDArray input) {
-        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(0,2));
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input.shape(),NDArrayIndex.interval(0,2));
         return input.get(indexes);
     }
 

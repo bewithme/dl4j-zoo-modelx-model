@@ -244,7 +244,7 @@ public class Yolo3DataSetIterator2 implements MultiDataSetIterator {
 
 				for(ImageObject boundingBox:boundingBoxesList){
                     //[4]
-					INDArray  smoothClassOneHot=getSmoothClassOneHot(boundingBox);
+					INDArray  classOneHot=getClassOneHot(boundingBox);
 					//[4]
 					INDArray boundingBoxXyWh = getBoundingBoxXyWh(boundingBox);
 					//[3,4]
@@ -276,7 +276,7 @@ public class Yolo3DataSetIterator2 implements MultiDataSetIterator {
 
 					INDArray label = labelBigMediumSmall[bestBoundingBoxGroupIndex];
 
-					setLabelValues(label, exampleCount, bestBoundingBoxIndexInPerBoundingBoxGroup, bestBoundingBoxGroupIndex, boundingBoxXyWh, scaledBoundingBox, smoothClassOneHot);
+					setLabelValues(label, exampleCount, bestBoundingBoxIndexInPerBoundingBoxGroup, bestBoundingBoxGroupIndex, boundingBoxXyWh, scaledBoundingBox, classOneHot);
 
 					setExtraValues(exampleCount, boundingBoxesCounterByGroup, bestBoundingBoxGroupIndex, boundingBoxXyWh, label);
 
@@ -387,7 +387,7 @@ public class Yolo3DataSetIterator2 implements MultiDataSetIterator {
 
 		int crop_ymax = Math.max(height, maxBox.getY2() + RandomUtils.randomUniform(0, max_d_trans,random));
 
-		INDArrayIndex[] cropImageIndexes=INDArrayUtils.getLastTwoDimensionIndexes(image,crop_xmin,crop_xmax,crop_ymin,crop_ymax);
+		INDArrayIndex[] cropImageIndexes=INDArrayUtils.getLastTwoDimensionIndexes(image.shape(),crop_xmin,crop_xmax,crop_ymin,crop_ymax);
 
 		INDArray cropImage=image.get(cropImageIndexes);
 
@@ -651,9 +651,9 @@ public class Yolo3DataSetIterator2 implements MultiDataSetIterator {
 	 * @param boundingBoxGroupIndex
 	 * @param boundingBoxXyWh
 	 * @param scaledBoundingBoxXyWh
-	 * @param smoothClassOneHot
+	 * @param classOneHot
 	 */
-	private void setLabelValues(INDArray label, int exampleCount, int boundingBoxIndexInPerBoundingBoxGroup,int boundingBoxGroupIndex, INDArray boundingBoxXyWh,INDArray scaledBoundingBoxXyWh, INDArray smoothClassOneHot) {
+	private void setLabelValues(INDArray label, int exampleCount, int boundingBoxIndexInPerBoundingBoxGroup,int boundingBoxGroupIndex, INDArray boundingBoxXyWh,INDArray scaledBoundingBoxXyWh, INDArray classOneHot) {
 
 		INDArray  centerXy=scaledBoundingBoxXyWh.get(new INDArrayIndex[]{NDArrayIndex.interval(0,2)});
 
@@ -663,29 +663,20 @@ public class Yolo3DataSetIterator2 implements MultiDataSetIterator {
 
 		int gridY=gridXy.toIntVector()[1];
 
-		if(boundingBoxGroupIndex==-1){
-			//把处理特殊情况，有待解释
-			gridX=clip(gridX,0,12);
+		//把gridX和gridY限制在13或26或52内
+		gridX=clip(gridX,0,gridSizes[boundingBoxGroupIndex]-1);
 
-			gridY=clip(gridY,0,12);
-
-		}else{
-			//把gridX和gridY限制在13或26或52内
-			gridX=clip(gridX,0,gridSizes[boundingBoxGroupIndex]-1);
-
-			gridY=clip(gridY,0,gridSizes[boundingBoxGroupIndex]-1);
-		}
-
+		gridY=clip(gridY,0,gridSizes[boundingBoxGroupIndex]-1);
 
 		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(boundingBoxIndexInPerBoundingBoxGroup),NDArrayIndex.interval(0,4)},boundingBoxXyWh);
 
 		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(boundingBoxIndexInPerBoundingBoxGroup),NDArrayIndex.interval(4,5)},1.0);
 
-		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(boundingBoxIndexInPerBoundingBoxGroup),NDArrayIndex.interval(5,5+labels.length)},smoothClassOneHot);
+		label.put(new INDArrayIndex[]{NDArrayIndex.point(exampleCount),NDArrayIndex.point(gridX),NDArrayIndex.point(gridY),NDArrayIndex.point(boundingBoxIndexInPerBoundingBoxGroup),NDArrayIndex.interval(5,5+labels.length)},classOneHot);
 
 		//log.info(label.shapeInfoToString());
 
-        //log.info(gridX+","+gridY+" "+Arrays.toString(boundingBoxXyWh.toFloatVector()));
+       // log.info(gridX+","+gridY+" "+Arrays.toString(boundingBoxXyWh.toFloatVector()));
 	}
 
 	/**
@@ -733,11 +724,7 @@ public class Yolo3DataSetIterator2 implements MultiDataSetIterator {
 	 */
 	private INDArray getSmoothClassOneHot(ImageObject boundingBox) {
 
-		INDArray classOneHot= Nd4j.zeros(new int[]{labels.length});
-
-		int classOneHotIndex= Arrays.asList(labels).indexOf(boundingBox.getLabel());
-
-		classOneHot=classOneHot.put(new INDArrayIndex[]{NDArrayIndex.point(classOneHotIndex)},1.0);
+		INDArray classOneHot = getClassOneHot(boundingBox);
 
 		INDArray uniformDistribution=Nd4j.zeros(new int[]{labels.length});
 
@@ -748,6 +735,17 @@ public class Yolo3DataSetIterator2 implements MultiDataSetIterator {
 		INDArray smoothClassOneHot=classOneHot.mul(1-deta).add(uniformDistribution.mul(deta));
 
 		return smoothClassOneHot;
+	}
+
+	private INDArray getClassOneHot(ImageObject boundingBox) {
+
+		INDArray classOneHot= Nd4j.zeros(new int[]{labels.length});
+
+		int classOneHotIndex= Arrays.asList(labels).indexOf(boundingBox.getLabel());
+
+		classOneHot=classOneHot.put(new INDArrayIndex[]{NDArrayIndex.point(classOneHotIndex)},1.0);
+
+		return classOneHot;
 	}
 
 	/**

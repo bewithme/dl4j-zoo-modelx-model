@@ -330,22 +330,22 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
 
     private INDArray getPredictClassOneHot(INDArray input, long classOneHotLength) {
-        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(5,5+classOneHotLength));
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input.shape(),NDArrayIndex.interval(5,5+classOneHotLength));
         return input.get(indexes);
     }
 
     private INDArray getPredictConfidence(INDArray input) {
-        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(4,5));
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input.shape(),NDArrayIndex.interval(4,5));
         return input.get(indexes);
     }
 
     private INDArray getPredictBoxesWh(INDArray input) {
-        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(2,4));
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input.shape(),NDArrayIndex.interval(2,4));
         return input.get(indexes);
     }
 
     private INDArray getPredictBoxesXy(INDArray input) {
-        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input,NDArrayIndex.interval(0,2));
+        INDArrayIndex[] indexes=INDArrayUtils.getLastDimensionIndexes(input.shape(),NDArrayIndex.interval(0,2));
         return input.get(indexes);
     }
 
