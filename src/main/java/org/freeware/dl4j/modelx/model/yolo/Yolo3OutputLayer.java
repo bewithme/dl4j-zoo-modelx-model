@@ -19,6 +19,7 @@ import org.nd4j.common.base.Preconditions;
 import org.nd4j.common.primitives.Pair;
 import org.nd4j.linalg.activations.IActivation;
 import org.nd4j.linalg.activations.impl.ActivationLReLU;
+import org.nd4j.linalg.activations.impl.ActivationSigmoid;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.api.DataSet;
@@ -498,7 +499,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         //NWHC-->NCHW to match the input shape
         epsilon=epsilon.permute(0,3,1,2);
 
-        IActivation activation = new ActivationLReLU();
+        IActivation activation =   new ActivationSigmoid();
 
         INDArray gradient=activation.backprop(input.dup(),epsilon).getFirst();
 
