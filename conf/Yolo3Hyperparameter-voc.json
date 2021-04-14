@@ -1,11 +1,9 @@
 {
 	"name":"VOC2007_",
 	"labels": ["aeroplane","bicycle","bird","boat","bottle","bus","car","cat","chair","cow","diningtable","dog","horse","motorbike","person","pottedplant","sheep","sofa","train","tvmonitor"],
-	"bigBoundingBoxPriors":[[202,314],[311,193],[355,351]],
-	"mediumBoundingBoxPriors":[[76,157],[109,266],[165,136]],
-	"smallBoundingBoxPriors":[[24,39],[37,113],[76,65]],
+	"priorBoundingBoxes":[[24,39],[37,113],[76,65],[76,157],[109,266],[165,136],[202,314],[311,193],[355,351]],
 	"learningRate": 1.0E-4,
-	"dataDir": "/skymind/dataset/VOCdevkit_train/VOC2007",
+	"dataDir": "/Users/wenfengxu/Downloads/VOCdevkit_train/VOC2007_debug",
 	"batchSize": 1,
 	"epochs": 1000,
 	"randomSeed": 7854,
