@@ -135,6 +135,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
     @NotNull
     private SameDiff createConfidenceLossSameDiff(INDArray reshapeInput, long numberOfPriorBoundingBoxPerGridCell, INDArray decodePredictConfidence, INDArray decodePredictXyWh, INDArray labelConfidence) {
+
         SameDiff boxesBackgroundConfidenceSameDiff=SameDiff.create();
 
         INDArray boxesBackgroundConfidenceGroundTruthBoxesXyWh= getGroundTruthBoxesXyWh(numberOfPriorBoundingBoxPerGridCell);

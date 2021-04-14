@@ -90,26 +90,29 @@ public class Yolo3Trainer {
         log.info("Load data...");
         
         Random random = new Random(yoloHyperparameter.getRandomSeed());
-        //创建输入分割器数组
-        InputSplit[] inputSplit = getInputSplit(imageDir, random,yoloHyperparameter);
-        //训练集文件分割器
-        InputSplit trainDataInputSplit = inputSplit[0];
-        //测试集文件分割器
-        InputSplit testDataInputSplit  = inputSplit[1];
+
+        int[][] priorBoundingBoxes=yoloHyperparameter.getPriorBoundingBoxes();
+
+        int[][] smallPriorBoundingBoxes=new int[][]{priorBoundingBoxes[0],priorBoundingBoxes[1],priorBoundingBoxes[2]};
+
+        int[][] mediumPriorBoundingBoxes=new int[][]{priorBoundingBoxes[3],priorBoundingBoxes[4],priorBoundingBoxes[5]};
+
+        int[][] bigPriorBoundingBoxes=new int[][]{priorBoundingBoxes[6],priorBoundingBoxes[7],priorBoundingBoxes[8]};
         //创建训练记录读取数据集迭代器
-        MultiDataSetIterator yolo3DataSetIterator = new Yolo3DataSetIterator(yoloHyperparameter.getDataDir(),yoloHyperparameter.getBatchSize(),yoloHyperparameter.getLabels(),yoloHyperparameter.getBigBoundingBoxPriors(),yoloHyperparameter.getMediumBoundingBoxPriors(),yoloHyperparameter.getSmallBoundingBoxPriors());
+        MultiDataSetIterator yolo3DataSetIterator = new Yolo3DataSetIterator(yoloHyperparameter.getDataDir(),yoloHyperparameter.getBatchSize(),yoloHyperparameter.getLabels(),bigPriorBoundingBoxes,mediumPriorBoundingBoxes,smallPriorBoundingBoxes);
 
         ComputationGraph pretrainedComputationGraph =null;
         
         File latestModelFile=getLatestModelFile(yoloHyperparameter);
         
         if(latestModelFile==null) {
-        	 pretrainedComputationGraph = (ComputationGraph) Yolo3.builder()
+
+            pretrainedComputationGraph = (ComputationGraph) Yolo3.builder()
                      .numClasses(yoloHyperparameter.getLabels().length)
                      .updater(new Adam(yoloHyperparameter.getLearningRate()))
-                     .bigPriorBoundingBoxes(yoloHyperparameter.getBigBoundingBoxPriors())
-                     .mediumPriorBoundingBoxes(yoloHyperparameter.getMediumBoundingBoxPriors())
-                     .smallPriorBoundingBoxes(yoloHyperparameter.getSmallBoundingBoxPriors())
+                     .bigPriorBoundingBoxes(bigPriorBoundingBoxes)
+                     .mediumPriorBoundingBoxes(mediumPriorBoundingBoxes)
+                     .smallPriorBoundingBoxes(smallPriorBoundingBoxes)
                      .build().init();
         }else {
              pretrainedComputationGraph = ModelSerializer.restoreComputationGraph(latestModelFile,true);
