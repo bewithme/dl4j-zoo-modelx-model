@@ -144,6 +144,7 @@ public class CGan {
         DataSet combinedDataSet = DataSet.merge(Arrays.asList(realSet, fakeSet));
         //训练判别网络
         discriminator.fit(combinedDataSet);
+
         return combinedLatentDim;
     }
 

@@ -1,0 +1,142 @@
+package org.freeware.dl4j.modelx.model.gan;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.graph.MergeVertex;
+import org.deeplearning4j.nn.conf.graph.ReshapeVertex;
+import org.deeplearning4j.nn.conf.layers.Layer;
+import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.deeplearning4j.zoo.ZooModel;
+import org.nd4j.linalg.api.ndarray.INDArray;
+
+import java.io.Serializable;
+import java.util.List;
+
+@Slf4j
+public abstract class AbsGan extends ZooModel {
+
+
+
+    /**
+     * 从对抗网络中把参数复制给生成器
+     * @param generator
+     * @param gan
+     */
+    public void copyParamsFromGanToGenerator(ComputationGraph generator, ComputationGraph gan) {
+        int genLayerLen = generator.getLayers().length;
+        for (int i = 0; i < genLayerLen; i++) {
+            generator.getLayer(i).setParams(gan.getLayer(i).params());
+        }
+    }
+
+    /**
+     * 从对抗网络中把参数复制给判别器
+     * @param discriminator
+     * @param gan
+     */
+    public void copyParamsFromGanToDiscriminator(ComputationGraph discriminator, ComputationGraph gan) {
+
+        int ganLayerLen =gan.getLayers().length;
+
+        int disLayerLen=discriminator.getLayers().length;
+
+        int ganLayerIndex = ganLayerLen-disLayerLen;
+
+        for (int disLayerIndex =0; disLayerIndex < disLayerLen; disLayerIndex++) {
+
+            INDArray params= gan.getLayer(ganLayerIndex).params();
+
+            ganLayerIndex++;
+
+            discriminator.getLayer(disLayerIndex).setParams(params);
+        }
+    }
+
+    /**
+     * 从判别器复制参数到对抗网络的判别器中
+     * discriminator, gan
+     * @param discriminator
+     * @param gan
+     */
+    public  void copyParamsFromDiscriminatorToGanDiscriminator(ComputationGraph discriminator, ComputationGraph gan) {
+
+        int disLayerLen=discriminator.getLayers().length;
+
+        int ganLayerIndex= gan.getLayers().length-disLayerLen;
+
+        for (int disLayerIndex = 0; disLayerIndex < disLayerLen; disLayerIndex++) {
+
+            INDArray params=discriminator.getLayer(disLayerIndex ).params();
+
+            gan.getLayer(ganLayerIndex).setParams(params);
+
+            ganLayerIndex++;
+        }
+    }
+
+
+
+    protected void addGraphItems(ComputationGraphConfiguration.GraphBuilder graphBuilder, List<GraphLayerItem> graphLayerItems, Boolean frozen) {
+
+        for(GraphLayerItem graphLayerItem:graphLayerItems) {
+
+            if(graphLayerItem.getLayerOrVertex() instanceof MergeVertex) {
+
+                MergeVertex mergeVertex=(MergeVertex)graphLayerItem.getLayerOrVertex();
+
+                graphBuilder.addVertex(graphLayerItem.getLayerName(), mergeVertex, graphLayerItem.getLayerInputs());
+
+            }else if (graphLayerItem.getLayerOrVertex() instanceof ReshapeVertex){
+
+                ReshapeVertex reshapeVertex=(ReshapeVertex)graphLayerItem.getLayerOrVertex();
+
+                graphBuilder.addVertex(graphLayerItem.getLayerName(), reshapeVertex, graphLayerItem.getLayerInputs());
+
+            }else if (graphLayerItem.getLayerOrVertex() instanceof Layer){
+
+                Layer layer=(Layer)graphLayerItem.getLayerOrVertex();
+
+                graphBuilder.addLayer(graphLayerItem.getLayerName(), layer, graphLayerItem.getLayerInputs());
+
+            }
+        }
+    }
+    /**
+     * 从GAN把参数复制到生成器和判别器
+     * @param generator
+     * @param discriminator
+     * @param gan
+     */
+    public void copyParamsToGeneratorAndDiscriminatorFromGan(MultiLayerNetwork generator, MultiLayerNetwork discriminator, MultiLayerNetwork gan) {
+        int genLayerCount = generator.getLayers().length;
+        for (int i = 0; i < gan.getLayers().length; i++) {
+            if (i < genLayerCount) {
+                generator.getLayer(i).setParams(gan.getLayer(i).params());
+            } else {
+                discriminator.getLayer(i - genLayerCount).setParams(gan.getLayer(i).params());
+            }
+        }
+    }
+
+
+
+    /**
+     * 更新对抗网络中的判别器
+     * generator, discriminator, gan
+     * @param generator
+     * @param discriminator
+     * @param gan
+     */
+    public void updateDiscriminatorInGan(MultiLayerNetwork generator, MultiLayerNetwork discriminator, MultiLayerNetwork gan) {
+        int generatorLayerCount = generator.getLayers().length;
+        for (int i = generatorLayerCount; i < gan.getLayers().length; i++) {
+            gan.getLayer(i).setParams(discriminator.getLayer(i - generatorLayerCount).params());
+        }
+    }
+
+
+}
