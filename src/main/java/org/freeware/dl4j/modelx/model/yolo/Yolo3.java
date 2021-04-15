@@ -187,6 +187,7 @@ public class Yolo3 extends ZooModel {
 				.weightInit(WeightInit.XAVIER)
 				.miniBatch(true)
 				.cacheMode(cacheMode)
+				.activation(Activation.IDENTITY)
 				.trainingWorkspaceMode(workspaceMode)
 				.inferenceWorkspaceMode(workspaceMode)
 				.convolutionMode(ConvolutionMode.Truncate)
