@@ -58,7 +58,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
     private   IActivation activationSigmoid =   new ActivationSigmoid();
 
-    private   IActivation activationIdentity =   new ActivationIdentity();
+    private   IActivation activationIdentity =   new ActivationLReLU();
 
     @Override
     public double computeScore(double fullNetworkRegScore, boolean training, LayerWorkspaceMgr workspaceMgr) {
