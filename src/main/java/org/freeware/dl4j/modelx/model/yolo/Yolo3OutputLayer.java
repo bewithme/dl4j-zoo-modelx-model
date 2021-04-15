@@ -500,7 +500,7 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         //NWHC-->NCHW to match the input shape
         epsilon=epsilon.permute(0,3,1,2);
 
-        IActivation activation =   new ActivationIdentity();
+        IActivation activation =   new ActivationLReLU();
 
         INDArray gradient=activation.backprop(input.dup(),epsilon).getFirst();
 
