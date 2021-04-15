@@ -1,5 +1,6 @@
 package org.freeware.dl4j.modelx.model.gan;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ArrayUtils;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.conf.GradientNormalization;
@@ -28,6 +29,14 @@ import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.Random;
 
+/**
+ * 条件生成对抗网络示例
+ * 原理：潜层空间+标签（one hot或embedding） 作为生成器的输入
+ *
+ *
+ */
+
+@Slf4j
 public class CGan {
     private static final double LEARNING_RATE = 0.0002;
     //private static final double L2 = 0.005;
@@ -47,24 +56,29 @@ public class CGan {
     	Nd4j.getMemoryManager().setAutoGcWindow(15 * 1000);
 
         MnistDataSetIterator trainData = new MnistDataSetIterator(128, true, 42);
-        DataNormalization dataNormalization = new ImagePreProcessingScaler(-1, 1);
-	    
-		//dataNormalization.fit(trainData);
-		    
-		trainData.setPreProcessor(dataNormalization);
-        //DataSetIterator trainData=DataSetIteratorUtils.getMnistDataSetIterator("/Users/xuwenfeng/Downloads/mnist_png", 10);
 
-        MultiLayerNetwork generator = new MultiLayerNetwork(buildGenerator());
+        DataNormalization dataNormalization = new ImagePreProcessingScaler(-1, 1);
+
+        trainData.setPreProcessor(dataNormalization);
+
+		MultiLayerNetwork generator = new MultiLayerNetwork(buildGenerator());
+
         MultiLayerNetwork discriminator = new MultiLayerNetwork(buildDiscriminator());
+
         MultiLayerNetwork gan = new MultiLayerNetwork(buildGan());
+
         generator.init();
+
         discriminator.init();
+
         gan.init();
         //从GAN把参数复制到生成器和判别器
         copyParamsToGeneratorAndDiscriminatorFromGan(generator, discriminator, gan);
 
         generator.setListeners(new PerformanceListener(10, true));
+
         discriminator.setListeners(new PerformanceListener(10, true));
+
         gan.setListeners(new PerformanceListener(10, true));
 
         while (true) {
@@ -74,11 +88,7 @@ public class CGan {
         	int j = 0;
            
             while (trainData.hasNext()) {
-               
-            	j++;
-
-                //获取特征数据使它们缩放到 [-1,1] 也可以用 DataNormalization  
-                //INDArray real = trainData.next().getFeatures().muli(2).subi(1);
+                j++;
 
                 DataSet dataSet=trainData.next();
 
@@ -87,66 +97,67 @@ public class CGan {
                 INDArray realLabel = dataSet.getLabels();
 
                 int batchSize = (int) realFeature.size(0);
-                
-               // int width = (int)shape[2];
-                
-               // int height = (int)shape[3];
-                
-                //这里不是卷积网络，所以要把图片像素变成一维
-               // int reshapeColumns=width*height;
-                
-                //创建batchSize行，100列的随机数浅层空间
-                INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
-                //将100列的随机数浅层空间和随机的标签结合起来作为生成器的输入
-                INDArray combinedLatentDim=Nd4j.concat(-1,latentDim,realLabel);
-                
-                //从对抗网络中获取生成器的输出，当然也可以用 INDArray fake =gen.output(fakeIn);
-                //但这样得先把gan中的参数复制到生成器中，这样比较麻烦，浪费时间
-                INDArray fakeImage = gan.activateSelectedLayers(0, generator.getLayers().length - 1, combinedLatentDim);
-               
-                // [batchSize, channel, width, height]--->[batchSize,channel*width*height]
-                //INDArray reshapeReal=real.reshape(new int[]{batchSize,reshapeColumns});
+                //训练判别器
+                INDArray combinedLatentDim = trainDiscriminator(generator, discriminator, gan, realFeature, realLabel, batchSize);
 
-                //真实数据集
-                DataSet realSet = new DataSet(realFeature, Nd4j.zeros(batchSize, 1));
-                //生成数据集
-                DataSet fakeSet = new DataSet(fakeImage, Nd4j.ones(batchSize, 1));
-                //混合真实数据集和生成数据集
-                DataSet combinedDataSet = DataSet.merge(Arrays.asList(realSet, fakeSet));
-
-                //训练判别网络
-                discriminator.fit(combinedDataSet);
-              
-                //更新对抗网络中的判别器参数
-                updateDiscriminatorInGan(generator, discriminator, gan);
-
-                INDArray noiseLatentDim=Nd4j.rand(new int[] { batchSize, 100});
-
-                INDArray combinedNoiseLatentDim=Nd4j.concat(-1,noiseLatentDim,realLabel);
-                //添加噪声数据集,即把假特征数据的标签设为真，这样的话可以训练生成器生成尽量接近于真实的数据
-                DataSet noiseDataSet=new DataSet(combinedNoiseLatentDim, Nd4j.zeros(batchSize, 1));
-
-                //训练对抗网络
-                gan.fit(noiseDataSet);
-            
                 if (j % 10 == 1) {
-                    System.out.println("Iteration " + j + " Visualizing...");
-                    INDArray[] samples = new INDArray[9];
-                    DataSet fakeSetTest = new DataSet(combinedLatentDim, Nd4j.ones(batchSize, 1));
+                    //对抗训练
+                    trainGan(generator, discriminator, gan, realLabel, batchSize);
 
-                    //取出9条随机潜层空间数据
-                    for (int k = 0; k < 9; k++) {
-                    	
-                        INDArray input = fakeSetTest.get(k).getFeatures();
-                        //也可以使用 samples[k] = gen.output(input, false);
-                        samples[k] = gan.activateSelectedLayers(0, generator.getLayers().length - 1, input);
-
-                    }
-                    visualize(samples);
+                    visualize(generator, gan, batchSize, combinedLatentDim);
                 }
             }
 
         }
+    }
+
+    private static void visualize(MultiLayerNetwork generator, MultiLayerNetwork gan, int batchSize, INDArray combinedLatentDim) {
+
+        INDArray[] samples = new INDArray[9];
+
+        DataSet fakeSetTest = new DataSet(combinedLatentDim, Nd4j.ones(batchSize, 1));
+
+        //取出9条随机潜层空间数据
+        for (int k = 0; k < 9; k++) {
+
+            INDArray input = fakeSetTest.get(k).getFeatures();
+            //也可以使用 samples[k] = gen.output(input, false);
+            samples[k] = gan.activateSelectedLayers(0, generator.getLayers().length - 1, input);
+
+        }
+        visualize(samples);
+    }
+
+    private static INDArray trainDiscriminator(MultiLayerNetwork generator, MultiLayerNetwork discriminator, MultiLayerNetwork gan, INDArray realFeature, INDArray realLabel, int batchSize) {
+        //创建batchSize行，100列的随机数浅层空间
+        INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
+        //将100列的随机数浅层空间和随机的标签结合起来作为生成器的输入
+        INDArray combinedLatentDim=Nd4j.concat(-1,latentDim,realLabel);
+        //从对抗网络中获取生成器的输出，当然也可以用 INDArray fake =gen.output(fakeIn);
+        //但这样得先把gan中的参数复制到生成器中，这样比较麻烦，浪费时间
+        INDArray fakeImage = gan.activateSelectedLayers(0, generator.getLayers().length - 1, combinedLatentDim);
+        //真实数据集
+        DataSet realSet = new DataSet(realFeature, Nd4j.zeros(batchSize, 1));
+        //生成数据集
+        DataSet fakeSet = new DataSet(fakeImage, Nd4j.ones(batchSize, 1));
+        //混合真实数据集和生成数据集
+        DataSet combinedDataSet = DataSet.merge(Arrays.asList(realSet, fakeSet));
+        //训练判别网络
+        discriminator.fit(combinedDataSet);
+        return combinedLatentDim;
+    }
+
+    private static void trainGan(MultiLayerNetwork generator, MultiLayerNetwork discriminator, MultiLayerNetwork gan, INDArray realLabel, int batchSize) {
+        //更新对抗网络中的判别器参数
+        updateDiscriminatorInGan(generator, discriminator, gan);
+
+        INDArray noiseLatentDim= Nd4j.rand(new int[] { batchSize, 100});
+
+        INDArray combinedNoiseLatentDim=Nd4j.concat(-1,noiseLatentDim,realLabel);
+        //添加噪声数据集,即把假特征数据的标签设为真，这样的话可以训练生成器生成尽量接近于真实的数据
+        DataSet noiseDataSet=new DataSet(combinedNoiseLatentDim, Nd4j.zeros(batchSize, 1));
+        //训练对抗网络
+        gan.fit(noiseDataSet);
     }
 
     private static Layer[] genLayers() {
