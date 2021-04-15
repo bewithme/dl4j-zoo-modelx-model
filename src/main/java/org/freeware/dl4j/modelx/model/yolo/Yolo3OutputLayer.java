@@ -56,6 +56,9 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
     }
 
 
+    private   IActivation activationSigmoid =   new ActivationSigmoid();
+
+    private   IActivation activationIdentity =   new ActivationIdentity();
 
     @Override
     public double computeScore(double fullNetworkRegScore, boolean training, LayerWorkspaceMgr workspaceMgr) {
@@ -82,7 +85,9 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         INDArray totalScoreArray=gIouLoss.add(confidenceLoss).add(classLoss);
 
-        double totalScore=totalScoreArray.sumNumber().doubleValue();
+        double totalScore=totalScoreArray.sumNumber().doubleValue()/getInputMiniBatchSize();
+
+        totalScore=totalScore+fullNetworkRegScore;
 
         return totalScore;
     }
@@ -125,6 +130,12 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
         INDArray labelConfidence= getLabelConfidence();
         //标签置分类
         INDArray labelClassOneHot= getLabelClassOneHot(classOneHotLength);
+
+        decodePredictXyWh=activationIdentity.getActivation(decodePredictXyWh,Boolean.TRUE);
+
+        decodePredictConfidence=activationIdentity.getActivation(decodePredictConfidence,Boolean.TRUE);
+
+        rawPredictClassOneHot=activationSigmoid.getActivation(rawPredictClassOneHot,Boolean.TRUE);
 
         SameDiff gIouLossSameDiff = createGIouLossSameDiff(inputSize, decodePredictXyWh, labelXyWh, labelConfidence);
 
@@ -493,18 +504,37 @@ public class Yolo3OutputLayer extends AbstractLayer<Yolo3OutputLayerConfiguratio
 
         INDArray gradientConfidence=confidenceLossGradientsMap.get("rawPredictConfidence");
 
-        epsilon=Nd4j.concat(-1,gradientX,gradientY,gradientW,gradientH,gradientConfidence,gradientClass);
+        INDArray reshapeInput= reshapeInput();
+        //得到所有预测边界框的中心点坐标
+        INDArray predictBoxesXy= getPredictBoxesXy(reshapeInput);
+        //得到所有预测边界框的高和宽
+        INDArray predictBoxesWh= getPredictBoxesWh(reshapeInput);
+        //得到所有预测边界框的置信度
+        INDArray predictConfidence= getPredictConfidence(reshapeInput);
+
+        long classOneHotLength=labels.shape()[4]-5;
+        //得到所有预测边界框的分类
+        INDArray predictClassOneHot= getPredictClassOneHot(reshapeInput, classOneHotLength);
+
+
+        INDArray backPropGradientXy=activationIdentity.backprop(predictBoxesXy,Nd4j.concat(-1,gradientX,gradientY)).getFirst();
+        INDArray backPropGradientWh=activationIdentity.backprop(predictBoxesWh,Nd4j.concat(-1,gradientW,gradientH)).getFirst();
+        INDArray backPropGradientConfidence=activationIdentity.backprop(predictConfidence,gradientConfidence).getFirst();
+        INDArray backPropGradientClass=activationSigmoid.backprop(predictClassOneHot,gradientClass).getFirst();
+
+
+        epsilon=Nd4j.concat(-1,backPropGradientXy,backPropGradientWh,backPropGradientConfidence,backPropGradientClass);
+
+
 
         //[batch, grid_h, grid_w, 3, 4+1+nb_class]--> [batch, grid_h, grid_w, 3*(4+1+nb_class)]
         epsilon=epsilon.reshape(new long[]{epsilon.shape()[0],epsilon.shape()[1],epsilon.shape()[2],epsilon.shape()[3]*epsilon.shape()[4]});
         //NWHC-->NCHW to match the input shape
         epsilon=epsilon.permute(0,3,1,2);
 
-        IActivation activation =   new ActivationLReLU();
 
-        INDArray gradient=activation.backprop(input.dup(),epsilon).getFirst();
 
-        INDArray epsOut = workspaceMgr.leverageTo(ArrayType.ACTIVATION_GRAD,gradient);
+        INDArray epsOut = workspaceMgr.leverageTo(ArrayType.ACTIVATION_GRAD,epsilon);
 
         return new Pair<>(EMPTY_GRADIENT,epsOut);
 
