@@ -5,6 +5,8 @@ import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.freeware.dl4j.modelx.model.gan.CGan;
+import org.freeware.dl4j.modelx.utils.DateUtils;
+import org.freeware.dl4j.modelx.utils.ExtendedFileUtils;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -13,7 +15,9 @@ import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.nd4j.linalg.factory.Nd4j;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 
 
 @Slf4j
@@ -83,7 +87,7 @@ public class CGanTrainer {
                 trainGan(cgan, generator, discriminator, gan, realLabel, batchSize);
 
 
-                if (iterationCounter % 10 == 1) {
+                if (iterationCounter % 100 == 1) {
 
                     visualize(generator, realLabel, batchSize);
 
@@ -99,7 +103,7 @@ public class CGanTrainer {
 
     private static void visualize(ComputationGraph generator, INDArray realLabel, int batchSize) {
 
-        INDArray[] samples = new INDArray[9];
+        INDArray[] testSamples = new INDArray[9];
 
         for(int k=0;k<9;k++){
             //创建batchSize行，100列的随机数浅层空间
@@ -107,10 +111,13 @@ public class CGanTrainer {
 
             INDArray testFakeImaged=generator.output(testLatentDim,realLabel)[0];
 
-            samples[k]=testFakeImaged;
+            testSamples[k]=testFakeImaged;
         }
 
-        VisualisationUtils.mnistVisualize(samples);
+        String savePath="output_cgan";
+
+        VisualisationUtils.saveAsImage(testSamples,savePath);
+        //VisualisationUtils.mnistVisualize(samples);
     }
 
     private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray realLabel, int batchSize) {

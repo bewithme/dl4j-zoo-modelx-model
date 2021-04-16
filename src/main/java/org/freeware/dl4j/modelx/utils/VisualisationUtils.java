@@ -2,6 +2,7 @@ package org.freeware.dl4j.modelx.utils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.datavec.image.loader.Java2DNativeImageLoader;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
 import javax.imageio.ImageIO;
@@ -45,12 +46,8 @@ public class VisualisationUtils {
 
     private static JLabel getMnistImage(INDArray tensor) {
 
-        BufferedImage bi = new BufferedImage(28, 28, BufferedImage.TYPE_BYTE_GRAY);
+        BufferedImage bi = convertToImage(tensor,28,28);
 
-        for (int i = 0; i < 784; i++) {
-            int pixel = (int)(((tensor.getDouble(i) + 1) * 2) * 255);
-            bi.getRaster().setSample(i % 28, i / 28, 0, pixel);
-        }
         ImageIcon orig = new ImageIcon(bi);
 
         Image imageScaled = orig.getImage().getScaledInstance((8 * 28), (8 * 28), Image.SCALE_REPLICATE);
@@ -60,6 +57,45 @@ public class VisualisationUtils {
         return new JLabel(scaled);
     }
 
- 
+    @NotNull
+    private static BufferedImage convertToImage(INDArray tensor,int width,int height) {
+
+        BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
+
+        for (int i = 0; i < width*height; i++) {
+
+            int pixel = (int)(((tensor.getDouble(i) + 1) * 2) * 255);
+
+            bi.getRaster().setSample(i % width, i / height, 0, pixel);
+        }
+
+        return bi;
+    }
+
+    public static void saveAsImage(INDArray[] tensors,String savePath){
+
+        ExtendedFileUtils.makeDirs(savePath);
+
+        for (int k=0;k<tensors.length;k++){
+
+            String fileName= DateUtils.format(new Date(), DateUtils.FORMAT_DATE_TIME_YYYYMMDDHHMMSS).concat("_"+k+"_.jpg");
+
+            fileName=savePath.concat(File.separator).concat(fileName);
+
+            saveAsImage(tensors[k],fileName,28,28);
+        }
+    }
+
+    public static void saveAsImage(INDArray tensor,String fileName,int width,int height) {
+
+            BufferedImage bi =convertToImage(tensor,width,height);
+        try {
+            ImageIO.write(bi, "jpg",new File(fileName));
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
 
 }

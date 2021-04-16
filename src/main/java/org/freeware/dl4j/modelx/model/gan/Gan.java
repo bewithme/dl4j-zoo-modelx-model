@@ -11,6 +11,7 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.freeware.dl4j.modelx.utils.RandomUtils;
+import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.activations.impl.ActivationLReLU;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -47,9 +48,7 @@ public class Gan {
     private  static int DISCRIMINATOR_INPUT_SIZE =784;
 
     private  static int GENERATOR_INPUT_SIZE =100+10;
-    private static JFrame frame;
-    private static JPanel panel;
-    private static Random random =new Random(123456);
+
     public static void main(String... args) throws Exception {
        
     	
@@ -114,7 +113,7 @@ public class Gan {
 
     private static void visualize(MultiLayerNetwork generator, MultiLayerNetwork gan, int batchSize, INDArray combinedLatentDim) {
 
-        INDArray[] samples = new INDArray[9];
+        INDArray[] testSamples = new INDArray[9];
 
         DataSet fakeSetTest = new DataSet(combinedLatentDim, Nd4j.ones(batchSize, 1));
 
@@ -123,10 +122,13 @@ public class Gan {
 
             INDArray input = fakeSetTest.get(k).getFeatures();
             //也可以使用 samples[k] = gen.output(input, false);
-            samples[k] = gan.activateSelectedLayers(0, generator.getLayers().length - 1, input);
+            testSamples[k] = gan.activateSelectedLayers(0, generator.getLayers().length - 1, input);
 
         }
-        visualize(samples);
+        String savePath="output_gan";
+
+        VisualisationUtils.saveAsImage(testSamples,savePath);
+       // visualize(samples);
     }
 
     private static INDArray trainDiscriminator(MultiLayerNetwork generator, MultiLayerNetwork discriminator, MultiLayerNetwork gan, INDArray realFeature, INDArray realLabel, int batchSize) {
@@ -282,44 +284,5 @@ public class Gan {
         }
     }
 
-    private static void visualize(INDArray[] samples) {
-        if (frame == null) {
-            frame = new JFrame();
-            frame.setTitle("Viz");
-            frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-            frame.setLayout(new BorderLayout());
 
-            panel = new JPanel();
-
-            panel.setLayout(new GridLayout(samples.length / 3, 1, 8, 8));
-            frame.add(panel, BorderLayout.CENTER);
-            frame.setVisible(true);
-        }
-
-        panel.removeAll();
-
-        for (int i = 0; i < samples.length; i++) {
-            panel.add(getImage(samples[i]));
-        }
-
-        frame.revalidate();
-        frame.pack();
-    }
-
-    private static JLabel getImage(INDArray tensor) {
-        BufferedImage bi = new BufferedImage(28, 28, BufferedImage.TYPE_BYTE_GRAY);
-        for (int i = 0; i < 784; i++) {
-            int pixel = (int)(((tensor.getDouble(i) + 1) * 2) * 255);
-            bi.getRaster().setSample(i % 28, i / 28, 0, pixel);
-        }
-        ImageIcon orig = new ImageIcon(bi);
-        
-        Image imageScaled = orig.getImage().getScaledInstance((8 * 28), (8 * 28), Image.SCALE_REPLICATE);
-
-        ImageIcon scaled = new ImageIcon(imageScaled);
-
-        return new JLabel(scaled);
-    }
-    
-  
 }
