@@ -5,26 +5,25 @@ import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.freeware.dl4j.modelx.model.gan.CGan;
-import org.freeware.dl4j.modelx.utils.DateUtils;
-import org.freeware.dl4j.modelx.utils.ExtendedFileUtils;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.MultiDataSet;
-import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
-import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.nd4j.linalg.factory.Nd4j;
-
 import java.io.File;
 import java.io.IOException;
-import java.util.Date;
 
 
+/**
+ * @author wenfengxu
+ * 条件生成对抗网络训练
+ * 1、把对抗网络的参数复制到生成器和判别器。
+ * 2、用真实数据和生成器生成的假数据合并起来训练判别器。
+ * 3、把判别器参数复制给对抗网络中的判别器，并冻结对抗网络中的判别器的参数使期不能学习。
+ * 4、训练对抗网络，更新对抗网络中的生成器参数，然后把对抗网络中的生成器参数复制给生成器。
+ */
 @Slf4j
 public class CGanTrainer {
-
-
-
 
     public static void main(String[] args) {
 
@@ -57,11 +56,6 @@ public class CGanTrainer {
             e.printStackTrace();
         }
 
-        //DataNormalization dataNormalization = new ImagePreProcessingScaler(-1, 1);
-
-       // trainData.setPreProcessor(dataNormalization);
-
-        //dataNormalization.fit(trainData);
 
         while (true) {
 
@@ -84,8 +78,11 @@ public class CGanTrainer {
 
                 trainDiscriminator(generator, discriminator, realFeature, realLabel, batchSize);
 
-                trainGan(cgan, generator, discriminator, gan, realLabel, batchSize);
+                cgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
+                trainGan( gan, realLabel, batchSize);
+
+                cgan.copyParamsFromGanToGenerator(generator,gan);
 
                 if (iterationCounter % 10000 == 1) {
 
@@ -101,7 +98,14 @@ public class CGanTrainer {
 
     }
 
-    private static void visualize(ComputationGraph generator, INDArray realLabel, int batchSize,int iterationCounter) {
+    /**
+     * 测试数据可视化
+     * @param generator 生成器
+     * @param label 随机标签
+     * @param batchSize 小批量大小
+     * @param iterationCounter 迭代次数
+     */
+    private static void visualize(ComputationGraph generator, INDArray label, int batchSize,int iterationCounter) {
 
         INDArray[] testSamples = new INDArray[9];
 
@@ -109,7 +113,7 @@ public class CGanTrainer {
             //创建batchSize行，100列的随机数浅层空间
             INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
 
-            INDArray testFakeImaged=generator.output(testLatentDim,realLabel)[0];
+            INDArray testFakeImaged=generator.output(testLatentDim,label)[0];
 
             testSamples[k]=testFakeImaged;
         }
@@ -121,15 +125,23 @@ public class CGanTrainer {
         //VisualisationUtils.mnistVisualize(samples);
     }
 
-    private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray realLabel, int batchSize) {
+    /**
+     * 训练判别器
+     * @param generator
+     * @param discriminator
+     * @param realFeature
+     * @param label
+     * @param batchSize
+     */
+    private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray label, int batchSize) {
         //创建batchSize行，100列的随机数浅层空间
         INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
         //用生成器生成假图片，这里的输入标签是使用随机的小批量中获取的，当然也可以自己随机生成
-        INDArray fakeImaged=generator.output(latentDim,realLabel)[0];
+        INDArray fakeImaged=generator.output(latentDim,label)[0];
         //把生真实的图片和假的图按小批量的维度连接起来
         INDArray fakeAndRealImageFeature=Nd4j.concat(0,realFeature,fakeImaged);
         //把生真实的标签和假的标签按小批量的维度连接起来
-        INDArray fakeAndRealLabelFeature=Nd4j.concat(0,realLabel,realLabel);
+        INDArray fakeAndRealLabelFeature=Nd4j.concat(0,label,label);
         //判别器输入特征
         INDArray[] discriminatorFeatures=new INDArray[] {fakeAndRealImageFeature,fakeAndRealLabelFeature};
         //判别器标签 将真假标签按N维度连接后放到标签数组中,注意标签0表示假，1表示真
@@ -140,21 +152,24 @@ public class CGanTrainer {
         discriminator.fit(discriminatorInputMultiDataSet);
     }
 
-    private static void trainGan(CGan cgan, ComputationGraph generator, ComputationGraph discriminator, ComputationGraph gan, INDArray realLabel, int batchSize) {
-
-        cgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
+    /**
+     * 对抗训练
+     * @param gan
+     * @param label
+     * @param batchSize
+     */
+    private static void trainGan(ComputationGraph gan, INDArray label, int batchSize) {
 
         INDArray noiseLatentDim = Nd4j.rand(new int[]{batchSize, 100});
         //噪音特征
-        INDArray[] noiseLatentFeatureArray = new INDArray[]{noiseLatentDim, realLabel};
+        INDArray[] noiseLatentFeature = new INDArray[]{noiseLatentDim, label};
         //这里故意把噪音的标签设为真，
-        INDArray[] noiseLatentLabelArray = new INDArray[]{Nd4j.ones(batchSize, 1)};
+        INDArray[] noiseLatentLabel = new INDArray[]{Nd4j.ones(batchSize, 1)};
 
-        MultiDataSet ganInputMultiDataSet = new MultiDataSet(noiseLatentFeatureArray, noiseLatentLabelArray);
+        MultiDataSet ganInputMultiDataSet = new MultiDataSet(noiseLatentFeature, noiseLatentLabel);
 
         gan.fit(ganInputMultiDataSet);
 
-        cgan.copyParamsFromGanToGenerator(generator,gan);
     }
 
 }
