@@ -188,6 +188,7 @@ public class Yolo3 extends ZooModel {
 				.miniBatch(true)
 				.cacheMode(cacheMode)
 				.activation(Activation.LEAKYRELU)
+				.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
 				.trainingWorkspaceMode(workspaceMode)
 				.inferenceWorkspaceMode(workspaceMode)
 				.convolutionMode(ConvolutionMode.Truncate)
