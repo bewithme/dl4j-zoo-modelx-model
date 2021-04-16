@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
-import org.freeware.dl4j.modelx.model.gan.CondGan;
+import org.freeware.dl4j.modelx.model.gan.CGan;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -13,7 +13,6 @@ import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.nd4j.linalg.factory.Nd4j;
 
-import javax.swing.*;
 import java.io.IOException;
 
 
@@ -25,7 +24,7 @@ public class CGanTrainer {
 
     public static void main(String[] args) {
 
-        CondGan cgan=CondGan.builder().build();
+        CGan cgan= CGan.builder().build();
 
         ComputationGraph generator=cgan.initGenerator();
 
@@ -130,7 +129,7 @@ public class CGanTrainer {
         discriminator.fit(discriminatorInputMultiDataSet);
     }
 
-    private static void trainGan(CondGan cgan, ComputationGraph generator, ComputationGraph discriminator, ComputationGraph gan, INDArray realLabel, int batchSize) {
+    private static void trainGan(CGan cgan, ComputationGraph generator, ComputationGraph discriminator, ComputationGraph gan, INDArray realLabel, int batchSize) {
 
         cgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 

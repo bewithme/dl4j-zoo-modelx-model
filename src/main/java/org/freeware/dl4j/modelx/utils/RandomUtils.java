@@ -39,8 +39,6 @@ public class RandomUtils {
      * @return
      */
     public static int randomUniform(int min,int max,Random random){
-
-
         int bound=max - min+1;
         if(bound<=0){
             return 0;
