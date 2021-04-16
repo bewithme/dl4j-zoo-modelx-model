@@ -87,7 +87,7 @@ public class CGanTrainer {
                 trainGan(cgan, generator, discriminator, gan, realLabel, batchSize);
 
 
-                if (iterationCounter % 100 == 1) {
+                if (iterationCounter % 10000 == 1) {
 
                     visualize(generator, realLabel, batchSize);
 

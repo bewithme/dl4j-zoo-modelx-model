@@ -102,7 +102,7 @@ public class Gan {
                 //对抗训练
                 trainGan(generator, discriminator, gan, realLabel, batchSize);
 
-                if (j % 10 == 1) {
+                if (j % 10000 == 1) {
 
                     visualize(generator, gan, batchSize, combinedLatentDim);
                 }
