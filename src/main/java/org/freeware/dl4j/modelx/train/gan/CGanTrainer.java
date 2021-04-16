@@ -55,6 +55,8 @@ public class CGanTrainer {
 
         trainData.setPreProcessor(dataNormalization);
 
+        dataNormalization.fit(trainData);
+
         while (true) {
 
             trainData.reset();
