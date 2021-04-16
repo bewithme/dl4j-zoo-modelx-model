@@ -50,9 +50,7 @@ public class CondGan extends AbsGan{
 
     private  static int LABEL_NUM =10;
 
-    private static JFrame frame;
 
-    private static JPanel panel;
 
     private static Random random =new Random(123456);
 

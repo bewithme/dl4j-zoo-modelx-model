@@ -9,15 +9,26 @@ import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.graph.ReshapeVertex;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.zoo.ZooModel;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
-import java.io.Serializable;
 import java.util.List;
 
 @Slf4j
 public abstract class AbsGan extends ZooModel {
+
+
+    /**
+     * 从对抗网络中把参数复制给生成器和判别器
+     * @param generator
+     * @param discriminator
+     * @param gan
+     */
+    public void copyParamsFromGanToGeneratorAndDiscriminator(ComputationGraph generator,ComputationGraph discriminator, ComputationGraph gan) {
+       copyParamsFromGanToGenerator(generator,gan);
+       copyParamsFromGanToDiscriminator(discriminator,gan);
+    }
+
 
 
 
@@ -105,38 +116,10 @@ public abstract class AbsGan extends ZooModel {
             }
         }
     }
-    /**
-     * 从GAN把参数复制到生成器和判别器
-     * @param generator
-     * @param discriminator
-     * @param gan
-     */
-    public void copyParamsToGeneratorAndDiscriminatorFromGan(MultiLayerNetwork generator, MultiLayerNetwork discriminator, MultiLayerNetwork gan) {
-        int genLayerCount = generator.getLayers().length;
-        for (int i = 0; i < gan.getLayers().length; i++) {
-            if (i < genLayerCount) {
-                generator.getLayer(i).setParams(gan.getLayer(i).params());
-            } else {
-                discriminator.getLayer(i - genLayerCount).setParams(gan.getLayer(i).params());
-            }
-        }
-    }
 
 
 
-    /**
-     * 更新对抗网络中的判别器
-     * generator, discriminator, gan
-     * @param generator
-     * @param discriminator
-     * @param gan
-     */
-    public void updateDiscriminatorInGan(MultiLayerNetwork generator, MultiLayerNetwork discriminator, MultiLayerNetwork gan) {
-        int generatorLayerCount = generator.getLayers().length;
-        for (int i = generatorLayerCount; i < gan.getLayers().length; i++) {
-            gan.getLayer(i).setParams(discriminator.getLayer(i - generatorLayerCount).params());
-        }
-    }
+
 
 
 }
