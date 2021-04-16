@@ -100,9 +100,10 @@ public class Gan {
                 //训练判别器
                 INDArray combinedLatentDim = trainDiscriminator(generator, discriminator, gan, realFeature, realLabel, batchSize);
 
+                //对抗训练
+                trainGan(generator, discriminator, gan, realLabel, batchSize);
+
                 if (j % 10 == 1) {
-                    //对抗训练
-                    trainGan(generator, discriminator, gan, realLabel, batchSize);
 
                     visualize(generator, gan, batchSize, combinedLatentDim);
                 }

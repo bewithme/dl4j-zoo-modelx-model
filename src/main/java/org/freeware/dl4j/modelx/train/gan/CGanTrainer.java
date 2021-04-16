@@ -36,6 +36,8 @@ public class CGanTrainer {
 
         discriminator.setListeners(new PerformanceListener(10, true));
 
+        cgan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
+
         log.info(generator.summary());
 
         log.info(discriminator.summary());
@@ -51,11 +53,11 @@ public class CGanTrainer {
             e.printStackTrace();
         }
 
-        DataNormalization dataNormalization = new ImagePreProcessingScaler(-1, 1);
+        //DataNormalization dataNormalization = new ImagePreProcessingScaler(-1, 1);
 
-        trainData.setPreProcessor(dataNormalization);
+       // trainData.setPreProcessor(dataNormalization);
 
-        dataNormalization.fit(trainData);
+        //dataNormalization.fit(trainData);
 
         while (true) {
 
@@ -63,7 +65,6 @@ public class CGanTrainer {
 
             int iterationCounter = 0;
 
-            cgan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
 
             while (trainData.hasNext()) {
 
