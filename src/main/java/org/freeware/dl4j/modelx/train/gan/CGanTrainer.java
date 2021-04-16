@@ -89,7 +89,7 @@ public class CGanTrainer {
 
                 if (iterationCounter % 10000 == 1) {
 
-                    visualize(generator, realLabel, batchSize);
+                    visualize(generator, realLabel, batchSize,iterationCounter);
 
                 }
 
@@ -101,7 +101,7 @@ public class CGanTrainer {
 
     }
 
-    private static void visualize(ComputationGraph generator, INDArray realLabel, int batchSize) {
+    private static void visualize(ComputationGraph generator, INDArray realLabel, int batchSize,int iterationCounter) {
 
         INDArray[] testSamples = new INDArray[9];
 
@@ -114,9 +114,10 @@ public class CGanTrainer {
             testSamples[k]=testFakeImaged;
         }
 
-        String savePath="output_cgan";
+        String savePath="output_cgan".concat(File.separator).concat(String.valueOf(iterationCounter));
 
         VisualisationUtils.saveAsImage(testSamples,savePath);
+
         //VisualisationUtils.mnistVisualize(samples);
     }
 

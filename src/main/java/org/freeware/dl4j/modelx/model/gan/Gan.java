@@ -27,6 +27,7 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -84,10 +85,10 @@ public class Gan {
 
             trainData.reset();
 
-        	int j = 0;
+        	int iterationCounter= 0;
            
             while (trainData.hasNext()) {
-                j++;
+                iterationCounter++;
 
                 DataSet dataSet=trainData.next();
 
@@ -102,16 +103,16 @@ public class Gan {
                 //对抗训练
                 trainGan(generator, discriminator, gan, realLabel, batchSize);
 
-                if (j % 10000 == 1) {
+                if (iterationCounter % 10000 == 1) {
 
-                    visualize(generator, gan, batchSize, combinedLatentDim);
+                    visualize(generator, gan, batchSize, combinedLatentDim,iterationCounter);
                 }
             }
 
         }
     }
 
-    private static void visualize(MultiLayerNetwork generator, MultiLayerNetwork gan, int batchSize, INDArray combinedLatentDim) {
+    private static void visualize(MultiLayerNetwork generator, MultiLayerNetwork gan, int batchSize, INDArray combinedLatentDim,int iterationCounter) {
 
         INDArray[] testSamples = new INDArray[9];
 
@@ -125,7 +126,7 @@ public class Gan {
             testSamples[k] = gan.activateSelectedLayers(0, generator.getLayers().length - 1, input);
 
         }
-        String savePath="output_gan";
+        String savePath="output_gan".concat(File.separator).concat(String.valueOf(iterationCounter));
 
         VisualisationUtils.saveAsImage(testSamples,savePath);
        // visualize(samples);
