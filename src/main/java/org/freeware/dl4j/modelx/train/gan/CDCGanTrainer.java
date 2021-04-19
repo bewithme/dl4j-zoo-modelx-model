@@ -118,6 +118,9 @@ public class CDCGanTrainer {
 
             label=toEmbeddingFormat(label);
 
+            log.info(testLatentDim.shapeInfoToString());
+            log.info(label.shapeInfoToString());
+
             INDArray testFakeImaged=generator.output(testLatentDim,label)[0];
 
             testSamples[k]=testFakeImaged;
