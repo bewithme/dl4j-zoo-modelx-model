@@ -60,10 +60,8 @@ public class CDCGan extends AbsGan{
 
     @Builder.Default private   int imageChannel =1;
 
-
-
-
     private static Random random =new Random(123456);
+
 
 
     public ComputationGraphConfiguration buildGeneratorConfiguration() {
@@ -129,9 +127,9 @@ public class CDCGan extends AbsGan{
 
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .updater(UPDATER)
-                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
-                .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
-                .weightInit(WeightInit.XAVIER)
+               // .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+               // .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
+                .weightInit(WeightInit.NORMAL)
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
@@ -173,7 +171,7 @@ public class CDCGan extends AbsGan{
                         .build(),
                 new String[]{inputs[1]}));
 
-        graphItemList.add(new GraphLayerItem("gen_merge_vertex_0",
+        graphItemList.add(new GraphLayerItem("gen_vertex_0",
                 new ElementWiseVertex(ElementWiseVertex.Op.Product),
                 new String[]{inputs[0],"gen_embedding_0"}));
 
@@ -183,7 +181,7 @@ public class CDCGan extends AbsGan{
                         .nOut(256*7*7)
                         .weightInit(WeightInit.NORMAL)
                         .build(),
-                new String[]{"gen_merge_vertex_0"}));
+                new String[]{"gen_vertex_0"}));
 
         graphItemList.add(new GraphLayerItem("gen_layer_1",
                 new Deconvolution2D.Builder()
@@ -199,8 +197,7 @@ public class CDCGan extends AbsGan{
                 new BatchNormalization.Builder(false)
                         .nIn(128)
                         .nOut(128)
-                        .decay(0.99)
-                        .eps(0.001)
+
                         .build(),
                 new String[]{"gen_layer_1"}));
 
@@ -222,8 +219,6 @@ public class CDCGan extends AbsGan{
                 new BatchNormalization.Builder(false)
                         .nIn(64)
                         .nOut(64)
-                        .decay(0.99)
-                        .eps(0.001)
                         .build(),
                 new String[]{"gen_layer_4"}));
 
@@ -273,7 +268,7 @@ public class CDCGan extends AbsGan{
 
         graphItemList.add(new GraphLayerItem("dis_layer_0",
                 new Convolution2D.Builder()
-                        .nIn(2)
+                        .nIn(imageChannel+1)
                         .kernelSize(3,3)
                         .stride(2,2)
                         .nOut(64)
@@ -297,8 +292,6 @@ public class CDCGan extends AbsGan{
                 new BatchNormalization.Builder(false)
                         .nIn(64)
                         .nOut(64)
-                        .decay(0.99)
-                        .eps(0.001)
                         .build(),
                 new String[]{"dis_layer_2"}));
 
@@ -320,8 +313,6 @@ public class CDCGan extends AbsGan{
                 new BatchNormalization.Builder(false)
                         .nIn(128)
                         .nOut(128)
-                        .decay(0.99)
-                        .eps(0.001)
                         .build(),
                 new String[]{"dis_layer_5"}));
 
@@ -349,11 +340,11 @@ public class CDCGan extends AbsGan{
 
         ComputationGraphConfiguration configuration=buildGanConfiguration();
 
-        ComputationGraph model = new ComputationGraph(configuration);
+        ComputationGraph gan = new ComputationGraph(configuration);
 
-        model.init();
+        gan.init();
 
-        return model;
+        return gan;
 
     }
 

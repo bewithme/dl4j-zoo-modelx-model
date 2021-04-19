@@ -1,5 +1,6 @@
 package org.freeware.dl4j.modelx.train.gan;
 
+import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -30,9 +31,22 @@ public class CDCGanTrainer {
 
     public static void main(String[] args) {
 
-        int batchSize=128;
+        int batchSize=32;
 
-        CDCGan cdcgan= CDCGan.builder().build();
+        int numClasses =10;
+
+        int imageHeight =28;
+
+        int imageWidth =28;
+
+        int imageChannel =1;
+
+        CDCGan cdcgan= CDCGan.builder()
+                .numClasses(numClasses)
+                .imageChannel(imageChannel)
+                .imageHeight(imageHeight)
+                .imageWidth(imageWidth)
+                .build();
 
         ComputationGraph generator=cdcgan.initGenerator();
 
@@ -45,10 +59,6 @@ public class CDCGanTrainer {
         discriminator.setListeners(new PerformanceListener(10, true));
 
         cdcgan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
-
-        log.info(generator.summary());
-
-        log.info(discriminator.summary());
 
         log.info(gan.summary());
 
@@ -87,7 +97,7 @@ public class CDCGanTrainer {
 
                 cdcgan.copyParamsFromGanToGenerator(generator,gan);
 
-                if (iterationCounter % 1000== 1) {
+                if (iterationCounter % 100== 0) {
 
                     visualize(generator, realLabel, iterationCounter);
 
@@ -142,12 +152,8 @@ public class CDCGanTrainer {
      */
     private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray label) {
 
-
-        label = INDArrayUtils.getHalfOfFirstDimension(label);
-
         int batchSize=Integer.parseInt(String.valueOf(label.size(0)));
-
-        //创建batchSize/2 行，100列的随机数浅层空间
+        //创建batchSize，100列的随机数浅层空间
         INDArray latentDim = Nd4j.rand(new int[]{batchSize, 100});
 
         INDArray embeddingLabel = toEmbeddingFormat(label);
@@ -155,8 +161,6 @@ public class CDCGanTrainer {
         INDArray fakeImaged=generator.output(latentDim,embeddingLabel)[0];
 
         realFeature = toImageFormat(realFeature);
-
-        realFeature = INDArrayUtils.getHalfOfFirstDimension(realFeature);
         //把生真实的图片和假的图按小批量的维度连接起来
         INDArray fakeAndRealImageFeature=Nd4j.concat(0,realFeature,fakeImaged);
         //把生真实的标签和假的标签按小批量的维度连接起来
@@ -173,19 +177,6 @@ public class CDCGanTrainer {
 
 
 
-    private static INDArray toImageFormat(INDArray feature) {
-        return feature.reshape(feature.size(0),1,28,28);
-    }
-
-    private static INDArray toEmbeddingFormat(INDArray label) {
-
-        INDArray maxIdx=label.argMax(1);
-
-        INDArray embeddingLabel= Nd4j.expandDims(maxIdx,1);
-
-        return embeddingLabel;
-    }
-
     /**
      * 对抗训练
      * @param gan
@@ -194,13 +185,11 @@ public class CDCGanTrainer {
      */
     private static void trainGan(ComputationGraph gan, INDArray label) {
 
-
         int batchSize=Integer.parseInt(String.valueOf(label.size(0)));
 
         INDArray noiseLatentDim = Nd4j.rand(new int[]{batchSize, 100});
 
         INDArray maxIdx = toEmbeddingFormat(label);
-
         //噪音特征
         INDArray[] noiseLatentFeature = new INDArray[]{noiseLatentDim, maxIdx};
         //这里故意把噪音的标签设为真，
@@ -212,4 +201,29 @@ public class CDCGanTrainer {
 
     }
 
+
+
+    /**
+     * 转为图片格式
+     * @param feature
+     * @return
+     */
+    private static INDArray toImageFormat(INDArray feature) {
+        return feature.reshape(feature.size(0),1,28,28);
+    }
+
+    /**
+     * 转换为EmbeddingLayer的输入格式
+     * [batchSize,labelIndex]
+     * @param label
+     * @return
+     */
+    private static INDArray toEmbeddingFormat(INDArray label) {
+
+        INDArray maxIdx=label.argMax(1);
+
+        INDArray embeddingLabel= Nd4j.expandDims(maxIdx,1);
+
+        return embeddingLabel;
+    }
 }
