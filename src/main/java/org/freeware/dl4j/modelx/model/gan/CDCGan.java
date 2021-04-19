@@ -273,7 +273,8 @@ public class CDCGan extends AbsGan{
                 new String[]{"dis_merge_vertex_0"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_1",
-                new ActivationLayer.Builder(new ActivationLReLU(0.01)).build(),
+                new ActivationLayer.Builder(new ActivationLReLU(0.01))
+                        .build(),
                 new String[]{"dis_layer_0"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_2",
@@ -289,6 +290,7 @@ public class CDCGan extends AbsGan{
                 new BatchNormalization.Builder()
                         .nIn(64)
                         .nOut(64)
+                        .updater(updater)
                         .build(),
                 new String[]{"dis_layer_2"}));
 
@@ -310,6 +312,7 @@ public class CDCGan extends AbsGan{
                 new BatchNormalization.Builder()
                         .nIn(128)
                         .nOut(128)
+                        .updater(updater)
                         .build(),
                 new String[]{"dis_layer_5"}));
 
