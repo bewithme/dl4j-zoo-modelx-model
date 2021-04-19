@@ -60,7 +60,7 @@ public class CDCGan extends AbsGan{
 
     @Builder.Default private   int imageChannel =1;
 
-    @Builder.Default private int  batchSize;
+
 
 
     private static Random random =new Random(123456);
@@ -93,7 +93,7 @@ public class CDCGan extends AbsGan{
         return   graph.build();
     }
 
-    public ComputationGraphConfiguration buildDiscriminatorConfiguration(int batchSize) {
+    public ComputationGraphConfiguration buildDiscriminatorConfiguration() {
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
@@ -123,7 +123,7 @@ public class CDCGan extends AbsGan{
     }
 
 
-    public ComputationGraphConfiguration buildGanConfiguration(int batchSize) {
+    public ComputationGraphConfiguration buildGanConfiguration() {
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
@@ -260,11 +260,9 @@ public class CDCGan extends AbsGan{
                 new String[]{inputs[1]}));
 
         graphItemList.add(new GraphLayerItem("dis_reshape_0",
-                //128 is batch size
-                new ReshapeVertex(batchSize, imageChannel, imageHeight, imageWidth),
+                //-1 means keep the same batch size of original array
+                new ReshapeVertex(-1, imageChannel, imageHeight, imageWidth),
                 new String[]{"dis_embedding_0"}));
-
-
 
         graphItemList.add(new GraphLayerItem("dis_merge_vertex_0",
                 new MergeVertex(),
@@ -349,7 +347,7 @@ public class CDCGan extends AbsGan{
 
     public ComputationGraph init() {
 
-        ComputationGraphConfiguration configuration=buildGanConfiguration(batchSize);
+        ComputationGraphConfiguration configuration=buildGanConfiguration();
 
         ComputationGraph model = new ComputationGraph(configuration);
 
@@ -372,7 +370,7 @@ public class CDCGan extends AbsGan{
 
     public ComputationGraph initDiscriminator() {
 
-        ComputationGraphConfiguration configuration=buildDiscriminatorConfiguration(batchSize);
+        ComputationGraphConfiguration configuration=buildDiscriminatorConfiguration();
 
         ComputationGraph model = new ComputationGraph(configuration);
 

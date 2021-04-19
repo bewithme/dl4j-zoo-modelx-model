@@ -32,7 +32,7 @@ public class CDCGanTrainer {
 
         int batchSize=128;
 
-        CDCGan cdcgan= CDCGan.builder().batchSize(batchSize).build();
+        CDCGan cdcgan= CDCGan.builder().build();
 
         ComputationGraph generator=cdcgan.initGenerator();
 
@@ -76,10 +76,6 @@ public class CDCGanTrainer {
                 DataSet dataSet=trainData.next();
 
                 INDArray realFeature = dataSet.getFeatures();
-                //此处是个BUG因为模型与batchSize耦合了，如果有不等于batchSize的输入会报错
-                if(realFeature.size(0)!=batchSize){
-                    continue;
-                }
 
                 INDArray realLabel = dataSet.getLabels();
 
