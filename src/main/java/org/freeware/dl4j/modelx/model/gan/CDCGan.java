@@ -143,7 +143,7 @@ public class CDCGan extends AbsGan{
         addGraphItems(graph,genLayerItems,Boolean.FALSE);
 
         String[] disInputs={"gen_layer_8","label_num"};
-
+        //学习率为0，即判别器不会被训练，只训练生成器
         List<GraphLayerItem>  disLayerItems=buildDiscriminatorGraphLayerItems(disInputs,UPDATER_ZERO);
 
         addGraphItems(graph,disLayerItems,Boolean.FALSE);
@@ -194,7 +194,7 @@ public class CDCGan extends AbsGan{
                 new String[]{"gen_layer_0"}));
 
         graphItemList.add(new GraphLayerItem("gen_layer_2",
-                new BatchNormalization.Builder(false)
+                new BatchNormalization.Builder()
                         .nIn(128)
                         .nOut(128)
 
@@ -216,7 +216,7 @@ public class CDCGan extends AbsGan{
                 new String[]{"gen_layer_3"}));
 
         graphItemList.add(new GraphLayerItem("gen_layer_5",
-                new BatchNormalization.Builder(false)
+                new BatchNormalization.Builder()
                         .nIn(64)
                         .nOut(64)
                         .build(),
@@ -286,7 +286,7 @@ public class CDCGan extends AbsGan{
                 new String[]{"dis_layer_1"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_3",
-                new BatchNormalization.Builder(false)
+                new BatchNormalization.Builder()
                         .nIn(64)
                         .nOut(64)
                         .build(),
@@ -307,7 +307,7 @@ public class CDCGan extends AbsGan{
 
 
         graphItemList.add(new GraphLayerItem("dis_layer_6",
-                new BatchNormalization.Builder(false)
+                new BatchNormalization.Builder()
                         .nIn(128)
                         .nOut(128)
                         .build(),
