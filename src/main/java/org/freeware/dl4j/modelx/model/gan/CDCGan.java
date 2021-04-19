@@ -42,7 +42,7 @@ public class CDCGan extends AbsGan{
 
     private static final double GRADIENT_THRESHOLD = 100.0;
 
-    private static final IUpdater UPDATER = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
+    private static final IUpdater UPDATER = Adam.builder().build();
 
     private static final IUpdater UPDATER_ZERO = Sgd.builder().learningRate(0.0).build();
 
@@ -262,9 +262,6 @@ public class CDCGan extends AbsGan{
         graphItemList.add(new GraphLayerItem("dis_merge_vertex_0",
                 new MergeVertex(),
                 new String[]{inputs[0],"dis_reshape_0"}));
-
-
-
 
         graphItemList.add(new GraphLayerItem("dis_layer_0",
                 new Convolution2D.Builder()
