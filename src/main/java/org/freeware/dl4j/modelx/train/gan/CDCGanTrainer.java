@@ -79,17 +79,17 @@ public class CDCGanTrainer {
 
                 INDArray realLabel = dataSet.getLabels();
 
-                trainDiscriminator(generator, discriminator, realFeature, realLabel, batchSize);
+                trainDiscriminator(generator, discriminator, realFeature, realLabel);
 
                 cdcgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
-                trainGan( gan, realLabel, batchSize);
+                trainGan( gan, realLabel);
 
                 cdcgan.copyParamsFromGanToGenerator(generator,gan);
 
                 if (iterationCounter % 1000== 1) {
 
-                    visualize(generator, realLabel, batchSize,iterationCounter);
+                    visualize(generator, realLabel, iterationCounter);
 
                 }
 
@@ -105,10 +105,12 @@ public class CDCGanTrainer {
      * 测试数据可视化
      * @param generator 生成器
      * @param label 随机标签
-     * @param batchSize 小批量大小
+     *
      * @param iterationCounter 迭代次数
      */
-    private static void visualize(ComputationGraph generator, INDArray label, int batchSize,int iterationCounter) {
+    private static void visualize(ComputationGraph generator, INDArray label,int iterationCounter) {
+
+        int batchSize=Integer.parseInt(String.valueOf(label.size(0)));
 
         INDArray[] testSamples = new INDArray[9];
 
@@ -117,9 +119,6 @@ public class CDCGanTrainer {
             INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
 
             INDArray embeddingLabel=toEmbeddingFormat(label);
-
-            log.info(testLatentDim.shapeInfoToString());
-            log.info(embeddingLabel.shapeInfoToString());
 
             INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
 
@@ -139,16 +138,17 @@ public class CDCGanTrainer {
      * @param discriminator
      * @param realFeature
      * @param label
-     * @param batchSize
+     *
      */
-    private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray label, int batchSize) {
+    private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray label) {
 
-        batchSize=batchSize/2;
+
+        label = INDArrayUtils.getHalfOfFirstDimension(label);
+
+        int batchSize=Integer.parseInt(String.valueOf(label.size(0)));
 
         //创建batchSize/2 行，100列的随机数浅层空间
         INDArray latentDim = Nd4j.rand(new int[]{batchSize, 100});
-
-        label = INDArrayUtils.getHalfOfFirstDimension(label);
 
         INDArray embeddingLabel = toEmbeddingFormat(label);
         //用生成器生成假图片，这里的输入标签是使用随机的小批量中获取的，当然也可以自己随机生成
@@ -190,9 +190,12 @@ public class CDCGanTrainer {
      * 对抗训练
      * @param gan
      * @param label
-     * @param batchSize
+     *
      */
-    private static void trainGan(ComputationGraph gan, INDArray label, int batchSize) {
+    private static void trainGan(ComputationGraph gan, INDArray label) {
+
+
+        int batchSize=Integer.parseInt(String.valueOf(label.size(0)));
 
         INDArray noiseLatentDim = Nd4j.rand(new int[]{batchSize, 100});
 
