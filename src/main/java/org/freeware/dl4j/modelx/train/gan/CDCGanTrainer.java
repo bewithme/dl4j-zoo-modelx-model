@@ -116,12 +116,12 @@ public class CDCGanTrainer {
             //创建batchSize行，100列的随机数浅层空间
             INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
 
-            label=toEmbeddingFormat(label);
+            INDArray embeddingLabel=toEmbeddingFormat(label);
 
             log.info(testLatentDim.shapeInfoToString());
-            log.info(label.shapeInfoToString());
+            log.info(embeddingLabel.shapeInfoToString());
 
-            INDArray testFakeImaged=generator.output(testLatentDim,label)[0];
+            INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
 
             testSamples[k]=testFakeImaged;
         }
@@ -150,9 +150,9 @@ public class CDCGanTrainer {
 
         label = INDArrayUtils.getHalfOfFirstDimension(label);
 
-        INDArray maxIdx = toEmbeddingFormat(label);
+        INDArray embeddingLabel = toEmbeddingFormat(label);
         //用生成器生成假图片，这里的输入标签是使用随机的小批量中获取的，当然也可以自己随机生成
-        INDArray fakeImaged=generator.output(latentDim,maxIdx)[0];
+        INDArray fakeImaged=generator.output(latentDim,embeddingLabel)[0];
 
         realFeature = toImageFormat(realFeature);
 
@@ -160,7 +160,7 @@ public class CDCGanTrainer {
         //把生真实的图片和假的图按小批量的维度连接起来
         INDArray fakeAndRealImageFeature=Nd4j.concat(0,realFeature,fakeImaged);
         //把生真实的标签和假的标签按小批量的维度连接起来
-        INDArray fakeAndRealLabelFeature=Nd4j.concat(0,maxIdx,maxIdx);
+        INDArray fakeAndRealLabelFeature=Nd4j.concat(0,embeddingLabel,embeddingLabel);
         //判别器输入特征
         INDArray[] discriminatorFeatures=new INDArray[] {fakeAndRealImageFeature,fakeAndRealLabelFeature};
         //判别器标签 将真假标签按N维度连接后放到标签数组中,注意标签0表示假，1表示真
@@ -181,9 +181,9 @@ public class CDCGanTrainer {
 
         INDArray maxIdx=label.argMax(1);
 
-        maxIdx= Nd4j.expandDims(maxIdx,1);
+        INDArray embeddingLabel= Nd4j.expandDims(maxIdx,1);
 
-        return maxIdx;
+        return embeddingLabel;
     }
 
     /**
