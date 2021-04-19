@@ -318,7 +318,11 @@ public class CDCGan extends AbsGan{
                 new String[]{"dis_layer_6"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_8",
-                new OutputLayer.Builder(LossFunctions.LossFunction.XENT).nIn(512).nOut(1).activation(Activation.SIGMOID).updater(updater).build(),
+                new OutputLayer.Builder(LossFunctions.LossFunction.XENT)
+                        .nIn(512)
+                        .nOut(1)
+                        .activation(Activation.SIGMOID)
+                        .updater(updater).build(),
                 new String[]{"dis_layer_7"}));
 
         return graphItemList;
