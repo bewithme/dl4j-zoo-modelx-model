@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.graph.ReshapeVertex;
 import org.deeplearning4j.nn.conf.layers.Layer;
@@ -100,6 +101,12 @@ public abstract class AbsGan extends ZooModel {
                 MergeVertex mergeVertex=(MergeVertex)graphLayerItem.getLayerOrVertex();
 
                 graphBuilder.addVertex(graphLayerItem.getLayerName(), mergeVertex, graphLayerItem.getLayerInputs());
+
+            } else if(graphLayerItem.getLayerOrVertex() instanceof ElementWiseVertex) {
+
+                ElementWiseVertex elementWiseVertex=(ElementWiseVertex)graphLayerItem.getLayerOrVertex();
+
+                graphBuilder.addVertex(graphLayerItem.getLayerName(), elementWiseVertex, graphLayerItem.getLayerInputs());
 
             }else if (graphLayerItem.getLayerOrVertex() instanceof ReshapeVertex){
 

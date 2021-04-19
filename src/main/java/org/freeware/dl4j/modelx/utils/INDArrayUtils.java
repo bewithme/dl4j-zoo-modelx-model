@@ -236,4 +236,24 @@ public class INDArrayUtils {
     }
 
 
+    public static INDArray getHalfOfFirstDimension(INDArray array){
+
+        long[] shape=array.shape();
+
+        INDArrayIndex[] indexes =new INDArrayIndex[shape.length];
+
+        for(int i=0;i<shape.length;i++){
+
+            if(i!=0){
+
+                indexes[i]=NDArrayIndex.all();
+
+            }
+        }
+        indexes[0]=NDArrayIndex.interval(0,array.size(0)/2);
+
+        return array.get(indexes) ;
+    }
+
+
 }
