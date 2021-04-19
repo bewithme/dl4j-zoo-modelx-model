@@ -91,7 +91,12 @@ public abstract class AbsGan extends ZooModel {
     }
 
 
-
+    /**
+     * 批量添加计算图的层或顶点
+     * @param graphBuilder
+     * @param graphLayerItems
+     * @param frozen
+     */
     protected void addGraphItems(ComputationGraphConfiguration.GraphBuilder graphBuilder, List<GraphLayerItem> graphLayerItems, Boolean frozen) {
 
         for(GraphLayerItem graphLayerItem:graphLayerItems) {
