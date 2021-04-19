@@ -129,7 +129,7 @@ public class CDCGan extends AbsGan{
                 .updater(UPDATER)
                // .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                // .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
-                .weightInit(WeightInit.NORMAL)
+                .weightInit(WeightInit.XAVIER)
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
