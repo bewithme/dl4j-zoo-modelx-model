@@ -135,7 +135,7 @@ public class CDCGanTrainer {
 
             VisualisationUtils.mnistVisualizeForConvolution2D(samples);
         }
-        if (iterationCounter % 500== 0) {
+        if (iterationCounter % 1000== 0) {
 
             String savePath="output_CDCGAN".concat(File.separator).concat(String.valueOf(iterationCounter));
 
