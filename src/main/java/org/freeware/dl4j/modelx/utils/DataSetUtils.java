@@ -39,11 +39,11 @@ public class DataSetUtils {
         //创建训练集记录读取器数据迭代器
         DataSetIterator dataSetIterator = new RecordReaderDataSetIterator(imageRecordReader, batchSize,labelIndex,numPossibleLabels);
 
-        DataNormalization imageScaler = new ImagePreProcessingScaler(-1,1);
+        DataNormalization dataNormalization = new ImagePreProcessingScaler(-1,1);
 
-        imageScaler.fit(dataSetIterator);
+        dataNormalization.fit(dataSetIterator);
 
-        dataSetIterator.setPreProcessor(imageScaler);
+        dataSetIterator.setPreProcessor(dataNormalization);
 
         return dataSetIterator;
     }

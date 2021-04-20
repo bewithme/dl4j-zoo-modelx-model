@@ -1,21 +1,25 @@
 package org.freeware.dl4j.modelx.train.gan;
 
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.freeware.dl4j.modelx.model.gan.CDCGan;
-import org.freeware.dl4j.modelx.utils.INDArrayUtils;
+import org.freeware.dl4j.modelx.utils.DataSetUtils;
+import org.freeware.dl4j.modelx.utils.RandomUtils;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.MultiDataSet;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
+import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.nd4j.linalg.factory.Nd4j;
 
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 
 
 /**
@@ -29,6 +33,8 @@ import java.io.IOException;
 @Slf4j
 public class CDCGanTrainer {
 
+
+    private  static Random random=new Random(12345);
     public static void main(String[] args) {
 
         int batchSize=32;
@@ -64,9 +70,10 @@ public class CDCGanTrainer {
 
         Nd4j.getMemoryManager().setAutoGcWindow(15 * 1000);
 
-        MnistDataSetIterator trainData = null;
+        DataSetIterator trainData = null;
         try {
-            trainData = new MnistDataSetIterator(batchSize, true, 42);
+            trainData=DataSetUtils.getDataSetIterator("/Users/wenfengxu/Downloads/data/mnist_png/training",batchSize,10,imageHeight,imageWidth,imageChannel);
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -89,17 +96,19 @@ public class CDCGanTrainer {
 
                 INDArray realLabel = dataSet.getLabels();
 
+                int realBatchSize=Integer.parseInt(String.valueOf(realLabel.size(0)));
+
                 trainDiscriminator(generator, discriminator, realFeature, realLabel);
 
                 cdcgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
-                trainGan( gan, realLabel);
+                trainGan( gan, realBatchSize);
 
                 cdcgan.copyParamsFromGanToGenerator(generator,gan);
 
                 if (iterationCounter % 100== 0) {
 
-                    visualize(generator, realLabel, iterationCounter);
+                    visualize(generator,  iterationCounter);
 
                 }
 
@@ -114,13 +123,16 @@ public class CDCGanTrainer {
     /**
      * 测试数据可视化
      * @param generator 生成器
-     * @param label 随机标签
+     *
      *
      * @param iterationCounter 迭代次数
      */
-    private static void visualize(ComputationGraph generator, INDArray label,int iterationCounter) {
+    private static void visualize(ComputationGraph generator,int iterationCounter) {
 
-        int batchSize=Integer.parseInt(String.valueOf(label.size(0)));
+        DataNormalization dataNormalization = new ImagePreProcessingScaler(-1,1);
+
+
+        int batchSize=1;
 
         INDArray[] testSamples = new INDArray[9];
 
@@ -128,18 +140,22 @@ public class CDCGanTrainer {
             //创建batchSize行，100列的随机数浅层空间
             INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
 
-            INDArray embeddingLabel=toEmbeddingFormat(label);
+            INDArray embeddingLabel= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
 
             INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
+
+            dataNormalization.revertFeatures(testFakeImaged);
 
             testSamples[k]=testFakeImaged;
         }
 
         String savePath="output_cdcgan".concat(File.separator).concat(String.valueOf(iterationCounter));
 
-        VisualisationUtils.saveAsImage(testSamples,savePath);
 
-        VisualisationUtils.mnistVisualize(testSamples);
+
+        VisualisationUtils.saveAsImageForConvolution2D(testSamples,savePath);
+
+        VisualisationUtils.mnistVisualizeForConvolution2D(testSamples);
     }
 
     /**
@@ -191,16 +207,14 @@ public class CDCGanTrainer {
      * 此时判别器的学习率为0
      * 所以只会训练生成器
      * @param gan
-     * @param label
+     * @param batchSize
      *
      */
-    private static void trainGan(ComputationGraph gan, INDArray label) {
-
-        int batchSize=Integer.parseInt(String.valueOf(label.size(0)));
+    private static void trainGan(ComputationGraph gan,  int batchSize) {
         //噪音数据
         INDArray noiseLatentDim = Nd4j.rand(new int[]{batchSize, 100});
         //把标签转为EmbeddingLayer的输入格式
-        INDArray embeddingLabel = toEmbeddingFormat(label);
+        INDArray embeddingLabel = RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
         //噪音特征
         INDArray[] noiseLatentFeature = new INDArray[]{noiseLatentDim, embeddingLabel};
         //这里故意把噪音的标签设为真，

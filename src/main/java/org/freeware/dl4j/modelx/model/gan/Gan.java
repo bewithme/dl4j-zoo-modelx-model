@@ -10,7 +10,6 @@ import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
-import org.freeware.dl4j.modelx.utils.RandomUtils;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.activations.impl.ActivationLReLU;
@@ -24,12 +23,8 @@ import org.nd4j.linalg.learning.config.IUpdater;
 import org.nd4j.linalg.learning.config.Sgd;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Arrays;
-import java.util.Random;
 
 /**
  * 条件生成对抗网络示例

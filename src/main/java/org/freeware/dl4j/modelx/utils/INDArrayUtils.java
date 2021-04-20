@@ -256,4 +256,19 @@ public class INDArrayUtils {
     }
 
 
+    /**
+     * 转换为EmbeddingLayer的输入格式
+     * [batchSize,labelIndex]
+     * @param label
+     * @return
+     */
+    public static INDArray toEmbeddingFormat(INDArray label) {
+
+        INDArray maxIdx=label.argMax(1);
+
+        INDArray embeddingLabel= Nd4j.expandDims(maxIdx,1);
+
+        return embeddingLabel;
+    }
+
 }
