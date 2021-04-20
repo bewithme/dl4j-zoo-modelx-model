@@ -39,6 +39,8 @@ public class CDCGanTrainer {
 
     private  static  DataNormalization dataNormalization = new ImagePreProcessingScaler(-1,1);
 
+    private static String outputDir="output_CDCGAN";
+
     public static void main(String[] args) {
 
         int batchSize=32;
@@ -52,6 +54,8 @@ public class CDCGanTrainer {
         int imageChannel =1;
 
         String dataPath="/Users/wenfengxu/Downloads/data/mnist_png/training";
+
+
 
         CDCGan cdcgan= CDCGan.builder()
                 .numClasses(numClasses)
@@ -137,7 +141,7 @@ public class CDCGanTrainer {
         }
         if (iterationCounter % 1000== 0) {
 
-            String savePath="output_CDCGAN".concat(File.separator).concat(String.valueOf(iterationCounter));
+            String savePath=outputDir.concat(File.separator).concat(String.valueOf(iterationCounter));
 
             VisualisationUtils.saveAsImageForConvolution2D(samples,savePath);
         }

@@ -100,7 +100,6 @@ public class CGan extends AbsGan{
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
-
                 .graphBuilder();
 
         String[] inputs= {"image","label_num"};
@@ -203,11 +202,10 @@ public class CGan extends AbsGan{
 
         List<GraphLayerItem>  graphItemList=new ArrayList<GraphLayerItem>(10);
 
-
         graphItemList.add(new GraphLayerItem("dis_embedding_0",
                 new EmbeddingLayer.Builder()
                         .nIn(numClasses)
-                        .nOut(imageHeight * imageWidth * imageChannel).build(),
+                        .nOut(LATENT_DIM_LEN).build(),
                 new String[]{inputs[1]}));
 
         graphItemList.add(new GraphLayerItem("dis_merge_vertex_0",
@@ -216,7 +214,9 @@ public class CGan extends AbsGan{
 
 
         graphItemList.add(new GraphLayerItem("dis_layer_0",
-                new DenseLayer.Builder().nIn(1568).nOut(1024).updater(updater).build(),
+                new DenseLayer.Builder().nIn(DISCRIMINATOR_INPUT_SIZE+LATENT_DIM_LEN)
+                        .nOut(1024)
+                        .updater(updater).build(),
                 new String[]{"dis_merge_vertex_0"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_1",
@@ -240,7 +240,10 @@ public class CGan extends AbsGan{
                 new String[]{"dis_layer_4"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_6",
-                new DenseLayer.Builder().nIn(512).nOut(256).updater(updater).build(),
+                new DenseLayer.Builder()
+                        .nIn(512)
+                        .nOut(256)
+                        .updater(updater).build(),
                 new String[]{"dis_layer_5"}));
 
 
@@ -253,7 +256,11 @@ public class CGan extends AbsGan{
                 new String[]{"dis_layer_7"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_9",
-                new OutputLayer.Builder(LossFunctions.LossFunction.XENT).nIn(256).nOut(1).activation(Activation.SIGMOID).updater(updater).build(),
+                new OutputLayer.Builder(LossFunctions.LossFunction.XENT)
+                        .nIn(256)
+                        .nOut(1)
+                        .activation(Activation.SIGMOID)
+                        .updater(updater).build(),
                 new String[]{"dis_layer_8"}));
 
         return graphItemList;

@@ -31,6 +31,8 @@ public class CGanTrainer {
 
     private  static Random random=new Random(12345);
 
+    private static String outputDir="output_CGAN";
+
     public static void main(String[] args) {
 
         CGan cgan= CGan.builder().build();
@@ -90,11 +92,7 @@ public class CGanTrainer {
 
                 cgan.copyParamsFromGanToGenerator(generator,gan);
 
-                if (iterationCounter % 100 == 1) {
-
-                    visualize(generator, batchSize,iterationCounter);
-
-                }
+                visualize(generator, iterationCounter);
 
             }
 
@@ -105,32 +103,53 @@ public class CGanTrainer {
     }
 
     /**
-     * 测试数据可视化
-     * @param generator 生成器
-     *
-     * @param batchSize 小批量大小
-     * @param iterationCounter 迭代次数
+     * 可视化
+     * @param generator
+     * @param iterationCounter
      */
-    private static void visualize(ComputationGraph generator, int batchSize,int iterationCounter) {
+    private static void visualize(ComputationGraph generator, int iterationCounter) {
+
+        INDArray[] samples=null;
+
+        if (iterationCounter % 10== 0) {
+
+            samples=getSamples(generator);
+
+            VisualisationUtils.mnistVisualize(samples);
+        }
+        if (iterationCounter % 1000== 0) {
+
+            String savePath=outputDir.concat(File.separator).concat(String.valueOf(iterationCounter));
+
+            VisualisationUtils.saveAsImage(samples,savePath);
+        }
+    }
+
+
+    /**
+     * 采样生成器
+     * 9个输出
+     * @param generator
+     * @return
+     */
+    private static INDArray[] getSamples(ComputationGraph generator) {
+
+        int batchSize=1;
 
         INDArray[] testSamples = new INDArray[9];
 
         for(int k=0;k<9;k++){
             //创建batchSize行，100列的随机数浅层空间
             INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
+            //随机标签
+            INDArray embeddingLabel= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
+            //输出图片
+            INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
 
-            INDArray label= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
-
-            INDArray testFakeImaged=generator.output(testLatentDim,label)[0];
 
             testSamples[k]=testFakeImaged;
         }
-
-        String savePath="output_cgan".concat(File.separator).concat(String.valueOf(iterationCounter));
-
-        VisualisationUtils.saveAsImage(testSamples,savePath);
-
-        VisualisationUtils.mnistVisualize(testSamples);
+        return testSamples;
     }
 
     /**
