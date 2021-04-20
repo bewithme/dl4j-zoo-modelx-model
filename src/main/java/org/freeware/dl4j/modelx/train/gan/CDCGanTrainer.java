@@ -8,6 +8,7 @@ import org.freeware.dl4j.modelx.model.gan.CDCGan;
 import org.freeware.dl4j.modelx.utils.DataSetUtils;
 import org.freeware.dl4j.modelx.utils.RandomUtils;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.MultiDataSet;
@@ -35,6 +36,9 @@ public class CDCGanTrainer {
 
 
     private  static Random random=new Random(12345);
+
+    private  static  DataNormalization dataNormalization = new ImagePreProcessingScaler(-1,1);
+
     public static void main(String[] args) {
 
         int batchSize=32;
@@ -82,13 +86,11 @@ public class CDCGanTrainer {
             e.printStackTrace();
         }
 
+        int iterationCounter = 0;
 
         while (true) {
 
             trainData.reset();
-
-            int iterationCounter = 0;
-
 
             while (trainData.hasNext()) {
 
@@ -110,31 +112,45 @@ public class CDCGanTrainer {
 
                 cdcgan.copyParamsFromGanToGenerator(generator,gan);
 
-                if (iterationCounter % 100== 0) {
-
-                    visualize(generator,  iterationCounter);
-
-                }
+                visualize(generator, iterationCounter);
 
             }
 
         }
 
-
-
     }
 
     /**
-     * 测试数据可视化
-     * @param generator 生成器
-     *
-     *
-     * @param iterationCounter 迭代次数
+     * 可视化
+     * @param generator
+     * @param iterationCounter
      */
-    private static void visualize(ComputationGraph generator,int iterationCounter) {
+    private static void visualize(ComputationGraph generator, int iterationCounter) {
 
-        DataNormalization dataNormalization = new ImagePreProcessingScaler(-1,1);
+        INDArray[] samples=null;
 
+        if (iterationCounter % 10== 0) {
+
+            samples=getSamples(generator);
+
+            VisualisationUtils.mnistVisualizeForConvolution2D(samples);
+        }
+        if (iterationCounter % 100== 0) {
+
+            String savePath="output_CDCGAN".concat(File.separator).concat(String.valueOf(iterationCounter));
+
+            VisualisationUtils.saveAsImageForConvolution2D(samples,savePath);
+        }
+    }
+
+
+    /**
+     * 采样生成器
+     * 9个输出
+     * @param generator
+     * @return
+     */
+    private static INDArray[] getSamples(ComputationGraph generator) {
 
         int batchSize=1;
 
@@ -143,23 +159,16 @@ public class CDCGanTrainer {
         for(int k=0;k<9;k++){
             //创建batchSize行，100列的随机数浅层空间
             INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
-
+            //随机标签
             INDArray embeddingLabel= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
-
+            //输出图片
             INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
-
+            //把图片数据恢复到0-255
             dataNormalization.revertFeatures(testFakeImaged);
 
             testSamples[k]=testFakeImaged;
         }
-
-        String savePath="output_cdcgan".concat(File.separator).concat(String.valueOf(iterationCounter));
-
-
-
-        VisualisationUtils.saveAsImageForConvolution2D(testSamples,savePath);
-
-        VisualisationUtils.mnistVisualizeForConvolution2D(testSamples);
+        return testSamples;
     }
 
     /**
@@ -217,7 +226,7 @@ public class CDCGanTrainer {
     private static void trainGan(ComputationGraph gan,  int batchSize) {
         //噪音数据
         INDArray noiseLatentDim = Nd4j.rand(new int[]{batchSize, 100});
-        //把标签转为EmbeddingLayer的输入格式
+        //随机长成EmbeddingLayer输入格式的标签
         INDArray embeddingLabel = RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
         //噪音特征
         INDArray[] noiseLatentFeature = new INDArray[]{noiseLatentDim, embeddingLabel};
