@@ -42,7 +42,7 @@ public class MnistDCGANExample {
     private static void visualize(INDArray[] samples) {
         if (frame == null) {
             frame = new JFrame();
-            frame.setTitle("Viz");
+            frame.setTitle("Viz MnistDCGANExample");
             frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
             frame.setLayout(new BorderLayout());
 
