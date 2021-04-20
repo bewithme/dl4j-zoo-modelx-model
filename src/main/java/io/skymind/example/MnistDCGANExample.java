@@ -142,7 +142,7 @@ public class MnistDCGANExample {
         int batchSize = 64;
         MnistDataSetIterator trainData = new MnistDataSetIterator(batchSize, true, 42);
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10000; i++) {
             //gan.fit(trainData, 1);
 
             System.out.println("Starting epoch: " + (i + 1));
