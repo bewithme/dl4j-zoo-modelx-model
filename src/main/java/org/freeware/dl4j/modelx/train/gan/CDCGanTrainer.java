@@ -47,6 +47,8 @@ public class CDCGanTrainer {
 
         int imageChannel =1;
 
+        String dataPath="/Users/wenfengxu/Downloads/data/mnist_png/training";
+
         CDCGan cdcgan= CDCGan.builder()
                 .numClasses(numClasses)
                 .imageChannel(imageChannel)
@@ -71,8 +73,10 @@ public class CDCGanTrainer {
         Nd4j.getMemoryManager().setAutoGcWindow(15 * 1000);
 
         DataSetIterator trainData = null;
+
         try {
-            trainData=DataSetUtils.getDataSetIterator("/Users/wenfengxu/Downloads/data/mnist_png/training",batchSize,10,imageHeight,imageWidth,imageChannel);
+
+            trainData=DataSetUtils.getDataSetIterator(dataPath,batchSize,10,imageHeight,imageWidth,imageChannel);
 
         } catch (IOException e) {
             e.printStackTrace();
