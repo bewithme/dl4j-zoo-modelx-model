@@ -101,7 +101,7 @@ public class MnistSimpleGAN {
         JFrame frame = GANVisualizationUtils.initFrame();
         JPanel panel = GANVisualizationUtils.initPanel(frame, numSamples);
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10000; i++) {
             trainData.reset();
             int j = 0;
             while (trainData.hasNext()) {

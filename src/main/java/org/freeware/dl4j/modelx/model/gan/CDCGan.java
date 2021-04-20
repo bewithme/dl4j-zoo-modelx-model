@@ -96,8 +96,8 @@ public class CDCGan extends AbsGan{
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
                 .updater(UPDATER)
-                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
-                .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
+                //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+                //.gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
