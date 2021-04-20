@@ -5,6 +5,8 @@ import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.freeware.dl4j.modelx.model.gan.CGan;
+import org.freeware.dl4j.modelx.utils.INDArrayUtils;
+import org.freeware.dl4j.modelx.utils.RandomUtils;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -12,6 +14,7 @@ import org.nd4j.linalg.dataset.MultiDataSet;
 import org.nd4j.linalg.factory.Nd4j;
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 
 
 /**
@@ -24,6 +27,9 @@ import java.io.IOException;
  */
 @Slf4j
 public class CGanTrainer {
+
+
+    private  static Random random=new Random(12345);
 
     public static void main(String[] args) {
 
@@ -80,13 +86,13 @@ public class CGanTrainer {
 
                 cgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
-                trainGan( gan, realLabel, batchSize);
+                trainGan( gan, batchSize);
 
                 cgan.copyParamsFromGanToGenerator(generator,gan);
 
-                if (iterationCounter % 10000 == 1) {
+                if (iterationCounter % 100 == 1) {
 
-                    visualize(generator, realLabel, batchSize,iterationCounter);
+                    visualize(generator, batchSize,iterationCounter);
 
                 }
 
@@ -101,17 +107,19 @@ public class CGanTrainer {
     /**
      * 测试数据可视化
      * @param generator 生成器
-     * @param label 随机标签
+     *
      * @param batchSize 小批量大小
      * @param iterationCounter 迭代次数
      */
-    private static void visualize(ComputationGraph generator, INDArray label, int batchSize,int iterationCounter) {
+    private static void visualize(ComputationGraph generator, int batchSize,int iterationCounter) {
 
         INDArray[] testSamples = new INDArray[9];
 
         for(int k=0;k<9;k++){
             //创建batchSize行，100列的随机数浅层空间
             INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
+
+            INDArray label= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
 
             INDArray testFakeImaged=generator.output(testLatentDim,label)[0];
 
@@ -122,7 +130,7 @@ public class CGanTrainer {
 
         VisualisationUtils.saveAsImage(testSamples,savePath);
 
-        //VisualisationUtils.mnistVisualize(samples);
+        VisualisationUtils.mnistVisualize(testSamples);
     }
 
     /**
@@ -136,10 +144,13 @@ public class CGanTrainer {
     private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray label, int batchSize) {
         //创建batchSize行，100列的随机数浅层空间
         INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
+
+        label= INDArrayUtils.toEmbeddingFormat(label);
         //用生成器生成假图片，这里的输入标签是使用随机的小批量中获取的，当然也可以自己随机生成
         INDArray fakeImaged=generator.output(latentDim,label)[0];
         //把生真实的图片和假的图按小批量的维度连接起来
         INDArray fakeAndRealImageFeature=Nd4j.concat(0,realFeature,fakeImaged);
+
         //把生真实的标签和假的标签按小批量的维度连接起来
         INDArray fakeAndRealLabelFeature=Nd4j.concat(0,label,label);
         //判别器输入特征
@@ -155,12 +166,14 @@ public class CGanTrainer {
     /**
      * 对抗训练
      * @param gan
-     * @param label
      * @param batchSize
      */
-    private static void trainGan(ComputationGraph gan, INDArray label, int batchSize) {
+    private static void trainGan(ComputationGraph gan,  int batchSize) {
 
         INDArray noiseLatentDim = Nd4j.rand(new int[]{batchSize, 100});
+
+        INDArray label= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
+
         //噪音特征
         INDArray[] noiseLatentFeature = new INDArray[]{noiseLatentDim, label};
         //这里故意把噪音的标签设为真，

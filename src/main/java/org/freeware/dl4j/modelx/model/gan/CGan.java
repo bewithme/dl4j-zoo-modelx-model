@@ -6,7 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.*;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
+import org.deeplearning4j.nn.conf.graph.ReshapeVertex;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
@@ -48,8 +50,15 @@ public class CGan extends AbsGan{
 
     private  static int LATENT_DIM_LEN =100;
 
-    private  static int LABEL_NUM =10;
 
+
+    @Builder.Default private   int numClasses =10;
+
+    @Builder.Default private   int imageHeight =28;
+
+    @Builder.Default private   int imageWidth =28;
+
+    @Builder.Default private   int imageChannel =1;
 
 
     private static Random random =new Random(123456);
@@ -64,7 +73,7 @@ public class CGan extends AbsGan{
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
-                .convolutionMode(ConvolutionMode.Truncate)
+
                 .graphBuilder();
 
         String[] inputs= {"latent_dim","label_num"};
@@ -91,7 +100,7 @@ public class CGan extends AbsGan{
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
-                .convolutionMode(ConvolutionMode.Truncate)
+
                 .graphBuilder();
 
         String[] inputs= {"image","label_num"};
@@ -143,17 +152,24 @@ public class CGan extends AbsGan{
     }
 
 
-    private static List<GraphLayerItem> buildGeneratorGraphLayerItems(String[] inputs){
+    private  List<GraphLayerItem> buildGeneratorGraphLayerItems(String[] inputs){
 
         List<GraphLayerItem>  graphItemList=new ArrayList<GraphLayerItem>(10);
 
-        graphItemList.add(new GraphLayerItem("gen_merge_vertex_0",
-                new MergeVertex(),
-                inputs));
+        graphItemList.add(new GraphLayerItem("gen_embedding_0",
+                new EmbeddingLayer.Builder()
+                        .nIn(numClasses)
+                        .nOut(LATENT_DIM_LEN)
+                        .build(),
+                new String[]{inputs[1]}));
+
+        graphItemList.add(new GraphLayerItem("gen_vertex_0",
+                new ElementWiseVertex(ElementWiseVertex.Op.Product),
+                new String[]{inputs[0],"gen_embedding_0"}));
 
         graphItemList.add(new GraphLayerItem("gen_layer_0",
-                new DenseLayer.Builder().nIn(LATENT_DIM_LEN+LABEL_NUM).nOut(256).weightInit(WeightInit.NORMAL).build(),
-                new String[]{"gen_merge_vertex_0"}));
+                new DenseLayer.Builder().nIn(LATENT_DIM_LEN).nOut(256).weightInit(WeightInit.NORMAL).build(),
+                new String[]{"gen_vertex_0"}));
 
         graphItemList.add(new GraphLayerItem("gen_layer_1",
                 new ActivationLayer.Builder(new ActivationLReLU(0.2)).build(),
@@ -183,16 +199,24 @@ public class CGan extends AbsGan{
 
     }
 
-    private static List<GraphLayerItem> buildDiscriminatorGraphLayerItems(String[] inputs,IUpdater updater){
+    private  List<GraphLayerItem> buildDiscriminatorGraphLayerItems(String[] inputs,IUpdater updater){
 
         List<GraphLayerItem>  graphItemList=new ArrayList<GraphLayerItem>(10);
 
+
+        graphItemList.add(new GraphLayerItem("dis_embedding_0",
+                new EmbeddingLayer.Builder()
+                        .nIn(numClasses)
+                        .nOut(imageHeight * imageWidth * imageChannel).build(),
+                new String[]{inputs[1]}));
+
         graphItemList.add(new GraphLayerItem("dis_merge_vertex_0",
                 new MergeVertex(),
-                inputs));
+                new String[]{inputs[0],"dis_embedding_0"}));
+
 
         graphItemList.add(new GraphLayerItem("dis_layer_0",
-                new DenseLayer.Builder().nIn(DISCRIMINATOR_INPUT_SIZE+LABEL_NUM).nOut(1024).updater(updater).build(),
+                new DenseLayer.Builder().nIn(1568).nOut(1024).updater(updater).build(),
                 new String[]{"dis_merge_vertex_0"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_1",
