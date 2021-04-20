@@ -25,6 +25,7 @@ public class VisualisationUtils {
 
             frame = new JFrame();
             frame.setTitle("Viz");
+            frame.setBounds(200, 200, 295, 157);
             frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
             frame.setLayout(new BorderLayout());
 

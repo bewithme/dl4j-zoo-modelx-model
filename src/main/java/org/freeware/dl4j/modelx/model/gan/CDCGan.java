@@ -73,7 +73,7 @@ public class CDCGan extends AbsGan{
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
-                .convolutionMode(ConvolutionMode.Truncate)
+                .convolutionMode(ConvolutionMode.Same)
                 .graphBuilder();
 
         String[] inputs= {"latent_dim","label_num"};
@@ -102,7 +102,7 @@ public class CDCGan extends AbsGan{
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
-                .convolutionMode(ConvolutionMode.Truncate)
+                .convolutionMode(ConvolutionMode.Same)
                 .graphBuilder();
 
         String[] inputs= {"image","label_num"};
@@ -113,7 +113,7 @@ public class CDCGan extends AbsGan{
 
         graph.addInputs(inputs);
 
-        graph.inputPreProcessor("dis_layer_8", new CnnToFeedForwardPreProcessor(2, 2, 128));
+        graph.inputPreProcessor("dis_layer_8", new CnnToFeedForwardPreProcessor(4, 4, 128));
 
         graph.setOutputs("dis_layer_8");
 
@@ -129,11 +129,11 @@ public class CDCGan extends AbsGan{
                 .updater(UPDATER)
                // .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                // .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
-                .weightInit(WeightInit.XAVIER_UNIFORM)
+                .weightInit(WeightInit.XAVIER)
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
-                .convolutionMode(ConvolutionMode.Truncate)
+                .convolutionMode(ConvolutionMode.Same)
                 .graphBuilder();
 
         String[] genInputs= {"latent_dim","label_num"};
@@ -154,7 +154,7 @@ public class CDCGan extends AbsGan{
 
         graph.inputPreProcessor("gen_layer_1",new FeedForwardToCnnPreProcessor(7, 7, 256));
 
-        graph.inputPreProcessor("dis_layer_8", new CnnToFeedForwardPreProcessor(2, 2, 128));
+        graph.inputPreProcessor("dis_layer_8", new CnnToFeedForwardPreProcessor(4, 4, 128));
 
         return   graph.build();
     }
@@ -322,7 +322,7 @@ public class CDCGan extends AbsGan{
 
         graphItemList.add(new GraphLayerItem("dis_layer_8",
                 new OutputLayer.Builder(LossFunctions.LossFunction.XENT)
-                        .nIn(512)
+                        .nIn(2048)
                         .nOut(1)
                         .activation(Activation.SIGMOID)
                         .updater(updater).build(),
