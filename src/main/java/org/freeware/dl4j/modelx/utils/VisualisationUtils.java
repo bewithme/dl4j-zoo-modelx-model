@@ -51,19 +51,7 @@ public class VisualisationUtils {
 
         BufferedImage bi = convertToImage(tensor,28,28);
 
-        ImageIcon orig = new ImageIcon(bi);
-
-        Image imageScaled = orig.getImage().getScaledInstance((8 * 28), (8 * 28), Image.SCALE_REPLICATE);
-
-        ImageIcon scaled = new ImageIcon(imageScaled);
-
-        JLabel label=  new JLabel(scaled);
-
-        label.setText(title);
-
-        label.setVerticalTextPosition(JLabel.TOP);
-
-        label.setHorizontalTextPosition(JLabel.CENTER);
+        JLabel label = wrapToLabel(title, 28, 28, bi);
 
         return label;
     }
@@ -110,7 +98,7 @@ public class VisualisationUtils {
 
 
 
-    public static void mnistVisualizeForConvolution2D(INDArray[] samples) {
+    public static void mnistVisualizeForConvolution2D(Sample[] samples) {
         if (frame == null) {
 
             frame = new JFrame();
@@ -128,28 +116,44 @@ public class VisualisationUtils {
         panel.removeAll();
 
         for (int i = 0; i < samples.length; i++) {
-            panel.add(getMnistImageForConvolution2D(samples[i]));
+            panel.add(getMnistImageForConvolution2D(samples[i].getFeature(),samples[i].getLabel(),28,28));
         }
 
         frame.revalidate();
         frame.pack();
     }
 
-    private static JLabel getMnistImageForConvolution2D(INDArray tensor) {
+    private static JLabel getMnistImageForConvolution2D(INDArray tensor,String title,int width,int height) {
 
         BufferedImage bi= java2DNativeImageLoader.asBufferedImage(tensor);
 
-        ImageIcon orig = new ImageIcon(bi);
+        JLabel label = wrapToLabel(title, width, height, bi);
 
-        Image imageScaled = orig.getImage().getScaledInstance((8 * 28), (8 * 28), Image.SCALE_REPLICATE);
+        return label;
+    }
+
+    @NotNull
+    private static JLabel wrapToLabel(String title, int width, int height, BufferedImage bufferedImage) {
+
+        ImageIcon orig = new ImageIcon(bufferedImage);
+
+        Image imageScaled = orig.getImage().getScaledInstance((8 * width), (8 * height), Image.SCALE_REPLICATE);
 
         ImageIcon scaled = new ImageIcon(imageScaled);
 
-        return new JLabel(scaled);
+        JLabel label = new JLabel(scaled);
+
+        label.setText(title);
+
+        label.setVerticalTextPosition(JLabel.TOP);
+
+        label.setHorizontalTextPosition(JLabel.CENTER);
+
+        return label;
     }
 
 
-    public static void saveAsImageForConvolution2D(INDArray[] tensors,String savePath){
+    public static void saveAsImageForConvolution2D(Sample[] tensors,String savePath){
 
         ExtendedFileUtils.makeDirs(savePath);
 
@@ -159,7 +163,7 @@ public class VisualisationUtils {
 
             fileName=savePath.concat(File.separator).concat(fileName);
 
-            saveAsImageForConvolution2D(tensors[k],fileName);
+            saveAsImageForConvolution2D(tensors[k].getFeature(),fileName);
         }
     }
 

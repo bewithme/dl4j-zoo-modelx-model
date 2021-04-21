@@ -5,9 +5,7 @@ import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.freeware.dl4j.modelx.model.gan.CDCGan;
-import org.freeware.dl4j.modelx.utils.DataSetUtils;
-import org.freeware.dl4j.modelx.utils.RandomUtils;
-import org.freeware.dl4j.modelx.utils.VisualisationUtils;
+import org.freeware.dl4j.modelx.utils.*;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -108,7 +106,11 @@ public class CDCGanTrainer {
 
                 int realBatchSize=Integer.parseInt(String.valueOf(realLabel.size(0)));
 
-                trainDiscriminator(generator, discriminator, realFeature, realLabel);
+                for(int k=0;k<5;k++){
+
+                    trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
+
+                }
 
                 cdcgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
@@ -131,7 +133,7 @@ public class CDCGanTrainer {
      */
     private static void visualize(ComputationGraph generator, int iterationCounter) {
 
-        INDArray[] samples=null;
+        Sample[] samples=null;
 
         if (iterationCounter % 10== 0) {
 
@@ -154,11 +156,11 @@ public class CDCGanTrainer {
      * @param generator
      * @return
      */
-    private static INDArray[] getSamples(ComputationGraph generator) {
+    private static Sample[] getSamples(ComputationGraph generator) {
 
         int batchSize=1;
 
-        INDArray[] testSamples = new INDArray[9];
+        Sample[] testSamples = new Sample[9];
 
         for(int k=0;k<9;k++){
             //创建batchSize行，100列的随机数浅层空间
@@ -170,7 +172,9 @@ public class CDCGanTrainer {
             //把图片数据恢复到0-255
             dataNormalization.revertFeatures(testFakeImaged);
 
-            testSamples[k]=testFakeImaged;
+            Sample sample=new Sample(testFakeImaged,String.valueOf(embeddingLabel.toIntVector()[0]));
+
+            testSamples[k]=sample;
         }
         return testSamples;
     }
@@ -180,32 +184,34 @@ public class CDCGanTrainer {
      * @param generator
      * @param discriminator
      * @param realFeature
-     * @param label
+     * @param realLabel
      *
      */
-    private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray label) {
+    private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray realLabel, int batchSize) {
+        //创建batchSize行，100列的随机数浅层空间
+        INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
 
-        int batchSize=Integer.parseInt(String.valueOf(label.size(0)));
-        //创建batchSize，100列的随机数浅层空间
-        INDArray latentDim = Nd4j.rand(new int[]{batchSize, 100});
-        //把标签转为EmbeddingLayer的输入格式
-        INDArray embeddingLabel = toEmbeddingFormat(label);
-        //用生成器生成假图片，这里的输入标签是使用随机的小批量中获取的，当然也可以自己随机生成
-        INDArray fakeImaged=generator.output(latentDim,embeddingLabel)[0];
+        INDArray fakeLabel=RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
+        //用生成器生成假图片
+        INDArray fakeImaged=generator.output(latentDim,fakeLabel)[0];
 
-        realFeature = toImageFormat(realFeature);
-        //把生真实的图片和假的图按小批量的维度连接起来
-        INDArray fakeAndRealImageFeature= concatOnFirstDimension(realFeature, fakeImaged);
-        //把生真实的标签和假的标签按小批量的维度连接起来
-        INDArray fakeAndRealLabelFeature= concatOnFirstDimension(embeddingLabel, embeddingLabel);
-        //判别器输入特征
-        INDArray[] discriminatorFeatures=new INDArray[] {fakeAndRealImageFeature,fakeAndRealLabelFeature};
-        //判别器标签 将真假标签按N维度连接后放到标签数组中,注意标签0表示假，1表示真
-        INDArray[] discriminatorLabels=new INDArray[] {concatOnFirstDimension(Nd4j.ones(batchSize, 1), Nd4j.zeros(batchSize, 1))};
+        INDArray[] fakeFeatures=new INDArray[] {fakeImaged,fakeLabel};
+
+        INDArray[] fakeDisLabels=new INDArray[] {Nd4j.zeros(batchSize, 1)};
+
+        MultiDataSet fakeMultiDataSet=new MultiDataSet(fakeFeatures,fakeDisLabels);
+
+        realLabel= INDArrayUtils.toEmbeddingFormat(realLabel);
+
+        INDArray[] realFeatures=new INDArray[] {realFeature,realLabel};
+
+        INDArray[] realDisLabels=new INDArray[] {Nd4j.ones(batchSize, 1)};
         //构建多数据集（多个特征，多个标签）
-        MultiDataSet discriminatorInputMultiDataSet=new MultiDataSet(discriminatorFeatures,discriminatorLabels);
+        MultiDataSet realMultiDataSet=new MultiDataSet(realFeatures,realDisLabels);
         //训练判别器
-        discriminator.fit(discriminatorInputMultiDataSet);
+        discriminator.fit(realMultiDataSet);
+
+        discriminator.fit(fakeMultiDataSet);
     }
 
     /**

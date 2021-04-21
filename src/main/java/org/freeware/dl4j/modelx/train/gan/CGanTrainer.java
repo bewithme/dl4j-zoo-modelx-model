@@ -77,15 +77,15 @@ public class CGanTrainer {
 
                 INDArray realLabel = dataSet.getLabels();
 
-                int batchSize = (int) realFeature.size(0);
+                int realBatchSize = (int) realFeature.size(0);
 
                 for(int k=0;k<5;k++){
-                    trainDiscriminator(generator, discriminator, realFeature, realLabel, batchSize);
+                    trainDiscriminator(generator, discriminator, realFeature, realLabel, realBatchSize);
                 }
 
                 cgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
-                trainGan( gan, batchSize);
+                trainGan( gan, realBatchSize);
 
                 cgan.copyParamsFromGanToGenerator(generator,gan);
 
@@ -141,7 +141,6 @@ public class CGanTrainer {
             INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
             //随机标签
             INDArray embeddingLabel= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
-
             //输出图片
             INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
 
@@ -163,7 +162,7 @@ public class CGanTrainer {
         INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
 
         INDArray fakeLabel=RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
-        //用生成器生成假图片，这里的输入标签是使用随机的小批量中获取的，当然也可以自己随机生成
+        //用生成器生成假图片
         INDArray fakeImaged=generator.output(latentDim,fakeLabel)[0];
 
         INDArray[] fakeFeatures=new INDArray[] {fakeImaged,fakeLabel};
