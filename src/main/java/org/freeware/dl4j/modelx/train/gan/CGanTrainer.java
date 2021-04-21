@@ -64,13 +64,11 @@ public class CGanTrainer {
             e.printStackTrace();
         }
 
+        int iterationCounter = 0;
 
         while (true) {
 
             trainData.reset();
-
-            int iterationCounter = 0;
-
 
             while (trainData.hasNext()) {
 
@@ -84,7 +82,9 @@ public class CGanTrainer {
 
                 int batchSize = (int) realFeature.size(0);
 
-                trainDiscriminator(generator, discriminator, realFeature, realLabel, batchSize);
+                for(int k=0;k<5;k++){
+                    trainDiscriminator(generator, discriminator, realFeature, realLabel, batchSize);
+                }
 
                 cgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 

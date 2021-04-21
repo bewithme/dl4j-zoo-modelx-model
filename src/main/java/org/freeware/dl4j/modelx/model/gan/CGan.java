@@ -66,14 +66,13 @@ public class CGan extends AbsGan{
 
     public ComputationGraphConfiguration buildGeneratorConfiguration() {
 
-        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
+        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder()
+                .seed(42)
+                .updater(UPDATER)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
                 .activation(Activation.IDENTITY)
-                .trainingWorkspaceMode(workspaceMode)
-                .inferenceWorkspaceMode(workspaceMode)
-
                 .graphBuilder();
 
         String[] inputs= {"latent_dim","label_num"};
@@ -91,15 +90,13 @@ public class CGan extends AbsGan{
 
     public ComputationGraphConfiguration buildDiscriminatorConfiguration() {
 
-        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
-
+        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder()
+                .seed(42)
                 .updater(UPDATER)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
                 .activation(Activation.IDENTITY)
-                .trainingWorkspaceMode(workspaceMode)
-                .inferenceWorkspaceMode(workspaceMode)
                 .graphBuilder();
 
         String[] inputs= {"image","label_num"};
@@ -118,17 +115,13 @@ public class CGan extends AbsGan{
 
     public ComputationGraphConfiguration buildGanConfiguration() {
 
-        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
-
-                .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
+        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder()
+                .seed(42)
                 .updater(UPDATER)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
                 .activation(Activation.IDENTITY)
-                .trainingWorkspaceMode(workspaceMode)
-                .inferenceWorkspaceMode(workspaceMode)
-                .convolutionMode(ConvolutionMode.Truncate)
                 .graphBuilder();
 
         String[] genInputs= {"latent_dim","label_num"};
