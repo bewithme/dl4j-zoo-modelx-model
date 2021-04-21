@@ -143,9 +143,10 @@ public class CGanTrainer {
             INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
             //随机标签
             INDArray embeddingLabel= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
+
+            log.info(embeddingLabel.toString());
             //输出图片
             INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
-
 
             testSamples[k]=testFakeImaged;
         }
@@ -157,29 +158,34 @@ public class CGanTrainer {
      * @param generator
      * @param discriminator
      * @param realFeature
-     * @param label
+     * @param realLabel
      * @param batchSize
      */
-    private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray label, int batchSize) {
+    private static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray realLabel, int batchSize) {
         //创建batchSize行，100列的随机数浅层空间
         INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
 
-        label= INDArrayUtils.toEmbeddingFormat(label);
+        INDArray fakeLabel=RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
         //用生成器生成假图片，这里的输入标签是使用随机的小批量中获取的，当然也可以自己随机生成
-        INDArray fakeImaged=generator.output(latentDim,label)[0];
-        //把生真实的图片和假的图按小批量的维度连接起来
-        INDArray fakeAndRealImageFeature=Nd4j.concat(0,realFeature,fakeImaged);
+        INDArray fakeImaged=generator.output(latentDim,fakeLabel)[0];
 
-        //把生真实的标签和假的标签按小批量的维度连接起来
-        INDArray fakeAndRealLabelFeature=Nd4j.concat(0,label,label);
-        //判别器输入特征
-        INDArray[] discriminatorFeatures=new INDArray[] {fakeAndRealImageFeature,fakeAndRealLabelFeature};
-        //判别器标签 将真假标签按N维度连接后放到标签数组中,注意标签0表示假，1表示真
-        INDArray[] discriminatorLabels=new INDArray[] {Nd4j.concat(0,Nd4j.ones(batchSize, 1),Nd4j.zeros(batchSize, 1))};
+        INDArray[] fakeFeatures=new INDArray[] {fakeImaged,fakeLabel};
+
+        INDArray[] fakeDisLabels=new INDArray[] {Nd4j.zeros(batchSize, 1)};
+
+        MultiDataSet fakeMultiDataSet=new MultiDataSet(fakeFeatures,fakeDisLabels);
+
+        realLabel= INDArrayUtils.toEmbeddingFormat(realLabel);
+
+        INDArray[] realFeatures=new INDArray[] {realFeature,realLabel};
+
+        INDArray[] realDisLabels=new INDArray[] {Nd4j.ones(batchSize, 1)};
         //构建多数据集（多个特征，多个标签）
-        MultiDataSet discriminatorInputMultiDataSet=new MultiDataSet(discriminatorFeatures,discriminatorLabels);
+        MultiDataSet realMultiDataSet=new MultiDataSet(realFeatures,realDisLabels);
         //训练判别器
-        discriminator.fit(discriminatorInputMultiDataSet);
+        discriminator.fit(realMultiDataSet);
+
+        discriminator.fit(fakeMultiDataSet);
     }
 
     /**
@@ -191,14 +197,13 @@ public class CGanTrainer {
 
         INDArray noiseLatentDim = Nd4j.rand(new int[]{batchSize, 100});
 
-        INDArray label= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
-
+        INDArray noiseFakeLabels= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
         //噪音特征
-        INDArray[] noiseLatentFeature = new INDArray[]{noiseLatentDim, label};
+        INDArray[] noiseLatentFeature = new INDArray[]{noiseLatentDim, noiseFakeLabels};
         //这里故意把噪音的标签设为真，
-        INDArray[] noiseLatentLabel = new INDArray[]{Nd4j.ones(batchSize, 1)};
+        INDArray[] noiseDisLabels = new INDArray[]{Nd4j.ones(batchSize, 1)};
 
-        MultiDataSet ganInputMultiDataSet = new MultiDataSet(noiseLatentFeature, noiseLatentLabel);
+        MultiDataSet ganInputMultiDataSet = new MultiDataSet(noiseLatentFeature, noiseDisLabels);
 
         gan.fit(ganInputMultiDataSet);
 
