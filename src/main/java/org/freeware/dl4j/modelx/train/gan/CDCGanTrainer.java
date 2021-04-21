@@ -214,15 +214,6 @@ public class CDCGanTrainer {
         discriminator.fit(fakeMultiDataSet);
     }
 
-    /**
-     * 接第一个维度拼接
-     * @param arrayA
-     * @param arrayB
-     * @return
-     */
-    private static INDArray concatOnFirstDimension(INDArray arrayA, INDArray arrayB) {
-        return Nd4j.concat(0, arrayA, arrayB);
-    }
 
 
     /**
@@ -251,27 +242,4 @@ public class CDCGanTrainer {
 
 
 
-    /**
-     * 转为图片格式
-     * @param feature
-     * @return
-     */
-    private static INDArray toImageFormat(INDArray feature) {
-        return feature.reshape(feature.size(0),1,28,28);
-    }
-
-    /**
-     * 转换为EmbeddingLayer的输入格式
-     * [batchSize,labelIndex]
-     * @param label
-     * @return
-     */
-    private static INDArray toEmbeddingFormat(INDArray label) {
-
-        INDArray maxIdx=label.argMax(1);
-
-        INDArray embeddingLabel= Nd4j.expandDims(maxIdx,1);
-
-        return embeddingLabel;
-    }
 }
