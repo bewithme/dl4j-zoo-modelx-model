@@ -2,6 +2,7 @@ package io.skymind.example;
 
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
+import org.deeplearning4j.nn.conf.GradientNormalization;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
@@ -105,8 +106,8 @@ public class MnistDCGANExample {
         GAN.DiscriminatorProvider discriminatorProvider = (updater) -> {
             return new MultiLayerNetwork(new NeuralNetConfiguration.Builder()
                     .updater(new RmsProp.Builder().learningRate(0.0008).rmsDecay(1e-8).build())
-                    //.gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue)
-                    //.gradientNormalizationThreshold(100.0)
+                    .gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue)
+                    .gradientNormalizationThreshold(100.0)
                     .list()
                     .layer(0, new Convolution2D.Builder().nIn(channels).nOut(64).kernelSize(3, 3)
                             .activation(Activation.LEAKYRELU).build())
@@ -129,8 +130,8 @@ public class MnistDCGANExample {
                 .generator(genSupplier)
                 .discriminator(discriminatorProvider)
                 .latentDimension(latentDim)
-                //.gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue)
-                //.gradientNormalizationThreshold(1.0)
+                .gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue)
+                .gradientNormalizationThreshold(1.0)
                 .updater(new RmsProp.Builder().learningRate(0.0008).rmsDecay(1e-8).build())
                 .build();
 
