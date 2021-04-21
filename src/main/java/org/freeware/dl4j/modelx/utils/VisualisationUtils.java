@@ -81,7 +81,7 @@ public class VisualisationUtils {
 
         for (int k=0;k<tensors.length;k++){
 
-            String fileName= DateUtils.format(new Date(), DateUtils.FORMAT_DATE_TIME_YYYYMMDDHHMMSS).concat("_"+k+"_.jpg");
+            String fileName= DateUtils.format(new Date(), DateUtils.FORMAT_DATE_TIME_YYYYMMDDHHMMSS).concat("_"+k+".jpg");
 
             fileName=savePath.concat(File.separator).concat(fileName);
 
