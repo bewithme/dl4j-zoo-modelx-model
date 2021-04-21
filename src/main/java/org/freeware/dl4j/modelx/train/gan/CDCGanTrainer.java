@@ -160,23 +160,23 @@ public class CDCGanTrainer {
 
         int batchSize=1;
 
-        Sample[] testSamples = new Sample[9];
+        Sample[] samples = new Sample[9];
 
         for(int k=0;k<9;k++){
             //创建batchSize行，100列的随机数浅层空间
-            INDArray testLatentDim = Nd4j.rand(new int[]{batchSize,  100});
+            INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
             //随机标签
-            INDArray embeddingLabel= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
+            INDArray fakeEmbeddingLabel= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
             //输出图片
-            INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
+            INDArray fakeImage=generator.output(latentDim,fakeEmbeddingLabel)[0];
             //把图片数据恢复到0-255
-            dataNormalization.revertFeatures(testFakeImaged);
+            dataNormalization.revertFeatures(fakeImage);
 
-            Sample sample=new Sample(testFakeImaged,String.valueOf(embeddingLabel.toIntVector()[0]));
+            Sample sample=new Sample(fakeImage,String.valueOf(fakeEmbeddingLabel.toIntVector()[0]));
 
-            testSamples[k]=sample;
+            samples[k]=sample;
         }
-        return testSamples;
+        return samples;
     }
 
     /**
@@ -208,9 +208,9 @@ public class CDCGanTrainer {
         INDArray[] realDisLabels=new INDArray[] {Nd4j.ones(batchSize, 1)};
         //构建多数据集（多个特征，多个标签）
         MultiDataSet realMultiDataSet=new MultiDataSet(realFeatures,realDisLabels);
-        //训练判别器
+        //用真实数据训练判别器
         discriminator.fit(realMultiDataSet);
-
+        //用假数据训练判别器
         discriminator.fit(fakeMultiDataSet);
     }
 
