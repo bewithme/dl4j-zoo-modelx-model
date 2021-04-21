@@ -49,10 +49,6 @@ public class CGanTrainer {
 
         cgan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
 
-        log.info(generator.summary());
-
-        log.info(discriminator.summary());
-
         log.info(gan.summary());
 
         Nd4j.getMemoryManager().setAutoGcWindow(15 * 1000);
@@ -109,6 +105,7 @@ public class CGanTrainer {
      */
     private static void visualize(ComputationGraph generator, int iterationCounter) {
 
+
         INDArray[] samples=null;
 
         if (iterationCounter % 10== 0) {
@@ -144,7 +141,6 @@ public class CGanTrainer {
             //随机标签
             INDArray embeddingLabel= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
 
-            log.info(embeddingLabel.toString());
             //输出图片
             INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
 
