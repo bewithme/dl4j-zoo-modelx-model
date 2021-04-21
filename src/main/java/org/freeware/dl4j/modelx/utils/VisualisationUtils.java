@@ -22,7 +22,7 @@ public class VisualisationUtils {
 
     private static    Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 
-    public static void mnistVisualize(INDArray[] samples) {
+    public static void mnistVisualize(Sample[] samples) {
         if (frame == null) {
 
             frame = new JFrame();
@@ -40,14 +40,14 @@ public class VisualisationUtils {
         panel.removeAll();
 
         for (int i = 0; i < samples.length; i++) {
-            panel.add(getMnistImage(samples[i]));
+            panel.add(getMnistImage(samples[i].getFeature(),samples[i].getLabel()));
         }
 
         frame.revalidate();
         frame.pack();
     }
 
-    private static JLabel getMnistImage(INDArray tensor) {
+    private static JLabel getMnistImage(INDArray tensor,String title) {
 
         BufferedImage bi = convertToImage(tensor,28,28);
 
@@ -57,7 +57,15 @@ public class VisualisationUtils {
 
         ImageIcon scaled = new ImageIcon(imageScaled);
 
-        return new JLabel(scaled);
+        JLabel label=  new JLabel(scaled);
+
+        label.setText(title);
+
+        label.setVerticalTextPosition(JLabel.TOP);
+
+        label.setHorizontalTextPosition(JLabel.CENTER);
+
+        return label;
     }
 
     @NotNull
@@ -75,7 +83,7 @@ public class VisualisationUtils {
         return bi;
     }
 
-    public static void saveAsImage(INDArray[] tensors,String savePath){
+    public static void saveAsImage(Sample[] tensors,String savePath){
 
         ExtendedFileUtils.makeDirs(savePath);
 
@@ -85,7 +93,7 @@ public class VisualisationUtils {
 
             fileName=savePath.concat(File.separator).concat(fileName);
 
-            saveAsImage(tensors[k],fileName,28,28);
+            saveAsImage(tensors[k].getFeature(),fileName,28,28);
         }
     }
 

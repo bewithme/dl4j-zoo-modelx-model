@@ -7,6 +7,7 @@ import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.freeware.dl4j.modelx.model.gan.CGan;
 import org.freeware.dl4j.modelx.utils.INDArrayUtils;
 import org.freeware.dl4j.modelx.utils.RandomUtils;
+import org.freeware.dl4j.modelx.utils.Sample;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -106,7 +107,7 @@ public class CGanTrainer {
     private static void visualize(ComputationGraph generator, int iterationCounter) {
 
 
-        INDArray[] samples=null;
+        Sample[] samples=null;
 
         if (iterationCounter % 10== 0) {
 
@@ -129,11 +130,11 @@ public class CGanTrainer {
      * @param generator
      * @return
      */
-    private static INDArray[] getSamples(ComputationGraph generator) {
+    private static Sample[] getSamples(ComputationGraph generator) {
 
         int batchSize=1;
 
-        INDArray[] testSamples = new INDArray[9];
+        Sample[] testSamples = new Sample[9];
 
         for(int k=0;k<9;k++){
             //创建batchSize行，100列的随机数浅层空间
@@ -144,7 +145,7 @@ public class CGanTrainer {
             //输出图片
             INDArray testFakeImaged=generator.output(testLatentDim,embeddingLabel)[0];
 
-            testSamples[k]=testFakeImaged;
+            testSamples[k]=new Sample(testFakeImaged,String.valueOf(embeddingLabel.toIntVector()[0]));
         }
         return testSamples;
     }
