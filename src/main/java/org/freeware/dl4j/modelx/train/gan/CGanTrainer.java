@@ -113,7 +113,7 @@ public class CGanTrainer {
 
             samples=getSamples(generator);
 
-            VisualisationUtils.mnistVisualize(samples);
+            VisualisationUtils.mnistVisualize(samples,"CGan");
         }
         if (iterationCounter % 1000== 0) {
 

@@ -22,20 +22,8 @@ public class VisualisationUtils {
 
     private static    Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 
-    public static void mnistVisualize(Sample[] samples) {
-        if (frame == null) {
-
-            frame = new JFrame();
-            frame.setTitle("Viz");
-            frame.setBounds(200, 200, 295, 157);
-            frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-            frame.setLayout(new BorderLayout());
-
-            panel = new JPanel();
-            panel.setLayout(new GridLayout(samples.length / 3, 1, 8, 8));
-            frame.add(panel, BorderLayout.CENTER);
-            frame.setVisible(true);
-        }
+    public static void mnistVisualize(Sample[] samples,String title) {
+        initFrameForMnist(samples, title);
 
         panel.removeAll();
 
@@ -47,11 +35,26 @@ public class VisualisationUtils {
         frame.pack();
     }
 
+    private static void initFrameForMnist(Sample[] samples, String title) {
+        if (frame == null) {
+
+            frame = new JFrame();
+            frame.setTitle(title);
+            frame.setBounds(200, 200, 295, 157);
+            frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+            frame.setLayout(new BorderLayout());
+            panel = new JPanel();
+            panel.setLayout(new GridLayout(samples.length / 3, 1, 8, 8));
+            frame.add(panel, BorderLayout.CENTER);
+            frame.setVisible(true);
+        }
+    }
+
     private static JLabel getMnistImage(INDArray tensor,String title) {
 
-        BufferedImage bi = convertToImage(tensor,28,28);
+        BufferedImage bufferedImage = convertToImage(tensor,28,28);
 
-        JLabel label = wrapToLabel(title, 28, 28, bi);
+        JLabel label = wrapToLabel(title, 28, 28, bufferedImage);
 
         return label;
     }
@@ -77,7 +80,7 @@ public class VisualisationUtils {
 
         for (int k=0;k<tensors.length;k++){
 
-            String fileName= DateUtils.format(new Date(), DateUtils.FORMAT_DATE_TIME_YYYYMMDDHHMMSS).concat("_"+k+".jpg");
+            String fileName= DateUtils.format(new Date(), DateUtils.FORMAT_DATE_TIME_YYYYMMDDHHMMSS).concat("_"+tensors[k].getLabel()+".jpg");
 
             fileName=savePath.concat(File.separator).concat(fileName);
 
@@ -98,36 +101,21 @@ public class VisualisationUtils {
 
 
 
-    public static void mnistVisualizeForConvolution2D(Sample[] samples) {
-        if (frame == null) {
-
-            frame = new JFrame();
-            frame.setTitle("Viz");
-            frame.setBounds(200, 200, 295, 157);
-            frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-            frame.setLayout(new BorderLayout());
-
-            panel = new JPanel();
-            panel.setLayout(new GridLayout(samples.length / 3, 1, 8, 8));
-            frame.add(panel, BorderLayout.CENTER);
-            frame.setVisible(true);
-        }
-
+    public static void mnistVisualizeForConvolution2D(Sample[] samples,String title) {
+        initFrameForMnist(samples, title);
         panel.removeAll();
-
         for (int i = 0; i < samples.length; i++) {
             panel.add(getMnistImageForConvolution2D(samples[i].getFeature(),samples[i].getLabel(),28,28));
         }
-
         frame.revalidate();
         frame.pack();
     }
 
     private static JLabel getMnistImageForConvolution2D(INDArray tensor,String title,int width,int height) {
 
-        BufferedImage bi= java2DNativeImageLoader.asBufferedImage(tensor);
+        BufferedImage bufferedImage= java2DNativeImageLoader.asBufferedImage(tensor);
 
-        JLabel label = wrapToLabel(title, width, height, bi);
+        JLabel label = wrapToLabel(title, width, height, bufferedImage);
 
         return label;
     }

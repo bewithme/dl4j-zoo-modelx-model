@@ -139,7 +139,7 @@ public class CDCGanTrainer {
 
             samples=getSamples(generator);
 
-            VisualisationUtils.mnistVisualizeForConvolution2D(samples);
+            VisualisationUtils.mnistVisualizeForConvolution2D(samples,"CDCGan");
         }
         if (iterationCounter % 1000== 0) {
 
