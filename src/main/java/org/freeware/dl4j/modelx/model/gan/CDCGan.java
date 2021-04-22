@@ -284,7 +284,7 @@ public class CDCGan extends AbsGan{
 
         graphItemList.add(new GraphLayerItem("dis_layer_0",
                 new Convolution2D.Builder()
-                        .nIn(imageChannel+1)
+                        .nIn(imageChannel+imageChannel)
                         .kernelSize(3,3)
                         .stride(2,2)
                         .nOut(64)

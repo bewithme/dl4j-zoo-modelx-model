@@ -1,4 +1,4 @@
-package org.freeware.dl4j.modelx.dataset;
+package org.freeware.dl4j.modelx.dataset.yolo;
 
 
 import lombok.AllArgsConstructor;
