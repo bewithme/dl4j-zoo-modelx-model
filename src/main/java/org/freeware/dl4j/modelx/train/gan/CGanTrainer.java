@@ -32,7 +32,7 @@ import java.util.Random;
  * 4、训练对抗网络，更新对抗网络中的生成器参数，然后把对抗网络中的生成器参数复制给生成器。
  */
 @Slf4j
-public class CGanTrainer {
+public class CGanTrainer extends AbsGanTrainer{
 
 
     private  static Random random=new Random(12345);
@@ -51,15 +51,7 @@ public class CGanTrainer {
 
         cgan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
 
-        UIServer uiServer = UIServer.getInstance();
-
-        StatsStorage statsStorage = new InMemoryStatsStorage();
-
-        uiServer.attach(statsStorage);
-
-        discriminator.setListeners(new PerformanceListener(10, true),new StatsListener(statsStorage));
-
-        gan.setListeners(new PerformanceListener(10, true),new StatsListener(statsStorage));
+        setListeners(discriminator, gan);
 
         log.info(gan.summary());
 
@@ -107,6 +99,8 @@ public class CGanTrainer {
 
 
     }
+
+
 
     /**
      * 可视化

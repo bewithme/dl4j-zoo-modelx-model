@@ -30,7 +30,7 @@ import java.util.Random;
  * 4、训练对抗网络，更新对抗网络中的生成器参数，然后把对抗网络中的生成器参数复制给生成器。
  */
 @Slf4j
-public class CDCGanTrainer {
+public class CDCGanTrainer extends AbsGanTrainer{
 
 
     private  static Random random=new Random(12345);
@@ -53,8 +53,6 @@ public class CDCGanTrainer {
 
         String dataPath="/Users/wenfengxu/Downloads/data/mnist_png/training";
 
-
-
         CDCGan cdcgan= CDCGan.builder()
                 .numClasses(numClasses)
                 .imageChannel(imageChannel)
@@ -68,9 +66,7 @@ public class CDCGanTrainer {
 
         ComputationGraph gan=cdcgan.init();
 
-        generator.setListeners(new PerformanceListener(10, true));
-
-        discriminator.setListeners(new PerformanceListener(10, true));
+        setListeners(discriminator,gan);
 
         cdcgan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
 
@@ -106,11 +102,7 @@ public class CDCGanTrainer {
 
                 int realBatchSize=Integer.parseInt(String.valueOf(realLabel.size(0)));
 
-                for(int k=0;k<5;k++){
-
-                    trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
-
-                }
+                trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
 
                 cdcgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
