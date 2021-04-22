@@ -38,11 +38,11 @@ public class CDCGan extends AbsGan{
 
     @Builder.Default private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
 
-    private static final double LEARNING_RATE = 0.0002;
+    private static final double LEARNING_RATE = 0.0003;
 
     private static final double GRADIENT_THRESHOLD = 100.0;
 
-    private static final IUpdater UPDATER = Adam.builder().build();
+    private static final IUpdater UPDATER = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
 
     private static final IUpdater UPDATER_ZERO = Sgd.builder().learningRate(0.0).build();
 
