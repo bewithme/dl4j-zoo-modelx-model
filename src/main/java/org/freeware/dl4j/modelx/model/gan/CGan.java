@@ -36,11 +36,11 @@ public class CGan extends AbsGan{
 
     @Builder.Default private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
 
-    private static final double LEARNING_RATE = 0.001;
+    private static final double LEARNING_RATE = 0.0003;
 
     private static final double GRADIENT_THRESHOLD = 100.0;
 
-    private static final IUpdater UPDATER = Adam.builder().learningRate(LEARNING_RATE).build();
+    private static final IUpdater UPDATER = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
 
 
 
