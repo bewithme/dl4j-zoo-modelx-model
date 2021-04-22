@@ -36,11 +36,13 @@ public class CGan extends AbsGan{
 
     @Builder.Default private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
 
-    private static final double LEARNING_RATE = 0.0002;
+    private static final double LEARNING_RATE = 0.001;
 
     private static final double GRADIENT_THRESHOLD = 100.0;
 
-    private static final IUpdater UPDATER = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
+    private static final IUpdater UPDATER = Adam.builder().learningRate(LEARNING_RATE).build();
+
+    private static final IUpdater UPDATER_GAN = Adam.builder().learningRate(0.003).build();
 
     private static final IUpdater UPDATER_ZERO = Sgd.builder().learningRate(0.0).build();
 
@@ -117,7 +119,7 @@ public class CGan extends AbsGan{
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder()
                 .seed(42)
-                .updater(UPDATER)
+                .updater(UPDATER_GAN)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
@@ -198,7 +200,7 @@ public class CGan extends AbsGan{
         graphItemList.add(new GraphLayerItem("dis_embedding_0",
                 new EmbeddingLayer.Builder()
                         .nIn(numClasses)
-                        .nOut(LATENT_DIM_LEN).build(),
+                        .nOut(numClasses).build(),
                 new String[]{inputs[1]}));
 
         graphItemList.add(new GraphLayerItem("dis_merge_vertex_0",
@@ -207,7 +209,7 @@ public class CGan extends AbsGan{
 
 
         graphItemList.add(new GraphLayerItem("dis_layer_0",
-                new DenseLayer.Builder().nIn(DISCRIMINATOR_INPUT_SIZE+LATENT_DIM_LEN)
+                new DenseLayer.Builder().nIn(DISCRIMINATOR_INPUT_SIZE+numClasses)
                         .nOut(1024)
                         .updater(updater).build(),
                 new String[]{"dis_merge_vertex_0"}));
