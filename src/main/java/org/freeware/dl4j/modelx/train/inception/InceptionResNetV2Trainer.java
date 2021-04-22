@@ -16,7 +16,7 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class InceptionResnetV2Trainer {
+public class InceptionResNetV2Trainer {
 
 	public static void main(String[] args) {
 
