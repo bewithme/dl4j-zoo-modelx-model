@@ -1,14 +1,8 @@
 package org.freeware.dl4j.modelx.train.gan;
 
 import lombok.extern.slf4j.Slf4j;
-import org.deeplearning4j.core.storage.StatsStorage;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.optimize.listeners.PerformanceListener;
-import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.deeplearning4j.ui.api.UIServer;
-import org.deeplearning4j.ui.model.stats.StatsListener;
-import org.deeplearning4j.ui.model.storage.InMemoryStatsStorage;
 import org.freeware.dl4j.modelx.model.gan.CGan;
 import org.freeware.dl4j.modelx.utils.INDArrayUtils;
 import org.freeware.dl4j.modelx.utils.RandomUtils;

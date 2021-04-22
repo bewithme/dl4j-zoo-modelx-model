@@ -42,8 +42,6 @@ public class CDCGan extends AbsGan{
 
     private static final double GRADIENT_THRESHOLD = 100.0;
 
-    private static final IUpdater UPDATER = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
-
     private static final IUpdater UPDATER_ZERO = Sgd.builder().learningRate(0.0).build();
 
     private  static int DISCRIMINATOR_INPUT_SIZE =784;
@@ -60,10 +58,16 @@ public class CDCGan extends AbsGan{
 
     @Builder.Default private   int imageChannel =1;
 
+    @Builder.Default  private IUpdater updater = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
+
+
     private static Random random =new Random(123456);
 
 
-
+    /**
+     * 生成器网络配置
+     * @return
+     */
     public ComputationGraphConfiguration buildGeneratorConfiguration() {
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
@@ -91,11 +95,15 @@ public class CDCGan extends AbsGan{
         return   graph.build();
     }
 
+    /**
+     * 判别器网络配置
+     * @return
+     */
     public ComputationGraphConfiguration buildDiscriminatorConfiguration() {
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
-                .updater(UPDATER)
+                .updater(updater)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
@@ -107,7 +115,7 @@ public class CDCGan extends AbsGan{
 
         String[] inputs= {"image","label_num"};
 
-        List<GraphLayerItem>   layerItems=buildDiscriminatorGraphLayerItems(inputs,UPDATER);
+        List<GraphLayerItem>   layerItems=buildDiscriminatorGraphLayerItems(inputs, updater);
 
         addGraphItems(graph,layerItems,Boolean.FALSE);
 
@@ -126,7 +134,7 @@ public class CDCGan extends AbsGan{
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                .updater(UPDATER)
+                .updater(updater)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
@@ -160,6 +168,11 @@ public class CDCGan extends AbsGan{
     }
 
 
+    /**
+     * 生成器计算图的层列表
+     * @param inputs
+     * @return
+     */
     private  List<GraphLayerItem> buildGeneratorGraphLayerItems(String[] inputs){
 
         List<GraphLayerItem>  graphItemList=new ArrayList<GraphLayerItem>(10);
@@ -244,6 +257,12 @@ public class CDCGan extends AbsGan{
 
     }
 
+    /**
+     * 判别器计算图的层列表
+     * @param inputs
+     * @param updater
+     * @return
+     */
     private  List<GraphLayerItem> buildDiscriminatorGraphLayerItems(String[] inputs,IUpdater updater){
 
         List<GraphLayerItem>  graphItemList=new ArrayList<GraphLayerItem>(10);
@@ -339,7 +358,10 @@ public class CDCGan extends AbsGan{
     }
 
 
-
+    /**
+     * 初始化对抗网络
+     * @return
+     */
     public ComputationGraph init() {
 
         ComputationGraphConfiguration configuration=buildGanConfiguration();
@@ -352,6 +374,10 @@ public class CDCGan extends AbsGan{
 
     }
 
+    /**
+     * 初始化生成器
+     * @return
+     */
     public ComputationGraph initGenerator() {
 
         ComputationGraphConfiguration genConf=buildGeneratorConfiguration();
@@ -363,6 +389,10 @@ public class CDCGan extends AbsGan{
         return model;
     }
 
+    /**
+     * 初始化判别器
+     * @return
+     */
     public ComputationGraph initDiscriminator() {
 
         ComputationGraphConfiguration configuration=buildDiscriminatorConfiguration();

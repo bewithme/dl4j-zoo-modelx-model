@@ -22,7 +22,7 @@ public class VisualisationUtils {
 
     private static    Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 
-    public static void mnistVisualize(Sample[] samples,String title) {
+    public static void mnistVisualize(Sample[] samples, String title) {
         initFrameForMnist(samples, title);
 
         panel.removeAll();
