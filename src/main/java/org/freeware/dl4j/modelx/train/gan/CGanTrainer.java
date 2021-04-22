@@ -90,9 +90,7 @@ public class CGanTrainer {
 
                 int realBatchSize = (int) realFeature.size(0);
 
-                for(int k=0;k<5;k++){
-                    trainDiscriminator(generator, discriminator, realFeature, realLabel, realBatchSize);
-                }
+                trainDiscriminator(generator, discriminator, realFeature, realLabel, realBatchSize);
 
                 cgan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 

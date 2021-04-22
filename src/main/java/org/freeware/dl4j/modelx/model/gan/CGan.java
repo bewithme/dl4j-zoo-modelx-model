@@ -42,7 +42,7 @@ public class CGan extends AbsGan{
 
     private static final IUpdater UPDATER = Adam.builder().learningRate(LEARNING_RATE).build();
 
-    private static final IUpdater UPDATER_GAN = Adam.builder().learningRate(0.003).build();
+
 
     private static final IUpdater UPDATER_ZERO = Sgd.builder().learningRate(0.0).build();
 
@@ -119,7 +119,7 @@ public class CGan extends AbsGan{
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder()
                 .seed(42)
-                .updater(UPDATER_GAN)
+                .updater(UPDATER)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
@@ -200,7 +200,7 @@ public class CGan extends AbsGan{
         graphItemList.add(new GraphLayerItem("dis_embedding_0",
                 new EmbeddingLayer.Builder()
                         .nIn(numClasses)
-                        .nOut(numClasses).build(),
+                        .nOut(DISCRIMINATOR_INPUT_SIZE).build(),
                 new String[]{inputs[1]}));
 
         graphItemList.add(new GraphLayerItem("dis_merge_vertex_0",
@@ -209,7 +209,7 @@ public class CGan extends AbsGan{
 
 
         graphItemList.add(new GraphLayerItem("dis_layer_0",
-                new DenseLayer.Builder().nIn(DISCRIMINATOR_INPUT_SIZE+numClasses)
+                new DenseLayer.Builder().nIn(DISCRIMINATOR_INPUT_SIZE*2)
                         .nOut(1024)
                         .updater(updater).build(),
                 new String[]{"dis_merge_vertex_0"}));
