@@ -1,4 +1,4 @@
-package org.freeware.dl4j.modelx.model.gan;
+package org.freeware.dl4j.nn;
 
 
 import lombok.AllArgsConstructor;

@@ -8,6 +8,7 @@ import org.deeplearning4j.nn.conf.graph.ReshapeVertex;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.zoo.ZooModel;
+import org.freeware.dl4j.nn.GraphLayerItem;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
 import java.util.List;

@@ -2,6 +2,7 @@ package org.freeware.dl4j.modelx.train.gan;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.core.storage.StatsStorage;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
@@ -16,6 +17,7 @@ import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.Random;
 
+@Slf4j
 public abstract class AbsGanTrainer {
 
 
@@ -72,6 +74,31 @@ public abstract class AbsGanTrainer {
         discriminator.fit(fakeMultiDataSet);
     }
 
+    protected static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray realLabel,int batchSize) {
+
+        //用生成器生成假图片
+        INDArray fakeImaged=generator.output(realFeature)[0];
+
+        log.info(fakeImaged.shapeInfoToString());
+
+        log.info(realFeature.shapeInfoToString());
+
+        INDArray[] fakeFeatures=new INDArray[] {fakeImaged};
+
+        INDArray[] fakeDisLabels=new INDArray[] {Nd4j.zeros(batchSize, 1)};
+
+        MultiDataSet fakeMultiDataSet=new MultiDataSet(fakeFeatures,fakeDisLabels);
+
+        INDArray[] realFeatures=new INDArray[] {realLabel};
+
+        INDArray[] realDisLabels=new INDArray[] {Nd4j.ones(batchSize, 1)};
+        //构建多数据集（多个特征，多个标签）
+        MultiDataSet realMultiDataSet=new MultiDataSet(realFeatures,realDisLabels);
+        //用真实数据训练判别器
+        discriminator.fit(realMultiDataSet);
+        //用假数据训练判别器
+        discriminator.fit(fakeMultiDataSet);
+    }
 
 
     /**
@@ -91,6 +118,27 @@ public abstract class AbsGanTrainer {
         INDArray embeddingLabel = generatorInput.getEmbeddingLabel();
         //噪音特征
         INDArray[] noiseLatentFeature = new INDArray[]{noiseLatentDim, embeddingLabel};
+        //这里故意把噪音的标签设为真，
+        INDArray[] noiseLatentLabel = new INDArray[]{Nd4j.ones(batchSize, 1)};
+        //对抗网络输入多数据集
+        MultiDataSet ganInputMultiDataSet = new MultiDataSet(noiseLatentFeature, noiseLatentLabel);
+
+        gan.fit(ganInputMultiDataSet);
+
+    }
+
+    /**
+     * 对抗训练
+     * 此时判别器的学习率为0
+     * 所以只会训练生成器
+     * @param gan
+     * @param batchSize
+     *
+     */
+    protected static void trainGan(ComputationGraph gan,int batchSize, INDArray realFeature) {
+
+        //噪音特征
+        INDArray[] noiseLatentFeature = new INDArray[]{realFeature};
         //这里故意把噪音的标签设为真，
         INDArray[] noiseLatentLabel = new INDArray[]{Nd4j.ones(batchSize, 1)};
         //对抗网络输入多数据集
