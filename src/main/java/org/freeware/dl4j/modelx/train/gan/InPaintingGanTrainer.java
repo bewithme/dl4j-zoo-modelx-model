@@ -17,6 +17,8 @@ import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.learning.config.Adam;
 
 import java.io.File;
@@ -45,6 +47,7 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
     public static void main(String[] args) {
 
         int batchSize=4;
+
         int imageHeight =512;
 
         int imageWidth =512;
@@ -83,7 +86,6 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
 
         MultiDataSetIterator trainData = new InPaintingDataSetIterator(dataPath,batchSize);
 
-
         int iterationCounter = 0;
 
       while (true) {
@@ -94,13 +96,11 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
 
                 iterationCounter++;
 
-
                 MultiDataSet dataSet= trainData.next();
-
                 INDArray realFeature = dataSet.getFeatures()[0];
-
+                dataNormalization.transform(realFeature);
                 INDArray realLabel = dataSet.getLabels()[0];
-
+                dataNormalization.transform(realLabel);
                 int realBatchSize=Integer.parseInt(String.valueOf(realLabel.size(0)));
 
                 trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
@@ -111,7 +111,7 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
 
                 inPaintingGan.copyParamsFromGanToGenerator(generator,gan);
 
-                //visualize(generator, iterationCounter);
+                visualize(generator, realFeature , iterationCounter);
 
             }
 
@@ -124,15 +124,15 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
      * @param generator
      * @param iterationCounter
      */
-    private static void visualize(ComputationGraph generator, int iterationCounter) {
+    private static void visualize(ComputationGraph generator, INDArray realFeature ,int iterationCounter) {
 
         Sample[] samples=null;
 
         if (iterationCounter % 10== 0) {
 
-            samples=getSamples(generator);
+            samples=getSamples(generator,realFeature);
 
-            VisualisationUtils.mnistVisualizeForConvolution2D(samples,"CDCGan");
+            VisualisationUtils.visualizeForConvolution2D(samples,"InPaintingGan");
         }
         if (iterationCounter % 1000== 0) {
 
@@ -149,23 +149,21 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
      * @param generator
      * @return
      */
-    private static Sample[] getSamples(ComputationGraph generator) {
+    private static Sample[] getSamples(ComputationGraph generator, INDArray realFeature) {
 
         int batchSize=1;
 
-        Sample[] samples = new Sample[9];
+        Sample[] samples = new Sample[4];
 
-        for(int k=0;k<9;k++){
+        for(int k=0;k<4;k++){
             //创建batchSize行，100列的随机数浅层空间
-            INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
-            //随机标签
-            INDArray fakeEmbeddingLabel= RandomUtils.getRandomEmbeddingLabel(batchSize,0,9,random);
+            INDArray latentDim =realFeature.get(new INDArrayIndex[]{NDArrayIndex.point(k),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all()});
             //输出图片
-            INDArray fakeImage=generator.output(latentDim,fakeEmbeddingLabel)[0];
+            INDArray fakeImage=generator.output(latentDim)[0];
             //把图片数据恢复到0-255
             dataNormalization.revertFeatures(fakeImage);
 
-            Sample sample=new Sample(fakeImage,String.valueOf(fakeEmbeddingLabel.toIntVector()[0]));
+            Sample sample=new Sample(fakeImage,"");
 
             samples[k]=sample;
         }

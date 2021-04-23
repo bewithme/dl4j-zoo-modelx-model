@@ -19,21 +19,7 @@ public class VisualisationUtils {
 
     private static JFrame frame;
     private static JPanel panel;
-
     private static    Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
-
-    public static void mnistVisualize(Sample[] samples, String title) {
-        initFrameForMnist(samples, title);
-
-        panel.removeAll();
-
-        for (int i = 0; i < samples.length; i++) {
-            panel.add(getMnistImage(samples[i].getFeature(),samples[i].getLabel()));
-        }
-
-        frame.revalidate();
-        frame.pack();
-    }
 
     private static void initFrameForMnist(Sample[] samples, String title) {
         if (frame == null) {
@@ -50,82 +36,66 @@ public class VisualisationUtils {
         }
     }
 
-    private static JLabel getMnistImage(INDArray tensor,String title) {
 
-        BufferedImage bufferedImage = convertToImage(tensor,28,28);
+    private static void initFrame(Sample[] samples, String title) {
+        if (frame == null) {
 
-        JLabel label = wrapToLabel(title, 28, 28, bufferedImage);
-
-        return label;
-    }
-
-    @NotNull
-    private static BufferedImage convertToImage(INDArray tensor,int width,int height) {
-
-        BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
-
-        for (int i = 0; i < width*height; i++) {
-
-            int pixel = (int)(((tensor.getDouble(i) + 1) * 2) * 255);
-
-            bi.getRaster().setSample(i % width, i / height, 0, pixel);
-        }
-
-        return bi;
-    }
-
-    public static void saveAsImage(Sample[] tensors,String savePath){
-
-        ExtendedFileUtils.makeDirs(savePath);
-
-        for (int k=0;k<tensors.length;k++){
-
-            String fileName= DateUtils.format(new Date(), DateUtils.FORMAT_DATE_TIME_YYYYMMDDHHMMSS).concat("_"+tensors[k].getLabel()+".jpg");
-
-            fileName=savePath.concat(File.separator).concat(fileName);
-
-            saveAsImage(tensors[k].getFeature(),fileName,28,28);
+            frame = new JFrame();
+            frame.setTitle(title);
+            frame.setBounds(200, 200, 1024, 1024);
+            frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+            frame.setLayout(new BorderLayout());
+            panel = new JPanel();
+            panel.setLayout(new GridLayout(samples.length / 2, 1, 8, 8));
+            frame.add(panel, BorderLayout.CENTER);
+            frame.setVisible(true);
         }
     }
-
-    public static void saveAsImage(INDArray tensor,String fileName,int width,int height) {
-
-            BufferedImage bi =convertToImage(tensor,width,height);
-        try {
-            ImageIO.write(bi, "jpg",new File(fileName));
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-
 
 
     public static void mnistVisualizeForConvolution2D(Sample[] samples,String title) {
+
         initFrameForMnist(samples, title);
+
         panel.removeAll();
         for (int i = 0; i < samples.length; i++) {
-            panel.add(getMnistImageForConvolution2D(samples[i].getFeature(),samples[i].getLabel(),28,28));
+            panel.add(getLabelForConvolution2D(samples[i].getFeature(),samples[i].getLabel(),28,28,8));
         }
         frame.revalidate();
         frame.pack();
     }
 
-    private static JLabel getMnistImageForConvolution2D(INDArray tensor,String title,int width,int height) {
+    public static void visualizeForConvolution2D(Sample[] samples,String title) {
+
+        initFrame(samples, title);
+
+        panel.removeAll();
+
+        for (int i = 0; i < samples.length; i++) {
+            INDArray feature=samples[i].getFeature();
+            int h= (int)feature.size(3);
+            int w= (int)feature.size(4);
+            panel.add(getLabelForConvolution2D(feature,samples[i].getLabel(),w,h,1));
+        }
+        frame.revalidate();
+        frame.pack();
+    }
+
+    private static JLabel getLabelForConvolution2D(INDArray tensor, String title, int width, int height, int scale) {
 
         BufferedImage bufferedImage= java2DNativeImageLoader.asBufferedImage(tensor);
 
-        JLabel label = wrapToLabel(title, width, height, bufferedImage);
+        JLabel label = wrapToLabel(bufferedImage,title, width, height, scale);
 
         return label;
     }
 
     @NotNull
-    private static JLabel wrapToLabel(String title, int width, int height, BufferedImage bufferedImage) {
+    private static JLabel wrapToLabel(BufferedImage bufferedImage,String title, int width, int height,int scale) {
 
         ImageIcon orig = new ImageIcon(bufferedImage);
 
-        Image imageScaled = orig.getImage().getScaledInstance((8 * width), (8 * height), Image.SCALE_REPLICATE);
+        Image imageScaled = orig.getImage().getScaledInstance((scale * width), (scale * height), Image.SCALE_REPLICATE);
 
         ImageIcon scaled = new ImageIcon(imageScaled);
 
