@@ -101,7 +101,7 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
                 dataNormalization.transform(realFeature);
                 INDArray realLabel = dataSet.getLabels()[0];
                 dataNormalization.transform(realLabel);
-                int realBatchSize=Integer.parseInt(String.valueOf(realLabel.size(0)));
+                int realBatchSize=(int)realLabel.size(0);
 
                 trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
 
@@ -151,13 +151,21 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
      */
     private static Sample[] getSamples(ComputationGraph generator, INDArray realFeature) {
 
-        int batchSize=1;
+        int batchSize=(int)realFeature.size(0);
 
         Sample[] samples = new Sample[4];
 
-        for(int k=0;k<4;k++){
+        int sampleLen=4;
+
+        if(sampleLen>batchSize){
+            sampleLen=batchSize;
+        }
+
+        for(int k=0;k<sampleLen;k++){
             //创建batchSize行，100列的随机数浅层空间
             INDArray latentDim =realFeature.get(new INDArrayIndex[]{NDArrayIndex.point(k),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all()});
+
+            latentDim=Nd4j.expandDims(latentDim,0);
             //输出图片
             INDArray fakeImage=generator.output(latentDim)[0];
             //把图片数据恢复到0-255

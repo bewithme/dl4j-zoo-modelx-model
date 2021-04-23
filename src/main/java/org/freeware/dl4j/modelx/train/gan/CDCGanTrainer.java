@@ -105,7 +105,7 @@ public class CDCGanTrainer extends AbsGanTrainer{
 
                 INDArray realLabel = dataSet.getLabels();
 
-                int realBatchSize=Integer.parseInt(String.valueOf(realLabel.size(0)));
+                int realBatchSize=(int)realLabel.size(0);
 
                 trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize,latentDimLen,0,9,random);
 
