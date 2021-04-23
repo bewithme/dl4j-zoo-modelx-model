@@ -79,10 +79,6 @@ public abstract class AbsGanTrainer {
         //用生成器生成假图片
         INDArray fakeImaged=generator.output(realFeature)[0];
 
-        log.info(fakeImaged.shapeInfoToString());
-
-        log.info(realFeature.shapeInfoToString());
-
         INDArray[] fakeFeatures=new INDArray[] {fakeImaged};
 
         INDArray[] fakeDisLabels=new INDArray[] {Nd4j.zeros(batchSize, 1)};

@@ -73,8 +73,8 @@ public class VisualisationUtils {
 
         for (int i = 0; i < samples.length; i++) {
             INDArray feature=samples[i].getFeature();
-            int h= (int)feature.size(3);
-            int w= (int)feature.size(4);
+            int h= (int)feature.size(2);
+            int w= (int)feature.size(3);
             panel.add(getLabelForConvolution2D(feature,samples[i].getLabel(),w,h,1));
         }
         frame.revalidate();
