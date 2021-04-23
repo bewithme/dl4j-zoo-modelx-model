@@ -3,16 +3,11 @@ package org.freeware.dl4j.modelx.train.gan;
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.freeware.dl4j.modelx.dataset.inPainting.InPaintingDataSetIterator;
-import org.freeware.dl4j.modelx.model.gan.CDCGan;
 import org.freeware.dl4j.modelx.model.gan.InPaintingGan;
-import org.freeware.dl4j.modelx.utils.DataSetUtils;
-import org.freeware.dl4j.modelx.utils.RandomUtils;
 import org.freeware.dl4j.modelx.utils.Sample;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.MultiDataSet;
-import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
@@ -23,7 +18,6 @@ import org.nd4j.linalg.learning.config.AdaDelta;
 import org.nd4j.linalg.learning.config.Adam;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Random;
 
 
@@ -61,8 +55,10 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
                 .imageChannel(imageChannel)
                 .imageHeight(imageHeight)
                 .imageWidth(imageWidth)
-                .updater(new AdaDelta()
-                 )
+                .generatorUpdater(new AdaDelta())
+                .discriminatorUpdater(Adam.builder()
+                        .learningRate(0.0003)
+                        .beta1(0.5).build())
                 .build();
 
         ComputationGraph generator=inPaintingGan.initGenerator();

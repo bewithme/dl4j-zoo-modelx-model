@@ -41,15 +41,15 @@ public class InPaintingGan extends AbsGan{
 
     private static final IUpdater UPDATER_ZERO = Sgd.builder().learningRate(0.0).build();
 
-
-
     @Builder.Default private   int imageHeight =512;
 
     @Builder.Default private   int imageWidth =512;
 
     @Builder.Default private   int imageChannel =3;
 
-    @Builder.Default  private IUpdater updater = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
+    @Builder.Default  private IUpdater generatorUpdater = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
+
+    @Builder.Default  private IUpdater discriminatorUpdater = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
 
     @Builder.Default private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
 
@@ -95,9 +95,9 @@ public class InPaintingGan extends AbsGan{
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
-                .updater(updater)
-                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
-                .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
+                .updater(discriminatorUpdater)
+                //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+                //.gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
@@ -107,7 +107,7 @@ public class InPaintingGan extends AbsGan{
 
         String[] inputs= {"dis_input"};
 
-        List<GraphLayerItem>   layerItems=buildDiscriminatorGraphLayerItems(inputs, updater);
+        List<GraphLayerItem>   layerItems=buildDiscriminatorGraphLayerItems(inputs, generatorUpdater);
 
         addGraphItems(graph,layerItems,Boolean.FALSE);
 
@@ -126,7 +126,7 @@ public class InPaintingGan extends AbsGan{
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                .updater(updater)
+                .updater(generatorUpdater)
                 .l2(5e-5)
                // .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
              //   .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
