@@ -68,11 +68,11 @@ public class InPaintingDataSetIterator implements MultiDataSetIterator {
 
 
 	public InPaintingDataSetIterator(String dataSetPath,
-									 int batchSize) {
+									 int batchSize,int imageHeight,int imageWidth,int channels) {
 
 		super();
 
-        this.nativeImageLoader=new NativeImageLoader(512,512,3);
+        this.nativeImageLoader=new NativeImageLoader(imageHeight,imageWidth,channels);
 
       //检查并设置目录
 		checkAndSetDirectory(dataSetPath);

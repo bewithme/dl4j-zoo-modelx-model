@@ -84,7 +84,7 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
 
         Nd4j.getMemoryManager().setAutoGcWindow(15 * 1000);
 
-        MultiDataSetIterator trainData = new InPaintingDataSetIterator(dataPath,batchSize);
+        MultiDataSetIterator trainData = new InPaintingDataSetIterator(dataPath,batchSize,imageHeight,imageWidth,imageChannel);
 
         int iterationCounter = 0;
 
