@@ -338,60 +338,74 @@ public class InPaintingGan extends AbsGan{
         graphItemList.add(new GraphLayerItem("dis_layer_0", new ConvolutionLayer.Builder(new int[]{4,4}, new int[]{2,2})
                 .cudnnAlgoMode(cudnnAlgoMode).convolutionMode(ConvolutionMode.Same)
                 .activation(Activation.LEAKYRELU)
+                .updater(updater)
                 .nIn(imageChannel)
                 .nOut(64)
                 .build(), inputs));
 
         graphItemList.add(new GraphLayerItem("dis_layer_1", new ConvolutionLayer.Builder(new int[]{4,4}, new int[]{2,2})
                 .cudnnAlgoMode(cudnnAlgoMode).convolutionMode(ConvolutionMode.Same)
+                .updater(updater)
                 .activation(Activation.LEAKYRELU)
                 .nIn(64)
                 .nOut(128)
                 .build(),new String[]{"dis_layer_0"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_2", new BatchNormalization.Builder()
+                .updater(updater)
                 .nIn(128)
                 .nOut(128)
                 .build(),new String[]{"dis_layer_1"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_3", new ConvolutionLayer.Builder(new int[]{4,4}, new int[]{2,2})
-                .cudnnAlgoMode(cudnnAlgoMode).convolutionMode(ConvolutionMode.Same)
+                .cudnnAlgoMode(cudnnAlgoMode)
+                .convolutionMode(ConvolutionMode.Same)
+                .updater(updater)
                 .activation(Activation.LEAKYRELU)
                 .nIn(128)
                 .nOut(256)
                 .build(),new String[]{"dis_layer_2"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_4", new BatchNormalization.Builder()
+                .updater(updater)
                 .nIn(256)
                 .nOut(256)
                 .build(),new String[]{"dis_layer_3"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_5", new ConvolutionLayer.Builder(new int[]{4,4}, new int[]{2,2})
-                .cudnnAlgoMode(cudnnAlgoMode).convolutionMode(ConvolutionMode.Same)
+                .cudnnAlgoMode(cudnnAlgoMode)
+                .convolutionMode(ConvolutionMode.Same)
+                .updater(updater)
                 .activation(Activation.LEAKYRELU)
                 .nIn(256)
                 .nOut(512)
                 .build(),new String[]{"dis_layer_4"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_6", new BatchNormalization.Builder()
+                .updater(updater)
                 .nIn(512)
                 .nOut(512)
                 .build(),new String[]{"dis_layer_5"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_7", new ConvolutionLayer.Builder(new int[]{4,4})
-                .cudnnAlgoMode(cudnnAlgoMode).convolutionMode(ConvolutionMode.Same)
+                .cudnnAlgoMode(cudnnAlgoMode)
+                .convolutionMode(ConvolutionMode.Same)
+                .updater(updater)
                 .nIn(512)
                 .nOut(512)
                 .activation(Activation.LEAKYRELU)
                 .build(),new String[]{"dis_layer_6"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_8", new BatchNormalization.Builder()
+                .updater(updater)
                 .nIn(512)
                 .nOut(512)
                 .build(),new String[]{"dis_layer_7"}));
 
         graphItemList.add(new GraphLayerItem("dis_layer_9", new ConvolutionLayer.Builder(new int[]{4,4})
-                .cudnnAlgoMode(cudnnAlgoMode).convolutionMode(ConvolutionMode.Same)
+                .cudnnAlgoMode(cudnnAlgoMode)
+                .convolutionMode(ConvolutionMode.Same)
+                .updater(updater)
                 .nIn(512)
                 .nOut(1)
                 .build(),new String[]{"dis_layer_8"}));
@@ -399,12 +413,12 @@ public class InPaintingGan extends AbsGan{
 
         graphItemList.add(new GraphLayerItem("dis_layer_10",
                 new OutputLayer.Builder(LossFunctions.LossFunction.XENT)
+                        .updater(updater)
                         .nIn(1024)
                         .nOut(1)
                         .activation(Activation.SIGMOID)
                         .updater(updater).build(),
                 new String[]{"dis_layer_9"}));
-        //graphItemList.add(new GraphLayerItem());
 
         return graphItemList;
 
