@@ -55,7 +55,9 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
                 .imageChannel(imageChannel)
                 .imageHeight(imageHeight)
                 .imageWidth(imageWidth)
-                .generatorUpdater(new AdaDelta())
+                .generatorUpdater(Adam.builder()
+                        .learningRate(0.0003)
+                        .beta1(0.5).build())
                 .discriminatorUpdater(Adam.builder()
                         .learningRate(0.0003)
                         .beta1(0.5).build())
@@ -71,9 +73,6 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
 
         inPaintingGan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
 
-        log.info(generator.summary());
-
-        log.info(discriminator.summary());
 
         log.info(gan.summary());
 
