@@ -41,7 +41,8 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
 
     public static void main(String[] args) {
 
-        int batchSize=4;
+        //因为目前DL4J还没有实现InstanceNormalization，所以我们只能用batchSize为1时模拟InstanceNormalization
+        int batchSize=1;
 
         int imageHeight =512;
 
@@ -91,10 +92,15 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
                 iterationCounter++;
 
                 MultiDataSet dataSet= trainData.next();
+
                 INDArray realFeature = dataSet.getFeatures()[0];
+
                 dataNormalization.transform(realFeature);
+
                 INDArray realLabel = dataSet.getLabels()[0];
+
                 dataNormalization.transform(realLabel);
+
                 int realBatchSize=(int)realLabel.size(0);
 
                 trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
@@ -146,16 +152,12 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
     private static Sample[] getSamples(ComputationGraph generator, INDArray realFeature) {
 
         int batchSize=(int)realFeature.size(0);
+        //输入+输出
+        int sampleLen=batchSize*2;
 
-        Sample[] samples = new Sample[4];
+        Sample[] samples = new Sample[sampleLen];
 
-        int sampleLen=4;
-
-        if(sampleLen>batchSize){
-            sampleLen=batchSize;
-        }
-
-        for(int k=0;k<sampleLen;k++){
+        for(int k=0;k<batchSize;k++){
             //创建batchSize行，100列的随机数浅层空间
             INDArray latentDim =realFeature.get(new INDArrayIndex[]{NDArrayIndex.point(k),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all()});
 
@@ -165,9 +167,13 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
             //把图片数据恢复到0-255
             dataNormalization.revertFeatures(fakeImage);
 
-            Sample sample=new Sample(fakeImage,"");
+            Sample sampleInput=new Sample(latentDim,"input");
 
-            samples[k]=sample;
+            Sample sampleOutput=new Sample(fakeImage,"output");
+
+            samples[k]=sampleInput;
+
+            samples[k+1]=sampleOutput;
         }
         return samples;
     }
