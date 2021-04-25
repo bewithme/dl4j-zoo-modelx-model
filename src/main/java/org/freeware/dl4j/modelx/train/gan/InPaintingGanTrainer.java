@@ -165,6 +165,8 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
             //输出图片
             INDArray fakeImage=generator.output(latentDim)[0];
             //把图片数据恢复到0-255
+            dataNormalization.revertFeatures(latentDim);
+
             dataNormalization.revertFeatures(fakeImage);
 
             Sample sampleInput=new Sample(latentDim,"input");
