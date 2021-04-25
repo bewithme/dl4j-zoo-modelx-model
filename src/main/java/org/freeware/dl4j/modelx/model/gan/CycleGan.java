@@ -89,7 +89,7 @@ public class CycleGan extends AbsGan {
 
         String inputs = "gen_input";
 
-        List<GraphLayerItem> layerItems = buildGeneratorGraphLayerItems(inputs);
+        List<GraphLayerItem> layerItems = buildGeneratorGraphLayerItems(inputs,generatorUpdater);
 
         addGraphItems(graph, layerItems, Boolean.FALSE);
 
@@ -121,17 +121,15 @@ public class CycleGan extends AbsGan {
                 .convolutionMode(ConvolutionMode.Same)
                 .graphBuilder();
 
-        String[] inputs = {"dis_input"};
+        String input ="dis_input";
 
-        List<GraphLayerItem> layerItems = buildDiscriminatorGraphLayerItems(inputs, generatorUpdater);
+        List<GraphLayerItem> layerItems = buildDiscriminatorGraphLayerItems(input, discriminatorUpdater);
 
         addGraphItems(graph, layerItems, Boolean.FALSE);
 
-        graph.addInputs(inputs);
+        graph.addInputs(input);
 
-        graph.inputPreProcessor("dis_layer_10", new CnnToFeedForwardPreProcessor(32, 32, 1));
-
-        graph.setOutputs("dis_layer_10");
+        graph.setOutputs(getLastLayerName(layerItems));
 
         return graph.build();
     }
@@ -142,7 +140,7 @@ public class CycleGan extends AbsGan {
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                .updater(generatorUpdater)
+
                 .l2(5e-5)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
@@ -155,22 +153,19 @@ public class CycleGan extends AbsGan {
 
         String genInputs = "gen_input";
 
-        List<GraphLayerItem> genLayerItems = buildGeneratorGraphLayerItems(genInputs);
+        List<GraphLayerItem> genLayerItems = buildGeneratorGraphLayerItems(genInputs,generatorUpdater);
 
         addGraphItems(graph, genLayerItems, Boolean.FALSE);
 
-        String[] disInputs = {"conv10"};
+        String disInput = getLastLayerName(genLayerItems);
         //学习率为0，即判别器不会被训练，只训练生成器
-        List<GraphLayerItem> disLayerItems = buildDiscriminatorGraphLayerItems(disInputs, UPDATER_ZERO);
+        List<GraphLayerItem> disLayerItems = buildDiscriminatorGraphLayerItems(disInput, UPDATER_ZERO);
 
         addGraphItems(graph, disLayerItems, Boolean.FALSE);
 
         graph.addInputs(genInputs);
 
-        graph.setOutputs("dis_layer_10");
-
-        graph.inputPreProcessor("dis_layer_10", new CnnToFeedForwardPreProcessor(32, 32, 1));
-
+        graph.setOutputs(getLastLayerName(disLayerItems));
 
         graph.setInputTypes(InputType.convolutional(imageHeight, imageWidth, imageChannel));
 
@@ -185,7 +180,7 @@ public class CycleGan extends AbsGan {
      * @param input
      * @return
      */
-    private List<GraphLayerItem> buildGeneratorGraphLayerItems(String input) {
+    private List<GraphLayerItem> buildGeneratorGraphLayerItems(String input,IUpdater updater) {
 
         List<GraphLayerItem> graphItemList = new ArrayList<GraphLayerItem>(10);
 
@@ -193,57 +188,56 @@ public class CycleGan extends AbsGan {
 
         int modelIndex = 0;
 
-        List<GraphLayerItem> downSamplingGraphLayerItemList0=convolution2D(moduleName, modelIndex, 0, input, imageChannel, generatorFilters,generatorUpdater);
+        List<GraphLayerItem> downSamplingGraphLayerItemList0=convolution2D(moduleName, modelIndex, 0, input, imageChannel, generatorFilters,updater);
 
         String downSamplingLayerName0=getLastLayerName(downSamplingGraphLayerItemList0);
 
-        List<GraphLayerItem> downSamplingGraphLayerItemList1=convolution2D(moduleName, modelIndex, 1, downSamplingLayerName0, generatorFilters, generatorFilters*2,generatorUpdater);
+        List<GraphLayerItem> downSamplingGraphLayerItemList1=convolution2D(moduleName, modelIndex, 1, downSamplingLayerName0, generatorFilters, generatorFilters*2,updater);
 
         String downSamplingLayerName1=getLastLayerName(downSamplingGraphLayerItemList1);
 
-        List<GraphLayerItem> downSamplingGraphLayerItemList2=convolution2D(moduleName, modelIndex, 2, downSamplingLayerName1, generatorFilters*2, generatorFilters*4,generatorUpdater);
+        List<GraphLayerItem> downSamplingGraphLayerItemList2=convolution2D(moduleName, modelIndex, 2, downSamplingLayerName1, generatorFilters*2, generatorFilters*4,updater);
 
         String downSamplingLayerName2=getLastLayerName(downSamplingGraphLayerItemList2);
 
-        List<GraphLayerItem> downSamplingGraphLayerItemList3=convolution2D(moduleName, modelIndex, 3, downSamplingLayerName2, generatorFilters*4, generatorFilters*8,generatorUpdater);
+        List<GraphLayerItem> downSamplingGraphLayerItemList3=convolution2D(moduleName, modelIndex, 3, downSamplingLayerName2, generatorFilters*4, generatorFilters*8,updater);
 
         String downSamplingLayerName3=getLastLayerName(downSamplingGraphLayerItemList3);
 
-
-        List<GraphLayerItem> upSamplingGraphLayerItemList0=deconvolution2D(moduleName,modelIndex,4,downSamplingLayerName3,downSamplingLayerName2,generatorFilters*8,generatorFilters*4,generatorUpdater);
+        List<GraphLayerItem> upSamplingGraphLayerItemList0=deconvolution2D(moduleName,modelIndex,4,downSamplingLayerName3,downSamplingLayerName2,generatorFilters*8,generatorFilters*4,updater);
 
         String upSamplingLayerName0=getLastLayerName(upSamplingGraphLayerItemList0);
 
-
-        List<GraphLayerItem> upSamplingGraphLayerItemList1=deconvolution2D(moduleName,modelIndex,5,upSamplingLayerName0,downSamplingLayerName1,generatorFilters*4,generatorFilters*2,generatorUpdater);
+        List<GraphLayerItem> upSamplingGraphLayerItemList1=deconvolution2D(moduleName,modelIndex,5,upSamplingLayerName0,downSamplingLayerName1,generatorFilters*4,generatorFilters*2,updater);
 
         String upSamplingLayerName1=getLastLayerName(upSamplingGraphLayerItemList1);
 
-
-        List<GraphLayerItem> upSamplingGraphLayerItemList2=deconvolution2D(moduleName,modelIndex,6,upSamplingLayerName1,downSamplingLayerName0,generatorFilters*2,generatorFilters,generatorUpdater);
+        List<GraphLayerItem> upSamplingGraphLayerItemList2=deconvolution2D(moduleName,modelIndex,6,upSamplingLayerName1,downSamplingLayerName0,generatorFilters*2,generatorFilters,updater);
 
         String upSamplingLayerName2=getLastLayerName(upSamplingGraphLayerItemList2);
 
-
         graphItemList.addAll(downSamplingGraphLayerItemList0);
+
         graphItemList.addAll(downSamplingGraphLayerItemList1);
+
         graphItemList.addAll(downSamplingGraphLayerItemList2);
+
         graphItemList.addAll(downSamplingGraphLayerItemList3);
 
         graphItemList.addAll(upSamplingGraphLayerItemList0);
+
         graphItemList.addAll(upSamplingGraphLayerItemList1);
+
         graphItemList.addAll(upSamplingGraphLayerItemList2);
 
         String upSampling2DLayerName=createLayerName(moduleName, UP_SAMPLING_2D,0,7);
 
-
         graphItemList.add(new GraphLayerItem(upSampling2DLayerName,
-                new Upsampling2D.Builder(2).build(),
+                new Upsampling2D.Builder(2)
+                        .build(),
                 new String[]{upSamplingLayerName2}));
 
-
         String cnnLayerName=createLayerName(moduleName, CNN,0,8);
-
 
         graphItemList.add(new GraphLayerItem(cnnLayerName,
                 new Convolution2D.Builder()
@@ -251,7 +245,7 @@ public class CycleGan extends AbsGan {
                         .stride(1,1)
                         .nOut(imageChannel)
                         .convolutionMode(ConvolutionMode.Same)
-                        .updater(generatorUpdater).build(),
+                        .updater(updater).build(),
                 new String[]{upSampling2DLayerName}));
 
         return graphItemList;
@@ -261,14 +255,61 @@ public class CycleGan extends AbsGan {
     /**
      * 判别器计算图的层列表
      *
-     * @param inputs
+     * @param input
      * @param updater
      * @return
      */
-    private List<GraphLayerItem> buildDiscriminatorGraphLayerItems(String[] inputs, IUpdater updater) {
+    private List<GraphLayerItem> buildDiscriminatorGraphLayerItems(String input, IUpdater updater) {
 
         List<GraphLayerItem> graphItemList = new ArrayList<GraphLayerItem>(10);
 
+        int modelIndex = 0;
+
+        String moduleName = "dis";
+
+        List<GraphLayerItem> downSamplingGraphLayerItemList0=convolution2D(moduleName, modelIndex, 0, input, imageChannel, discriminatorFilters,4,Boolean.FALSE,updater);
+
+        String downSamplingLayerName0=getLastLayerName(downSamplingGraphLayerItemList0);
+
+        List<GraphLayerItem> downSamplingGraphLayerItemList1=convolution2D(moduleName, modelIndex, 1, downSamplingLayerName0, discriminatorFilters, discriminatorFilters*2,updater);
+
+        String downSamplingLayerName1=getLastLayerName(downSamplingGraphLayerItemList1);
+
+        List<GraphLayerItem> downSamplingGraphLayerItemList2=convolution2D(moduleName, modelIndex, 2, downSamplingLayerName1, discriminatorFilters*2, discriminatorFilters*4,updater);
+
+        String downSamplingLayerName2=getLastLayerName(downSamplingGraphLayerItemList2);
+
+        List<GraphLayerItem> downSamplingGraphLayerItemList3=convolution2D(moduleName, modelIndex, 3, downSamplingLayerName2, discriminatorFilters*4, discriminatorFilters*8,updater);
+
+        String downSamplingLayerName3=getLastLayerName(downSamplingGraphLayerItemList3);
+
+        graphItemList.addAll(downSamplingGraphLayerItemList0);
+
+        graphItemList.addAll(downSamplingGraphLayerItemList1);
+
+        graphItemList.addAll(downSamplingGraphLayerItemList2);
+
+        graphItemList.addAll(downSamplingGraphLayerItemList3);
+
+        String cnnLayerName=createLayerName(moduleName, CNN,0,4);
+
+        graphItemList.add(new GraphLayerItem(cnnLayerName,
+                new Convolution2D.Builder()
+                        .kernelSize(4,4)
+                        .nIn(discriminatorFilters*8)
+                        .stride(1,1)
+                        .nOut(1)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .updater(updater).build(),
+                new String[]{downSamplingLayerName3}));
+
+        String outputLayerName=createLayerName(moduleName, CNN,0,5);
+
+        graphItemList.add(new GraphLayerItem(outputLayerName,
+                new CnnLossLayer.Builder(LossFunctions.LossFunction.MSE)
+                        .updater(updater)
+                        .activation(Activation.IDENTITY).build(),
+                new String[]{cnnLayerName}));
 
         return graphItemList;
 
