@@ -158,5 +158,9 @@ public abstract class AbsGan extends ZooModel {
         return newLayerName;
     }
 
+    protected String getLastLayerName(List<GraphLayerItem> graphLayerItemList){
+        return graphLayerItemList.size()==0?"":graphLayerItemList.get(graphLayerItemList.size()-1).getLayerName();
+    }
+
 
 }
