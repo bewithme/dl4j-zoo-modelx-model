@@ -17,6 +17,26 @@ import java.util.List;
 public abstract class AbsGan extends ZooModel {
 
 
+    protected static String ACTIVATION ="activation";
+
+    protected static String ELEMENT_WISE_VERTEX ="element-wise-vertex";
+
+    protected static String MERGE_VERTEX ="merge-vertex";
+
+    protected static String MAX_POOLING ="max-pooling";
+
+    protected static String AVG_POOLING ="avg-pooling";
+
+    protected static String UP_SAMPLING_2D="up-sampling-2d";
+
+    protected static String ZERO_PADDING ="zero-padding";
+
+    protected static String CNN ="cnn";
+
+    protected static String BATCH_NORM="batch-norm";
+
+
+
     /**
      * 从对抗网络中把参数复制给生成器和判别器
      * @param generator
@@ -129,7 +149,12 @@ public abstract class AbsGan extends ZooModel {
 
 
 
+    protected String createLayerName(String moduleName, String layerName,Integer moduleIndex,Integer blockIndex) {
 
+        String newLayerName=moduleName.concat("-").concat(layerName).concat("-").concat(String.valueOf(moduleIndex)).concat("-").concat(String.valueOf(blockIndex));
+
+        return newLayerName;
+    }
 
 
 }
