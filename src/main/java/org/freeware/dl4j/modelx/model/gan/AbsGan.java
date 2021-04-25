@@ -35,6 +35,8 @@ public abstract class AbsGan extends ZooModel {
 
     protected static String BATCH_NORM="batch-norm";
 
+    protected static String DROP_OUT="drop-out";
+
 
 
     /**
