@@ -89,7 +89,9 @@ public class CycleGan extends AbsGan {
 
         String inputs = "gen_input";
 
-        List<GraphLayerItem> layerItems = buildGeneratorGraphLayerItems(inputs,generatorUpdater);
+        String moduleName = "gen";
+
+        List<GraphLayerItem> layerItems = buildGeneratorGraphLayerItems(inputs,moduleName,generatorUpdater);
 
         addGraphItems(graph, layerItems, Boolean.FALSE);
 
@@ -138,9 +140,7 @@ public class CycleGan extends AbsGan {
     public ComputationGraphConfiguration buildGanConfiguration() {
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
-
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .convolutionMode(ConvolutionMode.Same)
@@ -148,7 +148,9 @@ public class CycleGan extends AbsGan {
 
         String genInputs = "gen_input";
 
-        List<GraphLayerItem> genLayerItems = buildGeneratorGraphLayerItems(genInputs,generatorUpdater);
+        String moduleName = "gen";
+
+        List<GraphLayerItem> genLayerItems = buildGeneratorGraphLayerItems(genInputs,moduleName,generatorUpdater);
 
         addGraphItems(graph, genLayerItems, Boolean.FALSE);
 
@@ -169,17 +171,63 @@ public class CycleGan extends AbsGan {
 
 
     /**
+     * 重建网络
+     * A->B^->A^
+     * B->A^->2^
+     * @return
+     */
+    public ComputationGraphConfiguration buildReconstructConfiguration() {
+
+        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
+                .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
+                .trainingWorkspaceMode(workspaceMode)
+                .inferenceWorkspaceMode(workspaceMode)
+                .convolutionMode(ConvolutionMode.Same)
+                .graphBuilder();
+
+        String genInputs = "gen_input";
+
+        String moduleName = "gen";
+
+        List<GraphLayerItem> genLayerItems = buildGeneratorGraphLayerItems(genInputs,moduleName,generatorUpdater);
+
+        addGraphItems(graph, genLayerItems, Boolean.TRUE);
+
+        String reconGenInputs =getLastLayerName(genLayerItems);
+
+        String reconModuleName = "gen_recon";
+
+        List<GraphLayerItem> genReconLayerItems = buildGeneratorGraphLayerItems(reconGenInputs,reconModuleName,generatorUpdater);
+        String outputLayerName="gen_recon_output";
+        genReconLayerItems.add(new GraphLayerItem(outputLayerName,
+                new CnnLossLayer.Builder(LossFunctions.LossFunction.MEAN_ABSOLUTE_ERROR)
+                        .updater(generatorUpdater)
+                        .activation(Activation.IDENTITY).build(),
+                new String[]{getLastLayerName(genReconLayerItems)}));
+
+        addGraphItems(graph, genReconLayerItems, Boolean.TRUE);
+
+
+        graph.addInputs(genInputs);
+
+        graph.setOutputs(outputLayerName);
+
+        graph.setInputTypes(InputType.convolutional(imageHeight, imageWidth, imageChannel));
+
+        return graph.build();
+    }
+
+
+    /**
      * 生成器计算图的层列表
      *
      *
      * @param input
      * @return
      */
-    private List<GraphLayerItem> buildGeneratorGraphLayerItems(String input,IUpdater updater) {
+    private List<GraphLayerItem> buildGeneratorGraphLayerItems(String input, String moduleName,IUpdater updater) {
 
         List<GraphLayerItem> graphItemList = new ArrayList<GraphLayerItem>(10);
-
-        String moduleName = "gen";
 
         int modelIndex = 0;
 
@@ -303,7 +351,6 @@ public class CycleGan extends AbsGan {
         graphItemList.add(new GraphLayerItem(outputLayerName,
                 new CnnLossLayer.Builder(LossFunctions.LossFunction.MSE)
                         .updater(updater)
-
                         .activation(Activation.IDENTITY).build(),
                 new String[]{cnnLayerName}));
 
@@ -477,6 +524,19 @@ public class CycleGan extends AbsGan {
 
         return model;
     }
+
+
+    public ComputationGraph initReconstructNetwork() {
+
+        ComputationGraphConfiguration configuration=buildReconstructConfiguration();
+
+        ComputationGraph model = new ComputationGraph(configuration);
+
+        model.init();
+
+        return model;
+    }
+
 
     @Override
     public ModelMetaData metaData() {
