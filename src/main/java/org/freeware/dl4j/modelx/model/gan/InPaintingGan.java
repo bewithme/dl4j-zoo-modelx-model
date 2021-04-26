@@ -127,9 +127,9 @@ public class InPaintingGan extends AbsGan{
 
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .updater(generatorUpdater)
-                .l2(5e-5)
-                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
-                .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
+                //.l2(5e-5)
+                //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+               // .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.RELU)
                 //.activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
