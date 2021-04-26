@@ -2,6 +2,7 @@ package org.freeware.dl4j.modelx.train.gan;
 
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.freeware.dl4j.modelx.dataset.cycleGan.CycleGanDataSetIterator;
 import org.freeware.dl4j.modelx.dataset.inPainting.InPaintingDataSetIterator;
 import org.freeware.dl4j.modelx.model.gan.CycleGan;
 import org.freeware.dl4j.modelx.model.gan.InPaintingGan;
@@ -44,47 +45,49 @@ public class CycleGanTrainer extends AbsGanTrainer{
         //因为目前DL4J还没有实现InstanceNormalization，所以我们只能用batchSize为1时模拟InstanceNormalization
         int batchSize=1;
 
-        int imageHeight =512;
+        int imageHeight =128;
 
-        int imageWidth =512;
+        int imageWidth =128;
 
         int imageChannel =3;
 
-        String dataPath="dataset/inpainting";
+
+
+        String dataPath="dataset/apple2orange";
 
         CycleGan cycleGan= CycleGan.builder()
                 .imageChannel(imageChannel)
                 .imageHeight(imageHeight)
                 .imageWidth(imageWidth)
                 .generatorUpdater(Adam.builder()
-                        .learningRate(0.0003)
+                        .learningRate(0.0002)
                         .beta1(0.5).build())
                 .discriminatorUpdater(Adam.builder()
-                        .learningRate(0.0003)
+                        .learningRate(0.0002)
                         .beta1(0.5).build())
                 .build();
 
-        ComputationGraph generator=cycleGan.initGenerator();
+        ComputationGraph generatorA2B=cycleGan.initGenerator();
 
-        log.info(generator.summary());
+        log.info(generatorA2B.summary());
 
-        ComputationGraph discriminator=cycleGan.initDiscriminator();
+        ComputationGraph generatorB2A=cycleGan.initGenerator();
 
-        log.info(discriminator.summary());
+        ComputationGraph discriminatorA=cycleGan.initDiscriminator();
 
-        /**
-         * ComputationGraph gan=cycleGan.init();
+        ComputationGraph discriminatorB=cycleGan.initDiscriminator();
 
-         setListeners(discriminator,gan);
+        ComputationGraph ganA2B=cycleGan.init();
 
-        cycleGan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
+        ComputationGraph ganB2A=cycleGan.init();
 
+        setListeners(discriminatorA,ganA2B);
 
-        log.info(gan.summary());
+        cycleGan.copyParamsFromGanToGeneratorAndDiscriminator(generatorA2B,discriminatorA,ganA2B);
 
-        Nd4j.getMemoryManager().setAutoGcWindow(15 * 1000);
+        cycleGan.copyParamsFromGanToGeneratorAndDiscriminator(generatorB2A,discriminatorB,ganB2A);
 
-        MultiDataSetIterator trainData = new InPaintingDataSetIterator(dataPath,batchSize,imageHeight,imageWidth,imageChannel);
+        MultiDataSetIterator trainData = new CycleGanDataSetIterator(dataPath,batchSize,imageHeight,imageWidth,imageChannel);
 
         int iterationCounter = 0;
 
@@ -98,30 +101,40 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
                 MultiDataSet dataSet= trainData.next();
 
-                INDArray realFeature = dataSet.getFeatures()[0];
+                INDArray featureA = dataSet.getFeatures()[0];
 
-                dataNormalization.transform(realFeature);
+                dataNormalization.transform(featureA);
 
-                INDArray realLabel = dataSet.getLabels()[0];
+                INDArray featureB = dataSet.getLabels()[0];
 
-                dataNormalization.transform(realLabel);
+                dataNormalization.transform(featureB);
 
-                int realBatchSize=(int)realLabel.size(0);
+                int realBatchSize=(int)featureB.size(0);
 
-                trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
+                long[] discriminatorOutputShape=new long[]{realBatchSize,1,imageHeight/(2*2*2*2),imageHeight/(2*2*2*2)};
 
-                cycleGan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
+                trainDiscriminator(generatorA2B, discriminatorB, featureA, featureB,discriminatorOutputShape);
 
-                trainGan( gan, realBatchSize,realFeature);
+                trainDiscriminator(generatorB2A, discriminatorA , featureB,featureA,discriminatorOutputShape);
 
-                cycleGan.copyParamsFromGanToGenerator(generator,gan);
+                cycleGan.copyParamsFromDiscriminatorToGanDiscriminator(discriminatorB, ganA2B);
 
-                visualize(generator, realFeature , iterationCounter);
+                cycleGan.copyParamsFromDiscriminatorToGanDiscriminator(discriminatorA, ganB2A);
+
+                trainGan( ganA2B, featureA,discriminatorOutputShape);
+
+                trainGan( ganB2A, featureB,discriminatorOutputShape);
+
+                cycleGan.copyParamsFromGanToGenerator(generatorA2B,ganA2B);
+
+                cycleGan.copyParamsFromGanToGenerator(generatorB2A,ganB2A);
+
+                //visualize(generatorA2B, featureA , iterationCounter);
 
             }
 
         }
-         **/
+
 
     }
 

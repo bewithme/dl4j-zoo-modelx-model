@@ -45,10 +45,10 @@ public class CycleGan extends AbsGan {
     private static final IUpdater UPDATER_ZERO = Sgd.builder().learningRate(0.0).build();
 
     @Builder.Default
-    private int imageHeight = 512;
+    private int imageHeight = 128;
 
     @Builder.Default
-    private int imageWidth = 512;
+    private int imageWidth = 128;
 
     @Builder.Default
     private int imageChannel = 3;
@@ -141,11 +141,6 @@ public class CycleGan extends AbsGan {
 
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
 
-                .l2(5e-5)
-                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
-                .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
-                .weightInit(WeightInit.RELU)
-                //.activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .convolutionMode(ConvolutionMode.Same)
@@ -208,11 +203,11 @@ public class CycleGan extends AbsGan {
 
         String upSamplingLayerName0=getLastLayerName(upSamplingGraphLayerItemList0);
 
-        List<GraphLayerItem> upSamplingGraphLayerItemList1=deconvolution2D(moduleName,modelIndex,5,upSamplingLayerName0,downSamplingLayerName1,generatorFilters*4,generatorFilters*2,updater);
+        List<GraphLayerItem> upSamplingGraphLayerItemList1=deconvolution2D(moduleName,modelIndex,5,upSamplingLayerName0,downSamplingLayerName1,generatorFilters*(4+4),generatorFilters*2,updater);
 
         String upSamplingLayerName1=getLastLayerName(upSamplingGraphLayerItemList1);
 
-        List<GraphLayerItem> upSamplingGraphLayerItemList2=deconvolution2D(moduleName,modelIndex,6,upSamplingLayerName1,downSamplingLayerName0,generatorFilters*2,generatorFilters,updater);
+        List<GraphLayerItem> upSamplingGraphLayerItemList2=deconvolution2D(moduleName,modelIndex,6,upSamplingLayerName1,downSamplingLayerName0,generatorFilters*(2+2),generatorFilters,updater);
 
         String upSamplingLayerName2=getLastLayerName(upSamplingGraphLayerItemList2);
 
@@ -308,6 +303,7 @@ public class CycleGan extends AbsGan {
         graphItemList.add(new GraphLayerItem(outputLayerName,
                 new CnnLossLayer.Builder(LossFunctions.LossFunction.MSE)
                         .updater(updater)
+
                         .activation(Activation.IDENTITY).build(),
                 new String[]{cnnLayerName}));
 
