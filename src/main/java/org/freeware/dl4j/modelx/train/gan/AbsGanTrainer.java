@@ -77,18 +77,24 @@ public abstract class AbsGanTrainer {
 
     protected static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray realLabel,int batchSize) {
 
+        trainDiscriminator( generator,  discriminator,  realFeature,  realLabel,new long[]{batchSize, 1});
+    }
+
+
+    protected static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray realLabel,long[] discriminatorOutputShape) {
+
         //用生成器生成假图片
         INDArray fakeImaged=generator.output(realFeature)[0];
 
         INDArray[] fakeFeatures=new INDArray[] {fakeImaged};
 
-        INDArray[] fakeDisLabels=new INDArray[] {Nd4j.zeros(batchSize, 1)};
+        INDArray[] fakeDisLabels=new INDArray[] {Nd4j.zeros(discriminatorOutputShape)};
 
         MultiDataSet fakeMultiDataSet=new MultiDataSet(fakeFeatures,fakeDisLabels);
 
         INDArray[] realFeatures=new INDArray[] {realLabel};
 
-        INDArray[] realDisLabels=new INDArray[] {Nd4j.ones(batchSize, 1)};
+        INDArray[] realDisLabels=new INDArray[] {Nd4j.ones(discriminatorOutputShape)};
         //构建多数据集（多个特征，多个标签）
         MultiDataSet realMultiDataSet=new MultiDataSet(realFeatures,realDisLabels);
         //用真实数据训练判别器
@@ -134,10 +140,16 @@ public abstract class AbsGanTrainer {
      */
     protected static void trainGan(ComputationGraph gan,int batchSize, INDArray realFeature) {
 
+        trainGan(gan,realFeature,new long[]{batchSize, 1});
+
+    }
+
+
+    protected static void trainGan(ComputationGraph gan,INDArray realFeature,long[] discriminatorOutputShape) {
         //噪音特征
         INDArray[] noiseLatentFeature = new INDArray[]{realFeature};
         //这里故意把噪音的标签设为真，
-        INDArray[] noiseLatentLabel = new INDArray[]{Nd4j.ones(batchSize, 1)};
+        INDArray[] noiseLatentLabel = new INDArray[]{Nd4j.ones(discriminatorOutputShape)};
         //对抗网络输入多数据集
         MultiDataSet ganInputMultiDataSet = new MultiDataSet(noiseLatentFeature, noiseLatentLabel);
 
