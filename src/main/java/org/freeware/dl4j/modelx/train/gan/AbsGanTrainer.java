@@ -20,8 +20,7 @@ import java.util.Random;
 @Slf4j
 public abstract class AbsGanTrainer {
 
-
-    protected static void setListeners(ComputationGraph discriminator, ComputationGraph gan) {
+    protected static void setListeners(ComputationGraph ... computationGraphs) {
 
         UIServer uiServer = UIServer.getInstance();
 
@@ -29,9 +28,11 @@ public abstract class AbsGanTrainer {
 
         uiServer.attach(statsStorage);
 
-        discriminator.setListeners(new PerformanceListener(10, true),new StatsListener(statsStorage));
+        for(ComputationGraph computationGraph:computationGraphs){
 
-        gan.setListeners(new PerformanceListener(10, true),new StatsListener(statsStorage));
+            computationGraph.setListeners(new PerformanceListener(10, true),new StatsListener(statsStorage));
+
+        }
     }
 
 
