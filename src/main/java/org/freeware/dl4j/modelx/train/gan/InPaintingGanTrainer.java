@@ -16,6 +16,7 @@ import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.learning.config.AdaDelta;
 import org.nd4j.linalg.learning.config.Adam;
+import org.nd4j.linalg.learning.config.Sgd;
 
 import java.io.File;
 import java.util.Random;
@@ -56,12 +57,8 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
                 .imageChannel(imageChannel)
                 .imageHeight(imageHeight)
                 .imageWidth(imageWidth)
-                .generatorUpdater(Adam.builder()
-                        .learningRate(0.0003)
-                        .beta1(0.5).build())
-                .discriminatorUpdater(Adam.builder()
-                        .learningRate(0.0003)
-                        .beta1(0.5).build())
+                .generatorUpdater(new Sgd(4E-4))
+                .discriminatorUpdater(new Sgd(4E-4))
                 .build();
 
         ComputationGraph generator=inPaintingGan.initGenerator();
