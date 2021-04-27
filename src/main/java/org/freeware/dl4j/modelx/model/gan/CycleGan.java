@@ -418,7 +418,7 @@ public class CycleGan extends AbsGan {
         String activationLayerName=createLayerName(moduleName, ACTIVATION,moduleIndex,blockIndex);
 
         graphItemList.add(new GraphLayerItem(activationLayerName,
-                new ActivationLayer.Builder(new ActivationLReLU(0.02)).build(),
+                new ActivationLayer.Builder(new ActivationLReLU(0.2)).build(),
                 new String[]{cnnLayerName}));
 
 

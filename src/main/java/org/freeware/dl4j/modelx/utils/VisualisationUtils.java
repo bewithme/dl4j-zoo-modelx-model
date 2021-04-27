@@ -19,7 +19,7 @@ public class VisualisationUtils {
 
     private static JFrame frame;
     private static JPanel panel;
-    private static    Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
+    private static Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 
     private static void initFrameForMnist(Sample[] samples, String title) {
         if (frame == null) {

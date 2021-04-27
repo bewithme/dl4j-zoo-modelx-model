@@ -24,7 +24,10 @@ import java.util.Random;
 
 /**
  * @author wenfengxu
- * 条件深度卷积生成对抗网络训练
+ * CycleGan网络训练
+ * CycleGan不需要成对的训练数据即可实现风格转移
+ *
+ *
  *
  */
 @Slf4j
@@ -38,8 +41,6 @@ public class CycleGanTrainer extends AbsGanTrainer{
     private static String outputDir="output_Cycle_GAN";
 
     public static void main(String[] args) {
-
-
 
         //因为目前DL4J还没有实现InstanceNormalization，所以我们只能用batchSize为1时模拟InstanceNormalization
         int batchSize=1;
@@ -158,8 +159,14 @@ public class CycleGanTrainer extends AbsGanTrainer{
     }
 
 
-
-
+    /**
+     * 把对抗网络ganA2B、ganB2A中的
+     * 生成器参数复制给
+     * 重建网络A2B2A中的生成器A2B和B2A
+     * @param reconstructA2B2A
+     * @param ganA2B
+     * @param ganB2A
+     */
     private static void copyParamsToReconstructNetwork(ComputationGraph reconstructA2B2A,ComputationGraph ganA2B,ComputationGraph ganB2A){
         int halfGenLayerLen = reconstructA2B2A.getLayers().length/2;
         for (int i = 0; i < halfGenLayerLen; i++) {
@@ -168,6 +175,12 @@ public class CycleGanTrainer extends AbsGanTrainer{
         }
     }
 
+    /**
+     * 把重建网络A2B2A中的生成器A2B和B2A
+     * 参数复制给把重建网络B2A2B中的生成器B2A和A2B
+     * @param reconstructA2B2A
+     * @param reconstructB2A2B
+     */
     private static void copyParamsFromA2B2AtoB2A2B(ComputationGraph reconstructA2B2A,ComputationGraph reconstructB2A2B){
         int halfGenLayerLen = reconstructA2B2A.getLayers().length/2;
         for (int i = 0; i < halfGenLayerLen; i++) {
@@ -176,6 +189,13 @@ public class CycleGanTrainer extends AbsGanTrainer{
         }
     }
 
+    /**
+     * 把重建网络B2A2B中的生成器B2A和A2B参数
+     * 复制给恒等网络A2B和B2A
+     * @param reconstructB2A2B
+     * @param identityMappingNetworkA2B
+     * @param identityMappingNetworkB2A
+     */
     private static void copyParamsFromB2A2BtoIdentityMappingNetwork(ComputationGraph reconstructB2A2B, ComputationGraph identityMappingNetworkA2B, ComputationGraph identityMappingNetworkB2A){
         int halfGenLayerLen = reconstructB2A2B.getLayers().length/2;
         for (int i = 0; i < halfGenLayerLen; i++) {
@@ -185,6 +205,11 @@ public class CycleGanTrainer extends AbsGanTrainer{
     }
 
 
+    /**
+     * 把恒等网络中的参数复制给生成器
+     * @param identityMappingNetwork
+     * @param generator
+     */
     private static void copyParamsFromIdentityMappingNetworkToGenerator(ComputationGraph identityMappingNetwork, ComputationGraph generator){
         int len = generator.getLayers().length;
         for (int i = 0; i < len; i++) {
