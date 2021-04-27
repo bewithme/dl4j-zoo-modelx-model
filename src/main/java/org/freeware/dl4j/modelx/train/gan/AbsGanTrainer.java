@@ -197,6 +197,7 @@ public abstract class AbsGanTrainer {
         MultiDataSet multiDataSet=new MultiDataSet(features,labels);
         //用真实数据训练判别器
         identityMappingNetwork.fit(multiDataSet);
+
     }
 
 

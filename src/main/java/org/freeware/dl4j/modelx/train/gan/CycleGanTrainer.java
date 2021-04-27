@@ -1,6 +1,7 @@
 package org.freeware.dl4j.modelx.train.gan;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ArrayUtils;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.freeware.dl4j.modelx.dataset.cycleGan.CycleGanDataSetIterator;
 import org.freeware.dl4j.modelx.model.gan.CycleGan;
@@ -24,10 +25,7 @@ import java.util.Random;
 /**
  * @author wenfengxu
  * 条件深度卷积生成对抗网络训练
- * 1、把对抗网络的参数复制到生成器和判别器。
- * 2、用真实数据和生成器生成的假数据训练判别器。
- * 3、把判别器参数复制给对抗网络中的判别器，并冻结对抗网络中的判别器的参数使期不能学习。
- * 4、训练对抗网络，更新对抗网络中的生成器参数，然后把对抗网络中的生成器参数复制给生成器。
+ *
  */
 @Slf4j
 public class CycleGanTrainer extends AbsGanTrainer{
@@ -41,6 +39,8 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
     public static void main(String[] args) {
 
+
+
         //因为目前DL4J还没有实现InstanceNormalization，所以我们只能用batchSize为1时模拟InstanceNormalization
         int batchSize=1;
 
@@ -49,8 +49,6 @@ public class CycleGanTrainer extends AbsGanTrainer{
         int imageWidth =128;
 
         int imageChannel =3;
-
-
 
         String dataPath="dataset/apple2orange";
 
@@ -86,7 +84,7 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
         ComputationGraph identityMappingNetworkB2A=cycleGan.initIdentityMappingNetwork();
 
-        setListeners(discriminatorA,ganA2B);
+        setListeners(discriminatorA,discriminatorB,ganA2B,ganB2A,reconstructA2B2A,reconstructB2A2B,identityMappingNetworkA2B,identityMappingNetworkB2A);
 
         cycleGan.copyParamsFromGanToGeneratorAndDiscriminator(generatorA2B,discriminatorB,ganA2B);
 
@@ -148,9 +146,9 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
                 copyParamsFromIdentityMappingNetworkToGenerator(identityMappingNetworkB2A,generatorB2A);
 
-                visualize(generatorA2B, featureA , iterationCounter);
+                visualize(generatorA2B, generatorB2A,featureA , featureB,iterationCounter);
 
-                visualize(generatorB2A, featureB , iterationCounter);
+
 
             }
 
@@ -195,16 +193,21 @@ public class CycleGanTrainer extends AbsGanTrainer{
     }
     /**
      * 可视化
-     * @param generator
+     * @param generatorA2B
+     * @param generatorB2A
      * @param iterationCounter
      */
-    private static void visualize(ComputationGraph generator, INDArray realFeature ,int iterationCounter) {
+    private static void visualize(ComputationGraph generatorA2B,ComputationGraph generatorB2A,  INDArray featureA ,INDArray featureB ,int iterationCounter) {
 
         Sample[] samples=null;
 
         if (iterationCounter % 10== 0) {
 
-            samples=getSamples(generator,realFeature);
+            Sample[] samplesA=getSamples(generatorA2B,featureA);
+
+            Sample[] samplesB=getSamples(generatorB2A,featureB);
+
+            samples= ArrayUtils.addAll(samplesA,samplesB);
 
             VisualisationUtils.visualizeForConvolution2D(samples,"CycleGan");
         }
@@ -219,13 +222,12 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
     /**
      * 采样生成器
-     * 9个输出
      * @param generator
      * @return
      */
-    private static Sample[] getSamples(ComputationGraph generator, INDArray realFeature) {
+    private static Sample[] getSamples(ComputationGraph generator, INDArray feature) {
 
-        int batchSize=(int)realFeature.size(0);
+        int batchSize=(int)feature.size(0);
         //输入+输出
         int sampleLen=batchSize*2;
 
@@ -233,7 +235,7 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
         for(int k=0;k<batchSize;k++){
             //创建batchSize行，100列的随机数浅层空间
-            INDArray latentDim =realFeature.get(new INDArrayIndex[]{NDArrayIndex.point(k),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all()});
+            INDArray latentDim =feature.get(new INDArrayIndex[]{NDArrayIndex.point(k),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all()});
 
             latentDim=Nd4j.expandDims(latentDim,0);
             //输出图片
