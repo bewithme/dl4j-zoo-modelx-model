@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.*;
+import org.deeplearning4j.nn.conf.distribution.NormalDistribution;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
@@ -57,14 +58,13 @@ public class InPaintingGan extends AbsGan{
 
 
     /**
-     * 生成器网络配置
+     *
      * @return
      */
     public ComputationGraphConfiguration buildGeneratorConfiguration() {
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
-                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
-                .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
+
                 .weightInit(WeightInit.XAVIER)
                 .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
@@ -88,7 +88,7 @@ public class InPaintingGan extends AbsGan{
     }
 
     /**
-     * 判别器网络配置
+     * ???????
      * @return
      */
     public ComputationGraphConfiguration buildDiscriminatorConfiguration() {
@@ -96,10 +96,9 @@ public class InPaintingGan extends AbsGan{
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
                 .updater(discriminatorUpdater)
+                .weightInit(new NormalDistribution(0.0, 0.02))
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
-                .weightInit(WeightInit.XAVIER)
-                .activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .convolutionMode(ConvolutionMode.Same)
@@ -129,8 +128,8 @@ public class InPaintingGan extends AbsGan{
                 .updater(generatorUpdater)
                 //.l2(5e-5)
                 //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
-               // .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
-                .weightInit(WeightInit.RELU)
+                // .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
+                //.weightInit(WeightInit.RELU)
                 //.activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
@@ -144,7 +143,7 @@ public class InPaintingGan extends AbsGan{
         addGraphItems(graph,genLayerItems,Boolean.FALSE);
 
         String[] disInputs={"conv10"};
-        //学习率为0，即判别器不会被训练，只训练生成器
+        //????0?????????????????
         List<GraphLayerItem>  disLayerItems=buildDiscriminatorGraphLayerItems(disInputs,UPDATER_ZERO);
 
         addGraphItems(graph,disLayerItems,Boolean.FALSE);
@@ -163,8 +162,8 @@ public class InPaintingGan extends AbsGan{
 
 
     /**
-     * 生成器计算图的层列表
-     * UNet作为backbone
+     * ??????????
+     * UNet??backbone
      * @param inputs
      * @return
      */
@@ -199,19 +198,19 @@ public class InPaintingGan extends AbsGan{
                 .activation(Activation.RELU).build(), new String[]{"pool1"}));
 
         graphItemList.add(new GraphLayerItem("conv2-2", new ConvolutionLayer.Builder(3,3).stride(1,1).nOut(128)
-                        .convolutionMode(ConvolutionMode.Same).cudnnAlgoMode(cudnnAlgoMode)
-                        .activation(Activation.RELU).build(), new String[]{"conv2-1"}));
+                .convolutionMode(ConvolutionMode.Same).cudnnAlgoMode(cudnnAlgoMode)
+                .activation(Activation.RELU).build(), new String[]{"conv2-1"}));
         graphItemList.add(new GraphLayerItem("pool2", new SubsamplingLayer.Builder(SubsamplingLayer.PoolingType.MAX).kernelSize(2,2)
-                        .build(), new String[]{"conv2-2"}));
+                .build(), new String[]{"conv2-2"}));
 
         graphItemList.add(new GraphLayerItem("conv3-1", new ConvolutionLayer.Builder(3,3).stride(1,1).nOut(256)
-                        .convolutionMode(ConvolutionMode.Same).cudnnAlgoMode(cudnnAlgoMode)
-                        .activation(Activation.RELU).build(), new String[]{"pool2"}));
+                .convolutionMode(ConvolutionMode.Same).cudnnAlgoMode(cudnnAlgoMode)
+                .activation(Activation.RELU).build(), new String[]{"pool2"}));
         graphItemList.add(new GraphLayerItem("conv3-2", new ConvolutionLayer.Builder(3,3).stride(1,1).nOut(256)
-                        .convolutionMode(ConvolutionMode.Same).cudnnAlgoMode(cudnnAlgoMode)
-                        .activation(Activation.RELU).build(), new String[]{"conv3-1"}));
+                .convolutionMode(ConvolutionMode.Same).cudnnAlgoMode(cudnnAlgoMode)
+                .activation(Activation.RELU).build(), new String[]{"conv3-1"}));
         graphItemList.add(new GraphLayerItem("pool3", new SubsamplingLayer.Builder(SubsamplingLayer.PoolingType.MAX).kernelSize(2,2)
-                        .build(), new String[]{"conv3-2"}));
+                .build(), new String[]{"conv3-2"}));
         graphItemList.add(new GraphLayerItem("conv4-1", new ConvolutionLayer.Builder(3,3).stride(1,1).nOut(512)
                 .convolutionMode(ConvolutionMode.Same).cudnnAlgoMode(cudnnAlgoMode)
                 .activation(Activation.RELU).build(), new String[]{"pool3"}));
@@ -326,7 +325,7 @@ public class InPaintingGan extends AbsGan{
     }
 
     /**
-     * 判别器计算图的层列表
+     * ??????????
      * @param inputs
      * @param updater
      * @return
@@ -432,7 +431,7 @@ public class InPaintingGan extends AbsGan{
 
 
     /**
-     * 初始化对抗网络
+     * ???????
      * @return
      */
     public ComputationGraph init() {
@@ -448,7 +447,7 @@ public class InPaintingGan extends AbsGan{
     }
 
     /**
-     * 初始化生成器
+     * ??????
      * @return
      */
     public ComputationGraph initGenerator() {
@@ -463,7 +462,7 @@ public class InPaintingGan extends AbsGan{
     }
 
     /**
-     * 初始化判别器
+     * ??????
      * @return
      */
     public ComputationGraph initDiscriminator() {
