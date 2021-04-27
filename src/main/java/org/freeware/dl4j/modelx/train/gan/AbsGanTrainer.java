@@ -175,7 +175,33 @@ public abstract class AbsGanTrainer {
        return new GeneratorInput(latentDim,embeddingLabel);
    }
 
-   @AllArgsConstructor
+
+    protected static void trainReconstructNetwork(ComputationGraph reconstructNetwork, INDArray feature){
+
+        INDArray[] features=new INDArray[] {feature};
+
+        INDArray[] labels=new INDArray[] {feature};
+        //构建多数据集（多个特征，多个标签）
+        MultiDataSet multiDataSet=new MultiDataSet(features,labels);
+        //用真实数据训练判别器
+        reconstructNetwork.fit(multiDataSet);
+   }
+
+
+    protected static void trainIdentityMappingNetwork(ComputationGraph identityMappingNetwork, INDArray feature){
+
+        INDArray[] features=new INDArray[] {feature};
+
+        INDArray[] labels=new INDArray[] {feature};
+        //构建多数据集（多个特征，多个标签）
+        MultiDataSet multiDataSet=new MultiDataSet(features,labels);
+        //用真实数据训练判别器
+        identityMappingNetwork.fit(multiDataSet);
+    }
+
+
+
+    @AllArgsConstructor
    @Data
    static class GeneratorInput{
        private INDArray latentDim;

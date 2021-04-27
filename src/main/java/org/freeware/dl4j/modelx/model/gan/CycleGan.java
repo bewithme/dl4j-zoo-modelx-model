@@ -9,7 +9,6 @@ import org.deeplearning4j.nn.conf.*;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
-import org.deeplearning4j.nn.conf.preprocessor.CnnToFeedForwardPreProcessor;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.zoo.ModelMetaData;
@@ -87,7 +86,7 @@ public class CycleGan extends AbsGan {
                 .convolutionMode(ConvolutionMode.Same)
                 .graphBuilder();
 
-        String inputs = "gen_input";
+        String inputs = "gen-input";
 
         String moduleName = "gen";
 
@@ -123,7 +122,7 @@ public class CycleGan extends AbsGan {
                 .convolutionMode(ConvolutionMode.Same)
                 .graphBuilder();
 
-        String input ="dis_input";
+        String input ="dis-input";
 
         List<GraphLayerItem> layerItems = buildDiscriminatorGraphLayerItems(input, discriminatorUpdater);
 
@@ -146,7 +145,7 @@ public class CycleGan extends AbsGan {
                 .convolutionMode(ConvolutionMode.Same)
                 .graphBuilder();
 
-        String genInputs = "gen_input";
+        String genInputs = "gen-input";
 
         String moduleName = "gen";
 
@@ -176,7 +175,7 @@ public class CycleGan extends AbsGan {
      * B->A^->2^
      * @return
      */
-    public ComputationGraphConfiguration buildReconstructConfiguration() {
+    public ComputationGraphConfiguration buildReconstructNetworkConfiguration() {
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
@@ -185,7 +184,7 @@ public class CycleGan extends AbsGan {
                 .convolutionMode(ConvolutionMode.Same)
                 .graphBuilder();
 
-        String genInputs = "gen_input";
+        String genInputs = "gen-input";
 
         String moduleName = "gen";
 
@@ -195,10 +194,10 @@ public class CycleGan extends AbsGan {
 
         String reconGenInputs =getLastLayerName(genLayerItems);
 
-        String reconModuleName = "gen_recon";
+        String reconModuleName = "gen-recon";
 
         List<GraphLayerItem> genReconLayerItems = buildGeneratorGraphLayerItems(reconGenInputs,reconModuleName,generatorUpdater);
-        String outputLayerName="gen_recon_output";
+        String outputLayerName="gen-recon-output";
         genReconLayerItems.add(new GraphLayerItem(outputLayerName,
                 new CnnLossLayer.Builder(LossFunctions.LossFunction.MEAN_ABSOLUTE_ERROR)
                         .updater(generatorUpdater)
@@ -207,6 +206,42 @@ public class CycleGan extends AbsGan {
 
         addGraphItems(graph, genReconLayerItems, Boolean.TRUE);
 
+
+        graph.addInputs(genInputs);
+
+        graph.setOutputs(outputLayerName);
+
+        graph.setInputTypes(InputType.convolutional(imageHeight, imageWidth, imageChannel));
+
+        return graph.build();
+    }
+
+    public ComputationGraphConfiguration buildIdentityMappingNetworkConfiguration() {
+
+        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
+                .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
+                .trainingWorkspaceMode(workspaceMode)
+                .inferenceWorkspaceMode(workspaceMode)
+                .convolutionMode(ConvolutionMode.Same)
+                .graphBuilder();
+
+        String genInputs = "gen-input";
+
+        String moduleName = "gen-identity";
+
+        List<GraphLayerItem> genLayerItems = buildGeneratorGraphLayerItems(genInputs,moduleName,generatorUpdater);
+
+        String lossLayerInput =getLastLayerName(genLayerItems);
+
+        String outputLayerName="gen-identity-output";
+
+        genLayerItems.add(new GraphLayerItem(outputLayerName,
+                new CnnLossLayer.Builder(LossFunctions.LossFunction.MEAN_ABSOLUTE_ERROR)
+                        .updater(generatorUpdater)
+                        .activation(Activation.IDENTITY).build(),
+                new String[]{lossLayerInput}));
+
+        addGraphItems(graph, genLayerItems, Boolean.TRUE);
 
         graph.addInputs(genInputs);
 
@@ -287,6 +322,7 @@ public class CycleGan extends AbsGan {
                         .kernelSize(4,4)
                         .stride(1,1)
                         .nOut(imageChannel)
+                        .activation(Activation.TANH)
                         .convolutionMode(ConvolutionMode.Same)
                         .updater(updater).build(),
                 new String[]{upSampling2DLayerName}));
@@ -528,7 +564,19 @@ public class CycleGan extends AbsGan {
 
     public ComputationGraph initReconstructNetwork() {
 
-        ComputationGraphConfiguration configuration=buildReconstructConfiguration();
+        ComputationGraphConfiguration configuration= buildReconstructNetworkConfiguration();
+
+        ComputationGraph model = new ComputationGraph(configuration);
+
+        model.init();
+
+        return model;
+    }
+
+
+    public ComputationGraph initIdentityMappingNetwork() {
+
+        ComputationGraphConfiguration configuration=buildIdentityMappingNetworkConfiguration();
 
         ComputationGraph model = new ComputationGraph(configuration);
 

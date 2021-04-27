@@ -3,12 +3,11 @@ package org.freeware.dl4j.modelx.train.gan;
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.freeware.dl4j.modelx.dataset.cycleGan.CycleGanDataSetIterator;
-import org.freeware.dl4j.modelx.dataset.inPainting.InPaintingDataSetIterator;
 import org.freeware.dl4j.modelx.model.gan.CycleGan;
-import org.freeware.dl4j.modelx.model.gan.InPaintingGan;
 import org.freeware.dl4j.modelx.utils.Sample;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
+
 import org.nd4j.linalg.dataset.api.MultiDataSet;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
@@ -38,7 +37,7 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
     private  static  DataNormalization dataNormalization = new ImagePreProcessingScaler(-1,1);
 
-    private static String outputDir="output_IN_PAINTIN_GAN";
+    private static String outputDir="output_Cycle_GAN";
 
     public static void main(String[] args) {
 
@@ -69,8 +68,6 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
         ComputationGraph generatorA2B=cycleGan.initGenerator();
 
-        log.info(generatorA2B.summary());
-
         ComputationGraph generatorB2A=cycleGan.initGenerator();
 
         ComputationGraph discriminatorA=cycleGan.initDiscriminator();
@@ -81,11 +78,19 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
         ComputationGraph ganB2A=cycleGan.init();
 
+        ComputationGraph reconstructA2B2A=cycleGan.initReconstructNetwork();
+
+        ComputationGraph reconstructB2A2B=cycleGan.initReconstructNetwork();
+
+        ComputationGraph identityMappingNetworkA2B=cycleGan.initIdentityMappingNetwork();
+
+        ComputationGraph identityMappingNetworkB2A=cycleGan.initIdentityMappingNetwork();
+
         setListeners(discriminatorA,ganA2B);
 
-        cycleGan.copyParamsFromGanToGeneratorAndDiscriminator(generatorA2B,discriminatorA,ganA2B);
+        cycleGan.copyParamsFromGanToGeneratorAndDiscriminator(generatorA2B,discriminatorB,ganA2B);
 
-        cycleGan.copyParamsFromGanToGeneratorAndDiscriminator(generatorB2A,discriminatorB,ganB2A);
+        cycleGan.copyParamsFromGanToGeneratorAndDiscriminator(generatorB2A,discriminatorA,ganB2A);
 
         MultiDataSetIterator trainData = new CycleGanDataSetIterator(dataPath,batchSize,imageHeight,imageWidth,imageChannel);
 
@@ -125,11 +130,27 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
                 trainGan( ganB2A, featureB,discriminatorOutputShape);
 
-                cycleGan.copyParamsFromGanToGenerator(generatorA2B,ganA2B);
+                copyParamsToReconstructNetwork(reconstructA2B2A,ganA2B,ganB2A);
 
-                cycleGan.copyParamsFromGanToGenerator(generatorB2A,ganB2A);
+                trainReconstructNetwork(reconstructA2B2A,featureA);
 
-                //visualize(generatorA2B, featureA , iterationCounter);
+                copyParamsFromA2B2AtoB2A2B(reconstructA2B2A,reconstructB2A2B);
+
+                trainReconstructNetwork(reconstructB2A2B,featureB);
+
+                copyParamsFromB2A2BtoIdentityMappingNetwork(reconstructB2A2B,identityMappingNetworkA2B,identityMappingNetworkB2A);
+
+                trainIdentityMappingNetwork(identityMappingNetworkB2A,featureA);
+
+                trainIdentityMappingNetwork(identityMappingNetworkA2B,featureB);
+
+                copyParamsFromIdentityMappingNetworkToGenerator(identityMappingNetworkA2B,generatorA2B);
+
+                copyParamsFromIdentityMappingNetworkToGenerator(identityMappingNetworkB2A,generatorB2A);
+
+                visualize(generatorA2B, featureA , iterationCounter);
+
+                visualize(generatorB2A, featureB , iterationCounter);
 
             }
 
@@ -138,6 +159,40 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
     }
 
+
+
+
+    private static void copyParamsToReconstructNetwork(ComputationGraph reconstructA2B2A,ComputationGraph ganA2B,ComputationGraph ganB2A){
+        int halfGenLayerLen = reconstructA2B2A.getLayers().length/2;
+        for (int i = 0; i < halfGenLayerLen; i++) {
+            reconstructA2B2A.getLayer(i).setParams(ganA2B.getLayer(i).params());
+            reconstructA2B2A.getLayer(i+halfGenLayerLen).setParams(ganB2A.getLayer(i).params());
+        }
+    }
+
+    private static void copyParamsFromA2B2AtoB2A2B(ComputationGraph reconstructA2B2A,ComputationGraph reconstructB2A2B){
+        int halfGenLayerLen = reconstructA2B2A.getLayers().length/2;
+        for (int i = 0; i < halfGenLayerLen; i++) {
+            reconstructB2A2B.getLayer(i).setParams(reconstructA2B2A.getLayer(halfGenLayerLen+i).params());
+            reconstructB2A2B.getLayer(i+halfGenLayerLen).setParams(reconstructA2B2A.getLayer(i).params());
+        }
+    }
+
+    private static void copyParamsFromB2A2BtoIdentityMappingNetwork(ComputationGraph reconstructB2A2B, ComputationGraph identityMappingNetworkA2B, ComputationGraph identityMappingNetworkB2A){
+        int halfGenLayerLen = reconstructB2A2B.getLayers().length/2;
+        for (int i = 0; i < halfGenLayerLen; i++) {
+            identityMappingNetworkB2A.getLayer(i).setParams(reconstructB2A2B.getLayer(i).params());
+            identityMappingNetworkA2B.getLayer(i).setParams(reconstructB2A2B.getLayer(halfGenLayerLen+i).params());
+        }
+    }
+
+
+    private static void copyParamsFromIdentityMappingNetworkToGenerator(ComputationGraph identityMappingNetwork, ComputationGraph generator){
+        int len = generator.getLayers().length;
+        for (int i = 0; i < len; i++) {
+            generator.getLayer(i).setParams(identityMappingNetwork.getLayer(i).params());
+        }
+    }
     /**
      * 可视化
      * @param generator
@@ -151,7 +206,7 @@ public class CycleGanTrainer extends AbsGanTrainer{
 
             samples=getSamples(generator,realFeature);
 
-            VisualisationUtils.visualizeForConvolution2D(samples,"InPaintingGan");
+            VisualisationUtils.visualizeForConvolution2D(samples,"CycleGan");
         }
         if (iterationCounter % 1000== 0) {
 
