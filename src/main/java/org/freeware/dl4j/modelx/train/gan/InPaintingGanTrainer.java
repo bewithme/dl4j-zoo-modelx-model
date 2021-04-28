@@ -54,8 +54,10 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
                 .imageChannel(imageChannel)
                 .imageHeight(imageHeight)
                 .imageWidth(imageWidth)
-                .generatorUpdater(new Sgd(4E-4))
-                .discriminatorUpdater(new Sgd(4E-4))
+                .generatorUpdater(new AdaDelta())
+                .discriminatorUpdater(Adam.builder()
+                        .learningRate(0.0003)
+                        .beta1(0.5).build())
                 .build();
 
         ComputationGraph generator=inPaintingGan.initGenerator();
