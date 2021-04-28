@@ -80,7 +80,7 @@ public class InPaintingGan extends AbsGan{
 
         graph.addInputs(inputs);
 
-        graph.setOutputs(getLastLayerName(layerItems));
+        graph.setOutputs("conv10");
 
         graph.setInputTypes(InputType.convolutional(imageHeight, imageWidth, imageChannel));
 
@@ -97,7 +97,6 @@ public class InPaintingGan extends AbsGan{
 
                 .updater(discriminatorUpdater)
                 .weightInit(new NormalDistribution(0.0, 0.02))
-               // .weightInit(WeightInit.XAVIER)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .trainingWorkspaceMode(workspaceMode)
@@ -113,7 +112,9 @@ public class InPaintingGan extends AbsGan{
 
         graph.addInputs(inputs);
 
-        graph.setOutputs(getLastLayerName(layerItems));
+        graph.inputPreProcessor("dis_layer_10", new CnnToFeedForwardPreProcessor(32, 32, 1));
+
+        graph.setOutputs("dis_layer_10");
 
         return   graph.build();
     }
@@ -124,9 +125,12 @@ public class InPaintingGan extends AbsGan{
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                .weightInit(WeightInit.RELU)
-                .l2(5e-5)
                 .updater(generatorUpdater)
+                //.l2(5e-5)
+                //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+                // .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
+                //.weightInit(WeightInit.RELU)
+                //.activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .convolutionMode(ConvolutionMode.Same)
@@ -139,14 +143,17 @@ public class InPaintingGan extends AbsGan{
         addGraphItems(graph,genLayerItems,Boolean.FALSE);
 
         String[] disInputs={"conv10"};
-
+        //????0?????????????????
         List<GraphLayerItem>  disLayerItems=buildDiscriminatorGraphLayerItems(disInputs,UPDATER_ZERO);
 
         addGraphItems(graph,disLayerItems,Boolean.FALSE);
 
         graph.addInputs(genInputs);
 
-        graph.setOutputs(getLastLayerName(disLayerItems));
+        graph.setOutputs("dis_layer_10");
+
+        graph.inputPreProcessor("dis_layer_10", new CnnToFeedForwardPreProcessor(32, 32, 1));
+
 
         graph.setInputTypes(InputType.convolutional(imageHeight, imageWidth, imageChannel));
 
@@ -155,7 +162,7 @@ public class InPaintingGan extends AbsGan{
 
 
     /**
-     *
+     * ??????????
      * UNet??backbone
      * @param inputs
      * @return
@@ -404,11 +411,13 @@ public class InPaintingGan extends AbsGan{
 
 
         graphItemList.add(new GraphLayerItem("dis_layer_10",
-                new CnnLossLayer.Builder(LossFunctions.LossFunction.XENT)
+                new OutputLayer.Builder(LossFunctions.LossFunction.XENT)
                         .updater(updater)
-                        .activation(Activation.SIGMOID).build(),
+                        .nIn(1024)
+                        .nOut(1)
+                        .activation(Activation.SIGMOID)
+                        .updater(updater).build(),
                 new String[]{"dis_layer_9"}));
-
 
         return graphItemList;
 

@@ -33,6 +33,9 @@ import java.util.Random;
 @Slf4j
 public class InPaintingGanTrainer extends AbsGanTrainer{
 
+
+    private  static Random random=new Random(12345);
+
     private  static  DataNormalization dataNormalization = new ImagePreProcessingScaler(-1,1);
 
     private static String outputDir="output_IN_PAINTIN_GAN";
@@ -54,10 +57,8 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
                 .imageChannel(imageChannel)
                 .imageHeight(imageHeight)
                 .imageWidth(imageWidth)
-                .generatorUpdater(new AdaDelta())
-                .discriminatorUpdater(Adam.builder()
-                        .learningRate(0.0003)
-                        .beta1(0.5).build())
+                .generatorUpdater(new Sgd(4E-4))
+                .discriminatorUpdater(new Sgd(4E-4))
                 .build();
 
         ComputationGraph generator=inPaintingGan.initGenerator();
@@ -69,6 +70,7 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
         setListeners(discriminator,gan);
 
         inPaintingGan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
+
 
         log.info(gan.summary());
 
@@ -98,13 +100,11 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
 
                 int realBatchSize=(int)realLabel.size(0);
 
-                long[] discriminatorOutputShape=new long[]{realBatchSize,1,imageHeight/(2*2*2*2),imageHeight/(2*2*2*2)};
-
-                trainDiscriminator(generator, discriminator, realFeature, realLabel,discriminatorOutputShape);
+                trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
 
                 inPaintingGan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
-                trainGan( gan, realFeature,discriminatorOutputShape);
+                trainGan( gan, realBatchSize,realFeature);
 
                 inPaintingGan.copyParamsFromGanToGenerator(generator,gan);
 
