@@ -96,10 +96,10 @@ public class InPaintingGan extends AbsGan{
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
                 .updater(discriminatorUpdater)
-                //.weightInit(new NormalDistribution(0.0, 0.02))
+                .weightInit(new NormalDistribution(0.0, 0.02))
                 .weightInit(WeightInit.XAVIER)
-                //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
-                //.gradientNormalizationThreshold(GRADIENT_THRESHOLD)
+                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+                .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .convolutionMode(ConvolutionMode.Same)
