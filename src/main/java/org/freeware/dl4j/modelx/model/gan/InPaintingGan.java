@@ -404,10 +404,8 @@ public class InPaintingGan extends AbsGan{
 
 
         graphItemList.add(new GraphLayerItem("dis_layer_10",
-                new CnnLossLayer.Builder(LossFunctions.LossFunction.MSE)
-                        .updater(updater)
-
-                        .activation(Activation.IDENTITY).build(),
+                new CnnLossLayer.Builder(LossFunctions.LossFunction.XENT)
+                        .activation(Activation.SIGMOID).build(),
                 new String[]{"dis_layer_9"}));
 
 
