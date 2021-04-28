@@ -356,37 +356,39 @@ public abstract class AbsGan extends ZooModel {
         graphItemList.add(new GraphLayerItem("stem-maxpool1", new SubsamplingLayer.Builder(SubsamplingLayer.PoolingType.MAX,
                         new int[] {3, 3}, new int[] {2, 2}).build(), new String[]{"stem-act1"}));
 
-        convBlock( new int[] {3, 3}, new int[] {64, 64, 256}, "2", "a", new int[] {2, 2}, "stem-maxpool1",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {64, 64, 256}, "2", "b", "res2a_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {64, 64, 256}, "2", "c", "res2b_branch",aLgoMode,updater);
 
-        convBlock(new int[] {3, 3}, new int[] {128, 128, 512}, "3", "a", "res2c_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {128, 128, 512}, "3", "b", "res3a_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {128, 128, 512}, "3", "c", "res3b_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {128, 128, 512}, "3", "d", "res3c_branch",aLgoMode,updater);
+        graphItemList.addAll(convBlock( new int[] {3, 3}, new int[] {64, 64, 256}, "2", "a", new int[] {2, 2}, "stem-maxpool1",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {64, 64, 256}, "2", "b", "res2a_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {64, 64, 256}, "2", "c", "res2b_branch",aLgoMode,updater));
 
-        convBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "a", "res3d_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "b", "res4a_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "c", "res4b_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "d", "res4c_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "e", "res4d_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "f", "res4e_branch",aLgoMode,updater);
+        graphItemList.addAll(convBlock(new int[] {3, 3}, new int[] {128, 128, 512}, "3", "a", "res2c_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {128, 128, 512}, "3", "b", "res3a_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {128, 128, 512}, "3", "c", "res3b_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {128, 128, 512}, "3", "d", "res3c_branch",aLgoMode,updater));
 
-        convBlock( new int[] {3, 3}, new int[] {512, 512, 2048}, "5", "a", "res4f_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {512, 512, 2048}, "5", "b", "res5a_branch",aLgoMode,updater);
-        identityBlock( new int[] {3, 3}, new int[] {512, 512, 2048}, "5", "c", "res5b_branch",aLgoMode,updater);
+        graphItemList.addAll(convBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "a", "res3d_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "b", "res4a_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "c", "res4b_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "d", "res4c_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "e", "res4d_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {256, 256, 1024}, "4", "f", "res4e_branch",aLgoMode,updater));
+
+        graphItemList.addAll(convBlock( new int[] {3, 3}, new int[] {512, 512, 2048}, "5", "a", "res4f_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {512, 512, 2048}, "5", "b", "res5a_branch",aLgoMode,updater));
+        graphItemList.addAll(identityBlock( new int[] {3, 3}, new int[] {512, 512, 2048}, "5", "c", "res5b_branch",aLgoMode,updater));
 
         graphItemList.add(new GraphLayerItem("avgpool",
                 new SubsamplingLayer.Builder(SubsamplingLayer.PoolingType.MAX, new int[] {3, 3}).build(),
                 new String[]{"res5c_branch"}));
 
+
         return graphItemList;
     }
 
 
-        private void convBlock( int[] kernelSize, int[] filters,
+        private List<GraphLayerItem> convBlock( int[] kernelSize, int[] filters,
                                String stage, String block, String input,ConvolutionLayer.AlgoMode aLgoMode, IUpdater updater) {
-            convBlock( kernelSize, filters, stage, block, new int[] {2, 2}, input,aLgoMode,updater);
+           return  convBlock( kernelSize, filters, stage, block, new int[] {2, 2}, input,aLgoMode,updater);
         }
         private List<GraphLayerItem> identityBlock(int[] kernelSize, int[] filters, String stage, String block, String input,ConvolutionLayer.AlgoMode aLgoMode, IUpdater updater) {
 
@@ -404,7 +406,8 @@ public abstract class AbsGan extends ZooModel {
                         .cudnnAlgoMode(aLgoMode)
                         .build(),
                         new String[]{input}));
-        graphItemList.add(new GraphLayerItem(batchName + "2a", new BatchNormalization(), new String[]{convName + "2a"}));
+        graphItemList.add(new GraphLayerItem(batchName + "2a", new BatchNormalization.Builder()
+                .updater(updater).build(), new String[]{convName + "2a"}));
                         graphItemList.add(new GraphLayerItem(activationName + "2a",
                         new ActivationLayer.Builder().activation(Activation.RELU).build(),
                                         new String[]{batchName + "2a"}));
@@ -427,7 +430,7 @@ public abstract class AbsGan extends ZooModel {
                                 .cudnnAlgoMode(aLgoMode).build(),
                         new String[]{activationName + "2b"}));
         graphItemList.add(new GraphLayerItem(batchName + "2c", new BatchNormalization.Builder()
-                .updater(updater), new String[]{convName + "2c"}));
+                .updater(updater).build(), new String[]{convName + "2c"}));
 
         graphItemList.add(new GraphLayerItem(shortcutName, new ElementWiseVertex(ElementWiseVertex.Op.Add),new String[]{ batchName + "2c",
                         input}));
@@ -451,7 +454,7 @@ public abstract class AbsGan extends ZooModel {
                 .nOut(filters[0]).build(),
                         new String[]{input}));
         graphItemList.add(new GraphLayerItem(batchName + "2a", new BatchNormalization.Builder()
-                .updater(updater), new String[]{convName + "2a"}));
+                .updater(updater).build(), new String[]{convName + "2a"}));
         graphItemList.add(new GraphLayerItem(activationName + "2a",
                         new ActivationLayer.Builder().activation(Activation.RELU).build(),
                         new String[]{batchName + "2a"}));
@@ -462,7 +465,7 @@ public abstract class AbsGan extends ZooModel {
                                 .convolutionMode(ConvolutionMode.Same).build(),
                         new String[]{activationName + "2a"}));
         graphItemList.add(new GraphLayerItem(batchName + "2b", new BatchNormalization.Builder()
-                .updater(updater), new String[]{convName + "2b"}));
+                .updater(updater).build(), new String[]{convName + "2b"}));
         graphItemList.add(new GraphLayerItem(activationName + "2b",
                         new ActivationLayer.Builder().activation(Activation.RELU).build(),
                         new String[]{batchName + "2b"}));
@@ -474,7 +477,7 @@ public abstract class AbsGan extends ZooModel {
                                 .build(),
                         new String[]{activationName + "2b"}));
         graphItemList.add(new GraphLayerItem(batchName + "2c", new BatchNormalization.Builder()
-                .updater(updater), new String[]{convName + "2c"}));
+                .updater(updater).build(), new String[]{convName + "2c"}));
 
                 // shortcut
         graphItemList.add(new GraphLayerItem(convName + "1",
@@ -485,11 +488,11 @@ public abstract class AbsGan extends ZooModel {
                                 .build(),
                         new String[]{input}));
         graphItemList.add(new GraphLayerItem(batchName + "1", new BatchNormalization.Builder()
-                .updater(updater), new String[]{convName + "1"}));
+                .updater(updater).build(), new String[]{convName + "1"}));
 
 
         graphItemList.add(new GraphLayerItem(shortcutName,
-                new ElementWiseVertex(ElementWiseVertex.Op.Product),
+                new ElementWiseVertex(ElementWiseVertex.Op.Add),
                 new String[]{batchName + "1"}));
 
         graphItemList.add(new GraphLayerItem(convName, new ActivationLayer.Builder().activation(Activation.RELU).build(),
