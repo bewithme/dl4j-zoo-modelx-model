@@ -80,7 +80,7 @@ public class InPaintingGan extends AbsGan{
 
         graph.addInputs(inputs);
 
-        graph.setOutputs("conv10");
+        graph.setOutputs(getLastLayerName(layerItems));
 
         graph.setInputTypes(InputType.convolutional(imageHeight, imageWidth, imageChannel));
 
@@ -112,9 +112,7 @@ public class InPaintingGan extends AbsGan{
 
         graph.addInputs(inputs);
 
-        graph.inputPreProcessor("dis_layer_10", new CnnToFeedForwardPreProcessor(32, 32, 1));
-
-        graph.setOutputs("dis_layer_10");
+        graph.setOutputs(getLastLayerName(layerItems));
 
         return   graph.build();
     }
@@ -126,11 +124,6 @@ public class InPaintingGan extends AbsGan{
 
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .updater(generatorUpdater)
-                //.l2(5e-5)
-                //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
-                // .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
-                //.weightInit(WeightInit.RELU)
-                //.activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .convolutionMode(ConvolutionMode.Same)
@@ -143,17 +136,14 @@ public class InPaintingGan extends AbsGan{
         addGraphItems(graph,genLayerItems,Boolean.FALSE);
 
         String[] disInputs={"conv10"};
-        //????0?????????????????
+
         List<GraphLayerItem>  disLayerItems=buildDiscriminatorGraphLayerItems(disInputs,UPDATER_ZERO);
 
         addGraphItems(graph,disLayerItems,Boolean.FALSE);
 
         graph.addInputs(genInputs);
 
-        graph.setOutputs("dis_layer_10");
-
-        graph.inputPreProcessor("dis_layer_10", new CnnToFeedForwardPreProcessor(32, 32, 1));
-
+        graph.setOutputs(getLastLayerName(disLayerItems));
 
         graph.setInputTypes(InputType.convolutional(imageHeight, imageWidth, imageChannel));
 
@@ -162,7 +152,7 @@ public class InPaintingGan extends AbsGan{
 
 
     /**
-     * ??????????
+     *
      * UNet??backbone
      * @param inputs
      * @return
@@ -411,13 +401,12 @@ public class InPaintingGan extends AbsGan{
 
 
         graphItemList.add(new GraphLayerItem("dis_layer_10",
-                new OutputLayer.Builder(LossFunctions.LossFunction.XENT)
+                new CnnLossLayer.Builder(LossFunctions.LossFunction.MSE)
                         .updater(updater)
-                        .nIn(1024)
-                        .nOut(1)
-                        .activation(Activation.SIGMOID)
-                        .updater(updater).build(),
+
+                        .activation(Activation.IDENTITY).build(),
                 new String[]{"dis_layer_9"}));
+
 
         return graphItemList;
 

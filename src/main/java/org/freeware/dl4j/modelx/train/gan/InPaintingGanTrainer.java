@@ -33,9 +33,6 @@ import java.util.Random;
 @Slf4j
 public class InPaintingGanTrainer extends AbsGanTrainer{
 
-
-    private  static Random random=new Random(12345);
-
     private  static  DataNormalization dataNormalization = new ImagePreProcessingScaler(-1,1);
 
     private static String outputDir="output_IN_PAINTIN_GAN";
@@ -71,7 +68,6 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
 
         inPaintingGan.copyParamsFromGanToGeneratorAndDiscriminator(generator,discriminator,gan);
 
-
         log.info(gan.summary());
 
         Nd4j.getMemoryManager().setAutoGcWindow(15 * 1000);
@@ -100,11 +96,13 @@ public class InPaintingGanTrainer extends AbsGanTrainer{
 
                 int realBatchSize=(int)realLabel.size(0);
 
-                trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
+                long[] discriminatorOutputShape=new long[]{realBatchSize,1,imageHeight/(2*2*2*2),imageHeight/(2*2*2*2)};
+
+                trainDiscriminator(generator, discriminator, realFeature, realLabel,discriminatorOutputShape);
 
                 inPaintingGan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
-                trainGan( gan, realBatchSize,realFeature);
+                trainGan( gan, realFeature,discriminatorOutputShape);
 
                 inPaintingGan.copyParamsFromGanToGenerator(generator,gan);
 
