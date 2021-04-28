@@ -97,7 +97,7 @@ public class InPaintingGan extends AbsGan{
 
                 .updater(discriminatorUpdater)
                 .weightInit(new NormalDistribution(0.0, 0.02))
-                .weightInit(WeightInit.XAVIER)
+               // .weightInit(WeightInit.XAVIER)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .trainingWorkspaceMode(workspaceMode)
@@ -124,7 +124,7 @@ public class InPaintingGan extends AbsGan{
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
 
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                .weightInit(WeightInit.XAVIER)
+                .weightInit(WeightInit.RELU)
                 .l2(5e-5)
                 .updater(generatorUpdater)
                 .trainingWorkspaceMode(workspaceMode)
