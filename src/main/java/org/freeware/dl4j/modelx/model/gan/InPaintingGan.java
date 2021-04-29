@@ -188,9 +188,7 @@ public class InPaintingGan extends AbsGan{
     private  List<GraphLayerItem> buildDiscriminatorGraphLayerItems(String[] inputs,IUpdater updater){
 
 
-        return ResNet50Backbone.getResNet50Backbone(imageChannel,inputs,cudnnAlgoMode,updater);
 
-        /**
 
         List<GraphLayerItem>  graphItemList=new ArrayList<GraphLayerItem>(10);
 
@@ -281,7 +279,7 @@ public class InPaintingGan extends AbsGan{
 
         return graphItemList;
 
-         **/
+
 
     }
 
