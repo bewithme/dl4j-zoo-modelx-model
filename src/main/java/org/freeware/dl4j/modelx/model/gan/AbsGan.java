@@ -127,7 +127,7 @@ public abstract class AbsGan extends ZooModel {
 
 
         for(GraphLayerItem graphLayerItem:graphLayerItems) {
-            log.info(graphLayerItem.getLayerName()+ "  "+graphLayerItem.getLayerOrVertex().getClass().getName()+" "+Arrays.toString(graphLayerItem.getLayerInputs()));
+
             if(graphLayerItem.getLayerOrVertex() instanceof MergeVertex) {
 
                 MergeVertex mergeVertex=(MergeVertex)graphLayerItem.getLayerOrVertex();
@@ -137,10 +137,6 @@ public abstract class AbsGan extends ZooModel {
             } else if(graphLayerItem.getLayerOrVertex() instanceof ElementWiseVertex) {
 
                 ElementWiseVertex elementWiseVertex=(ElementWiseVertex)graphLayerItem.getLayerOrVertex();
-
-                if(graphLayerItem.getLayerInputs()[0].contains("bn2a_branch2c")){
-                    log.info(graphLayerItem.getLayerInputs()[0]+graphLayerItem.getLayerInputs()[1]);
-                }
 
                 graphBuilder.addVertex(graphLayerItem.getLayerName(), elementWiseVertex, graphLayerItem.getLayerInputs());
 
