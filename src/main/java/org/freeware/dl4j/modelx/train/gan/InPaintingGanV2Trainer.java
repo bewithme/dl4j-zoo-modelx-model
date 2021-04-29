@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.freeware.dl4j.modelx.dataset.inPainting.InPaintingDataSetIterator;
 import org.freeware.dl4j.modelx.model.gan.InPaintingGan;
+import org.freeware.dl4j.modelx.model.gan.InPaintingGanV2;
 import org.freeware.dl4j.modelx.utils.Sample;
 import org.freeware.dl4j.modelx.utils.VisualisationUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -52,7 +53,7 @@ public class InPaintingGanV2Trainer extends AbsGanTrainer{
 
         String dataPath="dataset/inpainting";
 
-        InPaintingGan inPaintingGan= InPaintingGan.builder()
+        InPaintingGanV2 inPaintingGan= InPaintingGanV2.builder()
                 .imageChannel(imageChannel)
                 .imageHeight(imageHeight)
                 .imageWidth(imageWidth)
