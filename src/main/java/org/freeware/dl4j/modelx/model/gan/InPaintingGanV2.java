@@ -11,9 +11,7 @@ import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.conf.distribution.TruncatedNormalDistribution;
 import org.deeplearning4j.nn.conf.inputs.InputType;
-import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
-import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.conf.preprocessor.CnnToFeedForwardPreProcessor;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.IWeightInit;
@@ -28,9 +26,7 @@ import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.IUpdater;
 import org.nd4j.linalg.learning.config.Sgd;
-import org.nd4j.linalg.lossfunctions.LossFunctions;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -117,13 +113,13 @@ public class InPaintingGanV2 extends AbsGan{
 
         ResNet50Backbone.setBackbone(graph,inputs,discriminatorUpdater);
 
-        ResNet50Backbone.setOutputLayer(graph,discriminatorUpdater);
+        ResNet50Backbone.setCnnLossLayer(graph,discriminatorUpdater);
 
         graph.addInputs(inputs);
 
         String lastLayerName="output-layer";
 
-        graph.inputPreProcessor(lastLayerName, new CnnToFeedForwardPreProcessor(3, 3, 2048));
+        //graph.inputPreProcessor(lastLayerName, new CnnToFeedForwardPreProcessor(3, 3, 2048));
 
         graph.setOutputs(lastLayerName);
 
@@ -162,11 +158,11 @@ public class InPaintingGanV2 extends AbsGan{
 
         ResNet50Backbone.setBackbone(graph,disInputs,UPDATER_ZERO);
 
-        ResNet50Backbone.setOutputLayer(graph,UPDATER_ZERO);
+        ResNet50Backbone.setCnnLossLayer(graph,UPDATER_ZERO);
 
         String lastLayerName="output-layer";
 
-        graph.inputPreProcessor(lastLayerName, new CnnToFeedForwardPreProcessor(3, 3, 2048));
+        //graph.inputPreProcessor(lastLayerName, new CnnToFeedForwardPreProcessor(3, 3, 2048));
 
         graph.setOutputs(lastLayerName);
 

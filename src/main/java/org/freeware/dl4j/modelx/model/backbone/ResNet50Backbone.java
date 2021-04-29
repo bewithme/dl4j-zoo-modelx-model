@@ -66,13 +66,20 @@ public class ResNet50Backbone {
     }
 
 
-    public static  void setOutputLayer(ComputationGraphConfiguration.GraphBuilder graph,IUpdater updater){
+    public static  void setLossLayer(ComputationGraphConfiguration.GraphBuilder graph, IUpdater updater){
 
         graph.addLayer("output-layer", new OutputLayer.Builder(LossFunctions.LossFunction.XENT)
                 .updater(updater)
                 .nOut(1)
                 .activation(Activation.SIGMOID)
                 .updater(updater).build(),"avgpool");
+    }
+
+    public static void setCnnLossLayer(ComputationGraphConfiguration.GraphBuilder graph, IUpdater updater){
+
+        graph.addLayer("output-layer", new CnnLossLayer.Builder(LossFunctions.LossFunction.XENT)
+                .updater(updater)
+                .activation(Activation.SIGMOID).build(), "avgpool");
     }
 
 
