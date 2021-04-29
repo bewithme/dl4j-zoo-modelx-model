@@ -99,13 +99,12 @@ public class InPaintingGanV2Trainer extends AbsGanTrainer{
 
                 int realBatchSize=(int)realLabel.size(0);
 
-                long[] discriminatorOutputShape=new long[]{realBatchSize,2048, 3, 3};
 
-                trainDiscriminator(generator, discriminator, realFeature, realLabel,discriminatorOutputShape);
+                trainDiscriminator(generator, discriminator, realFeature, realLabel,realBatchSize);
 
                 inPaintingGan.copyParamsFromDiscriminatorToGanDiscriminator(discriminator, gan);
 
-                trainGan( gan,realFeature, discriminatorOutputShape);
+                trainGan( gan,realBatchSize,realFeature);
 
                 inPaintingGan.copyParamsFromGanToGenerator(generator,gan);
 
