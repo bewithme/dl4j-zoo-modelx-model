@@ -106,20 +106,20 @@ public class InPaintingGanV2 extends AbsGan{
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .cudnnAlgoMode(cudnnAlgoMode)
-                .convolutionMode(ConvolutionMode.Truncate)
+                .convolutionMode(ConvolutionMode.Same)
                 .graphBuilder();
 
         String[] inputs= {"dis_input"};
 
         ResNet50Backbone.setBackbone(graph,inputs,discriminatorUpdater);
 
-        ResNet50Backbone.setCnnLossLayer(graph,discriminatorUpdater);
+        ResNet50Backbone.setLossLayer(graph,discriminatorUpdater);
 
         graph.addInputs(inputs);
 
         String lastLayerName="output-layer";
 
-        //graph.inputPreProcessor(lastLayerName, new CnnToFeedForwardPreProcessor(3, 3, 2048));
+        graph.inputPreProcessor(lastLayerName, new CnnToFeedForwardPreProcessor(4, 4, 2048));
 
         graph.setOutputs(lastLayerName);
 
@@ -131,20 +131,21 @@ public class InPaintingGanV2 extends AbsGan{
 
     public ComputationGraphConfiguration buildGanConfiguration() {
 
-
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
-                .activation(Activation.IDENTITY)
+
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                .updater(discriminatorUpdater)
-                .weightInit(WeightInit.XAVIER)
-                .l1(1e-7)
-                .l2(5e-5)
-                .miniBatch(true)
+                .updater(generatorUpdater)
+                //.l2(5e-5)
+                //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+                // .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
+                //.weightInit(WeightInit.RELU)
+                //.activation(Activation.IDENTITY)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
-                .cudnnAlgoMode(cudnnAlgoMode)
-                .convolutionMode(ConvolutionMode.Truncate)
+                .convolutionMode(ConvolutionMode.Same)
+
                 .graphBuilder();
+
 
         String[] genInputs= {"gen_input"};
 
@@ -158,11 +159,11 @@ public class InPaintingGanV2 extends AbsGan{
 
         ResNet50Backbone.setBackbone(graph,disInputs,UPDATER_ZERO);
 
-        ResNet50Backbone.setCnnLossLayer(graph,UPDATER_ZERO);
+        ResNet50Backbone.setLossLayer(graph,UPDATER_ZERO);
 
         String lastLayerName="output-layer";
 
-        //graph.inputPreProcessor(lastLayerName, new CnnToFeedForwardPreProcessor(3, 3, 2048));
+        graph.inputPreProcessor(lastLayerName, new CnnToFeedForwardPreProcessor(4, 4, 2048));
 
         graph.setOutputs(lastLayerName);
 

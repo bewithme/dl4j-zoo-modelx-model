@@ -157,7 +157,9 @@ public class ResNet50Backbone {
                 .addLayer(batchName + "2a", new BatchNormalization.Builder().updater(updater)
                         .build(), convName + "2a")
                 .addLayer(activationName + "2a",
-                        new ActivationLayer.Builder().activation(Activation.RELU).build(),
+                        new ActivationLayer.Builder()
+                                .activation(Activation.RELU)
+                                .build(),
                         batchName + "2a")
 
                 .addLayer(convName + "2b",
