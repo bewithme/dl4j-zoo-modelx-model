@@ -82,8 +82,6 @@ public abstract class AbsGanTrainer {
 
 
     protected static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray generatorInput, INDArray realFeature,long[] discriminatorOutputShape) {
-
-        log.info(generatorInput.shapeInfoToString());
         //用生成器生成假图片
         INDArray fakeImaged=generator.output(generatorInput)[0];
 
