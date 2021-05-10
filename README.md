@@ -27,7 +27,7 @@ The following picture is generator output smaples snapshot when training iterati
 SGAN(Semi-supervised learning GAN) this GAN can get above 0.9 F1 Score only use  1% of MNIST as training data set .
 
 
-The following picture is the output of superviseDiscriminator  when the training iteration is more than 6000 
+The following picture is the evaluate output of superviseDiscriminator  when the training iteration is more than 6000 
 
 ![image](https://github.com/bewithme/dl4j-zoo-modelx-model/blob/master/snapshot/sgan.jpg)
 
