@@ -75,16 +75,17 @@ public abstract class AbsGanTrainer {
         discriminator.fit(fakeMultiDataSet);
     }
 
-    protected static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray realLabel,int batchSize) {
+    protected static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray generatorInput, INDArray realFeature,int batchSize) {
 
-        trainDiscriminator( generator,  discriminator,  realFeature,  realLabel,new long[]{batchSize, 1});
+        trainDiscriminator( generator,  discriminator,  generatorInput,  realFeature,new long[]{batchSize, 1});
     }
 
 
-    protected static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray realFeature, INDArray realLabel,long[] discriminatorOutputShape) {
+    protected static void trainDiscriminator(ComputationGraph generator, ComputationGraph discriminator, INDArray generatorInput, INDArray realFeature,long[] discriminatorOutputShape) {
 
+        log.info(generatorInput.shapeInfoToString());
         //用生成器生成假图片
-        INDArray fakeImaged=generator.output(realFeature)[0];
+        INDArray fakeImaged=generator.output(generatorInput)[0];
 
         INDArray[] fakeFeatures=new INDArray[] {fakeImaged};
 
@@ -92,7 +93,7 @@ public abstract class AbsGanTrainer {
 
         MultiDataSet fakeMultiDataSet=new MultiDataSet(fakeFeatures,fakeDisLabels);
 
-        INDArray[] realFeatures=new INDArray[] {realLabel};
+        INDArray[] realFeatures=new INDArray[] {realFeature};
 
         INDArray[] realDisLabels=new INDArray[] {Nd4j.ones(discriminatorOutputShape)};
         //构建多数据集（多个特征，多个标签）
@@ -138,16 +139,16 @@ public abstract class AbsGanTrainer {
      * @param batchSize
      *
      */
-    protected static void trainGan(ComputationGraph gan,int batchSize, INDArray realFeature) {
+    protected static void trainGan(ComputationGraph gan,int batchSize, INDArray generatorInput) {
 
-        trainGan(gan,realFeature,new long[]{batchSize, 1});
+        trainGan(gan,generatorInput,new long[]{batchSize, 1});
 
     }
 
 
-    protected static void trainGan(ComputationGraph gan,INDArray realFeature,long[] discriminatorOutputShape) {
+    protected static void trainGan(ComputationGraph gan,INDArray generatorInput,long[] discriminatorOutputShape) {
         //噪音特征
-        INDArray[] noiseLatentFeature = new INDArray[]{realFeature};
+        INDArray[] noiseLatentFeature = new INDArray[]{generatorInput};
         //这里故意把噪音的标签设为真，
         INDArray[] noiseLatentLabel = new INDArray[]{Nd4j.ones(discriminatorOutputShape)};
         //对抗网络输入多数据集
