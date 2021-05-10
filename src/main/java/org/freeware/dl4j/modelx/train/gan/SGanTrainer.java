@@ -93,7 +93,7 @@ public class SGanTrainer extends AbsGanTrainer{
             testDataSetIterator=splitDataSet.getTestDataSetIterator();
 
         } catch (IOException e) {
-            e.printStackTrace();
+           log.error("",e);
         }
 
         int iterationCounter = 0;
