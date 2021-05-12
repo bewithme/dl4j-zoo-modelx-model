@@ -43,6 +43,10 @@ public abstract class AbsGan extends ZooModel {
 
     protected static String DROP_OUT="drop-out";
 
+    protected static String DENSE_LAYER="dense-layer";
+
+    protected static String OUTPUT_LAYER="output-layer";
+
 
 
     /**
