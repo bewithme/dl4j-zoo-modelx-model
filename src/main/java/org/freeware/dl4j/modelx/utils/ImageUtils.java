@@ -8,6 +8,7 @@ import org.bytedeco.opencv.opencv_core.Size;
 import org.datavec.image.loader.Java2DNativeImageLoader;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.BooleanIndexing;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
@@ -36,6 +37,33 @@ public class ImageUtils {
      * @throws IOException
      */
     public static INDArray resize(INDArray image, int targetWidth, int targetHeight) throws IOException {
+
+        if (image.rank()!=4&&image.rank() !=3) {
+            throw new UnsupportedOperationException("Only rank 3 or rank 4 arrays supported");
+        }
+
+
+        if(image.rank()==4){
+
+            long batchSize=image.size(0);
+
+            INDArray[] resizedImages=new INDArray[(int)batchSize] ;
+
+            for(long i=0L;i<batchSize;i++){
+
+                INDArray singleImage=image.get(new INDArrayIndex[]{NDArrayIndex.point(i),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all()});
+
+                INDArray resizedImage= resizeSingle(singleImage, targetWidth, targetHeight);
+
+                resizedImages[(int)i]=resizedImage;
+
+            }
+            return Nd4j.concat(0,resizedImages);
+        }
+        return resizeSingle(image, targetWidth, targetHeight);
+    }
+
+    private static INDArray resizeSingle(INDArray image, int targetWidth, int targetHeight) throws IOException {
 
         Java2DNativeImageLoader java2DNativeImageLoader=new Java2DNativeImageLoader();
 

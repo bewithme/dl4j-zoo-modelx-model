@@ -75,6 +75,18 @@ public abstract class AbsGan extends ZooModel {
         }
     }
 
+    public void copyParamsFromGanToGeneratorByName(ComputationGraph generator, ComputationGraph gan) {
+
+        org.deeplearning4j.nn.api.Layer[] generatorLayers=generator.getLayers();
+
+        for(org.deeplearning4j.nn.api.Layer generatorLayer:generatorLayers){
+
+            String generatorLayerName=generatorLayer.getConfig().getLayerName();
+
+            generatorLayer.setParams( gan.getLayer(generatorLayerName).params());
+        }
+    }
+
     /**
      * 从对抗网络中把参数复制给判别器
      * @param discriminator
