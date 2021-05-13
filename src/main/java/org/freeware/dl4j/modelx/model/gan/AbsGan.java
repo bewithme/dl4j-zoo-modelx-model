@@ -122,6 +122,25 @@ public abstract class AbsGan extends ZooModel {
 
 
     /**
+     * 通过层名称来复制参数
+     * @param discriminator
+     * @param gan
+     */
+    public  void copyParamsFromDiscriminatorToGanDiscriminatorByName(ComputationGraph discriminator, ComputationGraph gan) {
+
+        org.deeplearning4j.nn.api.Layer[] discriminatorLayers=discriminator.getLayers();
+
+        for(org.deeplearning4j.nn.api.Layer discriminatorLayer:discriminatorLayers){
+
+           String discriminatorLayerName=discriminatorLayer.getConfig().getLayerName();
+
+           gan.getLayer(discriminatorLayerName).setParams(discriminatorLayer.params());
+
+        }
+    }
+
+
+    /**
      * 批量添加计算图的层或顶点
      * @param graphBuilder
      * @param graphLayerItems
