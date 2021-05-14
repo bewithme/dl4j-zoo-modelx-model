@@ -73,7 +73,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .gradientNormalizationThreshold(GRADIENT_THRESHOLD)
                 .weightInit(WeightInit.XAVIER)
-                .activation(Activation.IDENTITY)
+                .activation(Activation.TANH)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .convolutionMode(ConvolutionMode.Same)
