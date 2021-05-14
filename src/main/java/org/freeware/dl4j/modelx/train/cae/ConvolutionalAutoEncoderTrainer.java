@@ -4,9 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.util.ModelSerializer;
 import org.freeware.dl4j.modelx.model.cae.ConvolutionalAutoEncoder;
-import org.freeware.dl4j.modelx.model.gan.SGan;
 import org.freeware.dl4j.modelx.train.AbsTrainer;
-import org.freeware.dl4j.modelx.train.gan.AbsGanTrainer;
 import org.freeware.dl4j.modelx.utils.*;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -24,8 +22,9 @@ import java.util.Random;
 
 
 /**
+ * 卷积自编码器
+ * 训练完成之后可以用编码器做特征提取
  * @author wenfengxu
- *
  */
 @Slf4j
 public class ConvolutionalAutoEncoderTrainer extends AbsTrainer {
