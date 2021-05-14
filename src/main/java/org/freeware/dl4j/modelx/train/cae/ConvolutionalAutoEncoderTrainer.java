@@ -36,7 +36,7 @@ public class ConvolutionalAutoEncoderTrainer extends AbsGanTrainer {
 
     public static void main(String[] args) {
 
-        int batchSize=2;
+        int batchSize=32;
 
         int imageHeight =256;
 
