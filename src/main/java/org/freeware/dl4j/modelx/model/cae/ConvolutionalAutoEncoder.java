@@ -204,7 +204,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
      * @param inputs
      * @return
      */
-    private  List<GraphLayerItem> buildEncoderGraphLayerItems(String[] inputs,IUpdater updater){
+    public   List<GraphLayerItem> buildEncoderGraphLayerItems(String[] inputs,IUpdater updater){
 
         List<GraphLayerItem>  graphItemList=new ArrayList<GraphLayerItem>(10);
 

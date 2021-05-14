@@ -17,6 +17,7 @@ import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.zoo.ModelMetaData;
 import org.deeplearning4j.zoo.PretrainedType;
 
+import org.freeware.dl4j.modelx.model.cae.ConvolutionalAutoEncoder;
 import org.freeware.dl4j.nn.GraphLayerItem;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.activations.impl.ActivationLReLU;
@@ -76,11 +77,7 @@ public class SRGan extends AbsGan {
     private static int discriminatorFilters = 64;
 
 
-    private ComputationGraph vgg19=null;
 
-    public ComputationGraph getVgg19() {
-        return vgg19;
-    }
 
     /**
      * 生成器网络配置
@@ -154,6 +151,8 @@ public class SRGan extends AbsGan {
     public ComputationGraphConfiguration buildGanConfiguration() {
 
 
+        ConvolutionalAutoEncoder cae= ConvolutionalAutoEncoder.builder()
+                .build();
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
@@ -170,18 +169,23 @@ public class SRGan extends AbsGan {
 
         addGraphItems(graph, genLayerItems, Boolean.FALSE);
 
-        String disInput = getLastLayerName(genLayerItems);
+        String genOutputs = getLastLayerName(genLayerItems);
         //学习率为0，即判别器不会被训练，只训练生成器
-        List<GraphLayerItem> disLayerItems = buildDiscriminatorGraphLayerItems(disInput, UPDATER_ZERO);
+        List<GraphLayerItem> disLayerItems = buildDiscriminatorGraphLayerItems(genOutputs, UPDATER_ZERO);
 
         addGraphItems(graph, disLayerItems, Boolean.FALSE);
 
         graph.addInputs(genInputs);
 
+        List<GraphLayerItem> encoderGraphLayerItems =cae.buildEncoderGraphLayerItems(new String[]{genOutputs},UPDATER_ZERO);
+
+        addGraphItems(graph, encoderGraphLayerItems, Boolean.FALSE);
+
+        String encoderOutput=getLastLayerName(encoderGraphLayerItems);
 
         graph.addLayer("cnn-loss-output",new CnnLossLayer.Builder(LossFunctions.LossFunction.MSE)
                 .updater(UPDATER_ZERO)
-                .activation(Activation.TANH).build(),disInput);
+                .activation(Activation.TANH).build(),encoderOutput);
 
         graph.setOutputs(getLastLayerName(disLayerItems),"cnn-loss-output");
 
