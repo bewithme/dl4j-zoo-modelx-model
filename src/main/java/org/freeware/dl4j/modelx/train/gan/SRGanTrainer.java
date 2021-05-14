@@ -2,21 +2,18 @@ package org.freeware.dl4j.modelx.train.gan;
 
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.util.ModelSerializer;
 import org.freeware.dl4j.modelx.dataset.srgan.SrGanDataSetIterator;
-import org.freeware.dl4j.modelx.model.gan.CDCGan;
 import org.freeware.dl4j.modelx.model.gan.SRGan;
 import org.freeware.dl4j.modelx.utils.*;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.MultiDataSet;
-import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
-import org.nd4j.linalg.learning.config.Adam;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,11 +56,12 @@ public class SRGanTrainer extends AbsGanTrainer{
 
         String dataPath="/Volumes/feng/ai/dataset/VGG-Face2/data/test";
 
+        String encoderFilePath="models/cae/caeEncoder.zip";
+
         SRGan srgan= SRGan.builder()
                 .imageChannel(imageChannel)
                 .imageHeight(imageHeight)
                 .imageWidth(imageWidth)
-
                 .build();
 
         ComputationGraph generator=srgan.initGenerator();
@@ -72,16 +70,25 @@ public class SRGanTrainer extends AbsGanTrainer{
 
         ComputationGraph gan=srgan.init();
 
+        ComputationGraph encoder=null;
+
+        try {
+             encoder= ModelSerializer.restoreComputationGraph(encoderFilePath,Boolean.FALSE);
+        } catch (IOException e) {
+            log.info("",e);
+        }
+
         setListeners(generator,discriminator,gan);
 
-        log.info(gan.summary());
+        log.info(encoder.summary());
+
+        srgan.copyParamsWhenFromIsPartOfToByName(encoder,gan);
 
         MultiDataSetIterator srGanMultiDataSetIterator=new SrGanDataSetIterator(dataPath,batchSize,imageHeight,imageHeight,imageChannel,imageHeightHr,imageWidthHr,imageChannelHr);
 
         int iterationCounter = 0;
 
         while (true) {
-
 
             srGanMultiDataSetIterator.reset();
 
@@ -94,8 +101,7 @@ public class SRGanTrainer extends AbsGanTrainer{
                 INDArray features = dataSet.getFeatures()[0];
 
                 dataNormalization.transform(features);
-
-                //hr feature
+                //256x256
                 INDArray label = dataSet.getLabels()[0];
 
                 dataNormalization.transform(label);
@@ -106,7 +112,9 @@ public class SRGanTrainer extends AbsGanTrainer{
 
                 srgan.copyParamsFromDiscriminatorToGanDiscriminatorByName(discriminator, gan);
 
-                trainGan(gan,realBatchSize,features,label);
+                INDArray mapFeature=encoder.output(label)[0];
+
+                trainGan(gan,realBatchSize,features,mapFeature);
 
                 srgan.copyParamsFromGanToGeneratorByName(generator,gan);
 
@@ -122,11 +130,11 @@ public class SRGanTrainer extends AbsGanTrainer{
 
 
 
-    public static void trainGan(ComputationGraph gan,int batchSize,INDArray generatorInput,INDArray hrVgg19Feature ) {
+    public static void trainGan(ComputationGraph gan,int batchSize,INDArray generatorInput,INDArray mapFeature ) {
         //噪音特征
         INDArray[] noiseLatentFeature = new INDArray[]{generatorInput};
         //这里故意把噪音的标签设为真，
-        INDArray[] noiseLatentLabel = new INDArray[]{Nd4j.ones(batchSize, 1),hrVgg19Feature};
+        INDArray[] noiseLatentLabel = new INDArray[]{Nd4j.ones(batchSize, 1),mapFeature};
         //对抗网络输入多数据集
         org.nd4j.linalg.dataset.MultiDataSet ganInputMultiDataSet = new org.nd4j.linalg.dataset.MultiDataSet(noiseLatentFeature, noiseLatentLabel);
 
