@@ -40,7 +40,7 @@ public class SRGanTrainer extends AbsGanTrainer{
 
     public static void main(String[] args) {
 
-        int batchSize=2;
+        int batchSize=32;
 
         int imageHeight =64;
 
@@ -80,7 +80,7 @@ public class SRGanTrainer extends AbsGanTrainer{
 
         setListeners(generator,discriminator,gan);
 
-        log.info(encoder.summary());
+        log.info(gan.summary());
 
         srgan.copyParamsWhenFromIsPartOfToByName(encoder,gan);
 
