@@ -103,7 +103,7 @@ public class ConvolutionalAutoEncoderTrainer extends AbsTrainer {
 
                 visualize(caeGraph,realFeature,iterationCounter);
 
-                if (iterationCounter % 10== 0) {
+                if (iterationCounter % 100== 0) {
 
                     cae.copyParamsByName(caeGraph,encoderGraph);
 
