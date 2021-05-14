@@ -105,7 +105,7 @@ public class ConvolutionalAutoEncoderTrainer extends AbsTrainer {
 
                 if (iterationCounter % 100== 0) {
 
-                    cae.copyParamsByName(caeGraph,encoderGraph);
+                    cae.copyParamsWhenToIsPartOfFromByName(caeGraph,encoderGraph);
 
                     saveModel(caeGraph,encoderGraph);
 
@@ -159,7 +159,7 @@ public class ConvolutionalAutoEncoderTrainer extends AbsTrainer {
         try {
             ModelSerializer.writeModel(cae,new File(caeFileName),Boolean.TRUE);
 
-            ModelSerializer.writeModel(cae,new File(encoderFileName),Boolean.TRUE);
+            ModelSerializer.writeModel(encoder,new File(encoderFileName),Boolean.TRUE);
 
         } catch (IOException e) {
            log.info("",e);
