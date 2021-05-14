@@ -18,7 +18,7 @@ import org.nd4j.linalg.learning.config.Adam;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Random;
+
 
 
 /**
@@ -46,7 +46,6 @@ public class ConvolutionalAutoEncoderTrainer extends AbsTrainer {
 
         int imageChannel =3;
 
-
         String dataPath="/Users/wenfengxu/Downloads/data/mnist_png/training";
 
         int numPossibleLabels= DataSetUtils.getFileDirectoriesCount(dataPath);
@@ -63,7 +62,6 @@ public class ConvolutionalAutoEncoderTrainer extends AbsTrainer {
                  )
                 .build();
 
-        //初始化无监叔判别器
         ComputationGraph caeGraph=cae.init();
 
         ComputationGraph encoderGraph=cae.initEncoder();
@@ -82,7 +80,7 @@ public class ConvolutionalAutoEncoderTrainer extends AbsTrainer {
             trainData= DataSetUtils.getDataSetIterator(dataPath,batchSize,numPossibleLabels,imageHeight,imageWidth,imageChannel);
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.info("",e);
         }
 
         int iterationCounter = 0;

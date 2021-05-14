@@ -33,7 +33,7 @@ import java.util.Random;
 public class ConvolutionalAutoEncoder extends ZooModelX {
 
     @Builder.Default
-    private long seed = 12345;
+    private long seed = 123456;
 
     @Builder.Default
     private WorkspaceMode workspaceMode = WorkspaceMode.ENABLED;
@@ -43,14 +43,6 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
     private static final double GRADIENT_THRESHOLD = 100.0;
 
     private static final IUpdater UPDATER_ZERO = Sgd.builder().learningRate(0.0).build();
-
-    private static int DISCRIMINATOR_INPUT_SIZE = 784;
-
-    private static int GENERATOR_INPUT_SIZE = 100;
-
-    private static int LATENT_DIM_LEN = 100;
-
-
 
     @Builder.Default
     private int imageHeight = 28;
@@ -65,7 +57,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
     private IUpdater updater = Adam.builder().learningRate(LEARNING_RATE).beta1(0.5).build();
 
 
-    private static Random random = new Random(123456);
+
 
 
     /**
@@ -107,8 +99,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
     public ComputationGraphConfiguration buildAutoEncoder() {
 
-        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder().seed(seed)
-
+        ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder()
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .updater(updater)
                 .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
@@ -116,6 +107,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
                 .weightInit(WeightInit.XAVIER)
                 .activation(Activation.TANH)
                 .updater(updater)
+                .seed(seed)
                 .trainingWorkspaceMode(workspaceMode)
                 .inferenceWorkspaceMode(workspaceMode)
                 .convolutionMode(ConvolutionMode.Same)
