@@ -2,19 +2,20 @@ package org.freeware.dl4j.modelx.train.cae;
 
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.util.ModelSerializer;
 import org.freeware.dl4j.modelx.model.cae.ConvolutionalAutoEncoder;
 import org.freeware.dl4j.modelx.model.gan.SGan;
+import org.freeware.dl4j.modelx.train.AbsTrainer;
 import org.freeware.dl4j.modelx.train.gan.AbsGanTrainer;
-import org.freeware.dl4j.modelx.utils.DataSetUtils;
-import org.freeware.dl4j.modelx.utils.Sample;
-import org.freeware.dl4j.modelx.utils.SplitDataSet;
-import org.freeware.dl4j.modelx.utils.VisualisationUtils;
+import org.freeware.dl4j.modelx.utils.*;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.learning.config.Adam;
 
 import java.io.File;
@@ -27,16 +28,18 @@ import java.util.Random;
  *
  */
 @Slf4j
-public class ConvolutionalAutoEncoderTrainer extends AbsGanTrainer {
+public class ConvolutionalAutoEncoderTrainer extends AbsTrainer {
 
 
     private  static  DataNormalization dataNormalization = new ImagePreProcessingScaler(-1,1);
 
     private static String outputDir="output_CAE";
 
+    private static  String modelSavePath="models/cae/";
+
     public static void main(String[] args) {
 
-        int batchSize=32;
+        int batchSize=5;
 
         int imageHeight =256;
 
@@ -48,6 +51,8 @@ public class ConvolutionalAutoEncoderTrainer extends AbsGanTrainer {
         String dataPath="/Users/wenfengxu/Downloads/data/mnist_png/training";
 
         int numPossibleLabels= DataSetUtils.getFileDirectoriesCount(dataPath);
+
+        ExtendedFileUtils.makeDirs(modelSavePath);
 
         ConvolutionalAutoEncoder cae= ConvolutionalAutoEncoder.builder()
                 .imageChannel(imageChannel)
@@ -99,35 +104,38 @@ public class ConvolutionalAutoEncoderTrainer extends AbsGanTrainer {
 
                 caeGraph.fit(caeDataSet);
 
+                visualize(caeGraph,realFeature,iterationCounter);
+
+                if (iterationCounter % 10== 0) {
+
+                    cae.copyParamsByName(caeGraph,encoderGraph);
+
+                    saveModel(caeGraph,encoderGraph);
+
+                }
+
             }
 
         }
 
     }
 
-    private static void evaluate(ComputationGraph superviseDiscriminator, DataSetIterator testDataSetIterator, int iterationCounter) {
-
-        if (iterationCounter % 100== 0) {
-
-           log.info(superviseDiscriminator.evaluate(testDataSetIterator).stats());
-
-        }
-    }
 
     /**
      * 可视化
-     * @param generator
+     * @param cae
      * @param iterationCounter
      */
-    private static void visualize(ComputationGraph generator, int iterationCounter) {
+    private static void visualize(ComputationGraph cae,INDArray features, int iterationCounter) {
 
         Sample[] samples=null;
 
         if (iterationCounter % 10== 0) {
 
-            samples=getSamples(generator);
+            samples=getSamples(cae,features);
 
-            VisualisationUtils.mnistVisualizeForConvolution2D(samples,"SGan");
+            VisualisationUtils.visualizeForConvolution2D(samples,"CAE");
+
         }
         if (iterationCounter % 1000== 0) {
 
@@ -137,34 +145,69 @@ public class ConvolutionalAutoEncoderTrainer extends AbsGanTrainer {
         }
     }
 
+    private static void saveModel(ComputationGraph cae,ComputationGraph encoder){
+
+        if (!modelSavePath.endsWith(File.separator)){
+            modelSavePath=modelSavePath.concat(File.separator);
+        }
+
+        String caeFileName=modelSavePath.concat("cae.zip");
+
+        String encoderFileName=modelSavePath.concat("caeEncoder.zip");
+
+        ExtendedFileUtils.deleteQuietly(new File(caeFileName));
+
+        ExtendedFileUtils.deleteQuietly(new File(encoderFileName));
+
+        try {
+            ModelSerializer.writeModel(cae,new File(caeFileName),Boolean.TRUE);
+
+            ModelSerializer.writeModel(cae,new File(encoderFileName),Boolean.TRUE);
+
+        } catch (IOException e) {
+           log.info("",e);
+        }
+    }
+
 
     /**
      * 采样生成器
      * 9个输出
-     * @param generator
+     * @param cae
      * @return
      */
-    private static Sample[] getSamples(ComputationGraph generator) {
+    private static Sample[] getSamples(ComputationGraph cae,INDArray features) {
 
-        int batchSize=1;
+        int batchSize=getBatchSize(features);
 
-        Sample[] samples = new Sample[9];
+        batchSize=clipBatchSize(batchSize,3);
+        //输入+输出
+        int sampleLen=batchSize*2;
 
-        for(int k=0;k<9;k++){
-            //创建batchSize行，100列的随机数浅层空间
-            INDArray latentDim = Nd4j.rand(new int[]{batchSize,  100});
+        Sample[] samples = new Sample[sampleLen];
+
+        for(int k=0;k<batchSize;k++){
+
+            INDArray inputFeatures =features.get(new INDArrayIndex[]{NDArrayIndex.point(k),NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all()});
+
+            inputFeatures=Nd4j.expandDims(inputFeatures,0);
             //输出图片
-            INDArray fakeImage=generator.output(latentDim)[0];
+            INDArray outputImage=cae.output(inputFeatures)[0];
             //把图片数据恢复到0-255
-            dataNormalization.revertFeatures(fakeImage);
+            dataNormalization.revertFeatures(inputFeatures);
 
-            Sample sample=new Sample(fakeImage,"");
+            dataNormalization.revertFeatures(outputImage);
 
-            samples[k]=sample;
+            Sample sampleInput=new Sample(inputFeatures,"input");
+
+            Sample sampleOutput=new Sample(outputImage,"output");
+
+            samples[k*2]=sampleInput;
+
+            samples[k*2+1]=sampleOutput;
         }
         return samples;
     }
-
 
 
 

@@ -108,8 +108,27 @@ public abstract class ZooModelX extends ZooModel {
     }
 
 
+    /**
+     * 复制参数
+     * 会把层名称相同的参数复制
+     * @param from
+     * @param to
+     */
+    public void copyParamsByName(ComputationGraph from,ComputationGraph to) {
 
+        org.deeplearning4j.nn.api.Layer[] toLayers=to.getLayers();
 
+        for(org.deeplearning4j.nn.api.Layer toLayer:toLayers){
+
+            String toLayerName=toLayer.getConfig().getLayerName();
+
+            if(from.getLayer(toLayerName)!=null){
+
+                toLayer.setParams( from.getLayer(toLayerName).params());
+            }
+
+        }
+    }
 
 
 

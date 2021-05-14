@@ -76,11 +76,7 @@ public class SRGanTrainer extends AbsGanTrainer{
 
         log.info(gan.summary());
 
-
         MultiDataSetIterator srGanMultiDataSetIterator=new SrGanDataSetIterator(dataPath,batchSize,imageHeight,imageHeight,imageChannel,imageHeightHr,imageWidthHr,imageChannelHr);
-
-
-
 
         int iterationCounter = 0;
 
@@ -88,8 +84,6 @@ public class SRGanTrainer extends AbsGanTrainer{
 
 
             srGanMultiDataSetIterator.reset();
-
-
 
             while (srGanMultiDataSetIterator.hasNext()) {
 
@@ -174,7 +168,9 @@ public class SRGanTrainer extends AbsGanTrainer{
      */
     private static Sample[] getSamples(ComputationGraph generator,INDArray features) {
 
-        int batchSize=(int)features.size(0);
+        int batchSize=getBatchSize(features);
+
+        batchSize=clipBatchSize(batchSize,3);
         //输入+输出
         int sampleLen=batchSize*2;
 
@@ -196,9 +192,9 @@ public class SRGanTrainer extends AbsGanTrainer{
 
             Sample sampleOutput=new Sample(fakeImage,"output");
 
-            samples[k]=sampleInput;
+            samples[k*2]=sampleInput;
 
-            samples[k+1]=sampleOutput;
+            samples[k*2+1]=sampleOutput;
         }
         return samples;
     }

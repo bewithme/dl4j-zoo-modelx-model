@@ -72,6 +72,7 @@ public class VisualisationUtils {
         panel.removeAll();
 
         for (int i = 0; i < samples.length; i++) {
+
             INDArray feature=samples[i].getFeature();
             int h= (int)feature.size(2);
             int w= (int)feature.size(3);
@@ -131,8 +132,7 @@ public class VisualisationUtils {
         try {
             ImageIO.write(bi, "jpg",new File(fileName));
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+           log.info("",e);
         }
     }
 

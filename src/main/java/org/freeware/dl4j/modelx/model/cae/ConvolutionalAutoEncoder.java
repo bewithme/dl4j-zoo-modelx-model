@@ -299,19 +299,6 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
 
 
-    /**
-     * 复制两个除输出层之外的两个网络的参数
-     * @param from
-     * @param to
-     */
-    public void copyParamsWithoutOutputLayer(ComputationGraph from, ComputationGraph to) {
-        int genLayerLen = from.getLayers().length-1;
-        for (int i = 0; i < genLayerLen; i++) {
-            to.getLayer(i).setParams(from.getLayer(i).params());
-        }
-    }
-
-
     @Override
     public ModelMetaData metaData() {
         return null;

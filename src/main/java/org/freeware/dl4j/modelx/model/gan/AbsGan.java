@@ -39,7 +39,7 @@ public abstract class AbsGan extends ZooModelX {
 
     public void copyParamsFromGanToGeneratorByName(ComputationGraph generator, ComputationGraph gan) {
 
-        org.deeplearning4j.nn.api.Layer[] generatorLayers=generator.getLayers();
+        org.deeplearning4j.nn.api.Layer[] generatorLayers= generator.getLayers();
 
         for(org.deeplearning4j.nn.api.Layer generatorLayer:generatorLayers){
 
