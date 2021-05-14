@@ -21,12 +21,14 @@ import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.IUpdater;
 import org.nd4j.linalg.learning.config.Sgd;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 
+/**
+ * @author wenfengxu
+ * 深度卷积自编码器
+ */
 @AllArgsConstructor
 @Builder
 @Slf4j
@@ -139,7 +141,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
     /**
      * 解码器层列表
-     *
+     * [N,C,16,16]->[N,C,32,32]->[N,C,64,64]->[N,C,128,128]->[N,C,256,256]
      * @param inputs
      * @return
      */
@@ -198,8 +200,8 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
     /**
      * 编码器
+     * [N,C,256,256]->[N,C,128,128]->[N,C,64,64]->[N,C,32,32]->[N,C,16,16]
      * @param inputs
-     *
      * @return
      */
     private  List<GraphLayerItem> buildEncoderGraphLayerItems(String[] inputs,IUpdater updater){
@@ -218,7 +220,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
         graphItemList.add(new GraphLayerItem("en-02",
                 new SubsamplingLayer.Builder(
-                        SubsamplingLayer.PoolingType.MAX,
+                        SubsamplingLayer.PoolingType.AVG,
                         new int[]{2,2},
                         new int[]{ 2,2})
 
@@ -238,7 +240,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
         graphItemList.add(new GraphLayerItem("en-04",
                 new SubsamplingLayer.Builder(
-                        SubsamplingLayer.PoolingType.MAX,
+                        SubsamplingLayer.PoolingType.AVG,
                         new int[]{2,2},
                         new int[]{ 2,2})
                         .build(),
