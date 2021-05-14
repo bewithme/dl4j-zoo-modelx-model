@@ -47,7 +47,7 @@ public class ConvolutionalAutoEncoderTrainer extends AbsGanTrainer {
 
         String dataPath="/Users/wenfengxu/Downloads/data/mnist_png/training";
 
-        int numClasses=10;
+        int numPossibleLabels= DataSetUtils.getFileDirectoriesCount(dataPath);
 
         ConvolutionalAutoEncoder cae= ConvolutionalAutoEncoder.builder()
                 .imageChannel(imageChannel)
@@ -75,7 +75,7 @@ public class ConvolutionalAutoEncoderTrainer extends AbsGanTrainer {
 
         try {
 
-            trainData= DataSetUtils.getDataSetIterator(dataPath,batchSize,numClasses,imageHeight,imageWidth,imageChannel);
+            trainData= DataSetUtils.getDataSetIterator(dataPath,batchSize,numPossibleLabels,imageHeight,imageWidth,imageChannel);
 
         } catch (IOException e) {
             e.printStackTrace();
