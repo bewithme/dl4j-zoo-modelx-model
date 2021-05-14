@@ -122,8 +122,6 @@ public class SRGanTrainer extends AbsGanTrainer{
 
             }
 
-
-
         }
 
     }
@@ -157,7 +155,7 @@ public class SRGanTrainer extends AbsGanTrainer{
 
             samples=getSamples(generator,features);
 
-            VisualisationUtils.mnistVisualizeForConvolution2D(samples,"SRGan");
+            VisualisationUtils.visualizeForConvolution2D(samples,"SRGan");
         }
         if (iterationCounter % 1000== 0) {
 
