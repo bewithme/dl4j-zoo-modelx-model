@@ -3,7 +3,7 @@
 This project is extention of dl4j zoo.model 
 
 
-Available models
+Available models are:
 
 InceptionV4
 
