@@ -8,8 +8,6 @@ import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.*;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
-import org.deeplearning4j.nn.conf.preprocessor.CnnToFeedForwardPreProcessor;
-import org.deeplearning4j.nn.conf.preprocessor.FeedForwardToCnnPreProcessor;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.zoo.ModelMetaData;
@@ -47,10 +45,10 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
     private static final IUpdater UPDATER_ZERO = Sgd.builder().learningRate(0.0).build();
 
     @Builder.Default
-    private int imageHeight = 28;
+    private int imageHeight = 256;
 
     @Builder.Default
-    private int imageWidth = 28;
+    private int imageWidth = 256;
 
     @Builder.Default
     private int imageChannel = 3;
@@ -63,7 +61,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
 
     /**
-     * 生成器网络配置
+     * 编码器网络配置
      *
      * @return
      */
@@ -95,10 +93,10 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
     }
 
 
-
-
-
-
+    /**
+     * 编解码器网络配置
+     * @return
+     */
     public ComputationGraphConfiguration buildAutoEncoder() {
 
         ComputationGraphConfiguration.GraphBuilder graph = new NeuralNetConfiguration.Builder()
@@ -137,63 +135,6 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
         return graph.build();
     }
-
-
-    /**
-     * 解码器层列表
-     * [N,C,16,16]->[N,C,32,32]->[N,C,64,64]->[N,C,128,128]->[N,C,256,256]
-     * @param inputs
-     * @return
-     */
-    private List<GraphLayerItem> buildDecoderGraphLayerItems(String[] inputs) {
-
-        List<GraphLayerItem> graphItemList = new ArrayList<GraphLayerItem>(10);
-
-        graphItemList.add(new GraphLayerItem("de-01",
-                new Deconvolution2D.Builder()
-                        .nOut(32)
-                        .kernelSize(3, 3)
-                        .stride(2, 2)
-                        .build(),
-                inputs));
-
-        graphItemList.add(new GraphLayerItem("de-02",
-                new Deconvolution2D.Builder()
-                        .nOut(32)
-                        .kernelSize(3, 3)
-                        .stride(2, 2)
-                        .build(),
-                new String[]{"de-01"}));
-
-        graphItemList.add(new GraphLayerItem("de-03",
-                new Deconvolution2D.Builder()
-                        .nOut(32)
-                        .kernelSize(3, 3)
-                        .stride(2, 2)
-                        .build(),
-                new String[]{"de-02"}));
-
-        graphItemList.add(new GraphLayerItem("de-04",
-                new Deconvolution2D.Builder()
-                        .nOut(3)
-                        .kernelSize(3, 3)
-                        .stride(2, 2)
-                        .build(),
-                new String[]{"de-03"}));
-
-
-        graphItemList.add(new GraphLayerItem("output",
-                new CnnLossLayer.Builder(LossFunctions.LossFunction.MSE)
-                        .activation(Activation.TANH).build(),
-                new String[]{"de-04"}));
-
-
-
-
-        return graphItemList;
-
-    }
-
 
 
 
@@ -252,6 +193,61 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
     }
 
+    /**
+     * 解码器层列表
+     * [N,C,16,16]->[N,C,32,32]->[N,C,64,64]->[N,C,128,128]->[N,C,256,256]
+     * @param inputs
+     * @return
+     */
+    private List<GraphLayerItem> buildDecoderGraphLayerItems(String[] inputs) {
+
+        List<GraphLayerItem> graphItemList = new ArrayList<GraphLayerItem>(10);
+
+        graphItemList.add(new GraphLayerItem("de-01",
+                new Deconvolution2D.Builder()
+                        .nOut(32)
+                        .kernelSize(3, 3)
+                        .stride(2, 2)
+                        .build(),
+                inputs));
+
+        graphItemList.add(new GraphLayerItem("de-02",
+                new Deconvolution2D.Builder()
+                        .nOut(32)
+                        .kernelSize(3, 3)
+                        .stride(2, 2)
+                        .build(),
+                new String[]{"de-01"}));
+
+        graphItemList.add(new GraphLayerItem("de-03",
+                new Deconvolution2D.Builder()
+                        .nOut(32)
+                        .kernelSize(3, 3)
+                        .stride(2, 2)
+                        .build(),
+                new String[]{"de-02"}));
+
+        graphItemList.add(new GraphLayerItem("de-04",
+                new Deconvolution2D.Builder()
+                        .nOut(3)
+                        .kernelSize(3, 3)
+                        .stride(2, 2)
+                        .build(),
+                new String[]{"de-03"}));
+
+
+        graphItemList.add(new GraphLayerItem("output",
+                new CnnLossLayer.Builder(LossFunctions.LossFunction.MSE)
+                        .activation(Activation.TANH).build(),
+                new String[]{"de-04"}));
+
+        return graphItemList;
+
+    }
+
+
+
+
 
     @Override
     public void setInputShape(int[][] inputShape) {
@@ -260,7 +256,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
 
 
     /**
-     * 初始化对抗网络
+     * 初始化CAE
      * @return
      */
     public ComputationGraph init() {
@@ -276,7 +272,7 @@ public class ConvolutionalAutoEncoder extends ZooModelX {
     }
 
     /**
-     * 初始化生成器
+     * 初始化编码器
      * @return
      */
     public ComputationGraph initEncoder() {
