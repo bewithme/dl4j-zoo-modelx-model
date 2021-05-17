@@ -7,9 +7,7 @@ import org.freeware.dl4j.modelx.dataset.srgan.SrGanDataSetIterator;
 import org.freeware.dl4j.modelx.model.gan.SRGan;
 import org.freeware.dl4j.modelx.utils.*;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.MultiDataSet;
-import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
@@ -56,9 +54,9 @@ public class SRGanTrainer extends AbsGanTrainer{
 
         int imageChannelHr =3;
 
-        String dataPath="/skymind/dataset/VGG-Face2/data/train/";
+        String dataPath="/Volumes/feng/ai/dataset/VGG-Face2/data/test";
 
-        String encoderFilePath="models/cae/caeEncoder-1.zip";
+        String encoderFilePath="models/cae/caeEncoder.zip";
 
         SRGan srgan= SRGan.builder()
                 .imageChannel(imageChannel)
@@ -86,42 +84,25 @@ public class SRGanTrainer extends AbsGanTrainer{
 
         srgan.copyParamsWhenFromIsPartOfToByName(encoder,gan);
 
-       // MultiDataSetIterator srGanMultiDataSetIterator=new SrGanDataSetIterator(dataPath,batchSize,imageHeight,imageHeight,imageChannel,imageHeightHr,imageWidthHr,imageChannelHr);
+        MultiDataSetIterator srGanMultiDataSetIterator=new SrGanDataSetIterator(dataPath,batchSize,imageHeight,imageHeight,imageChannel,imageHeightHr,imageWidthHr,imageChannelHr);
 
-        int numPossibleLabels= DataSetUtils.getFileDirectoriesCount(dataPath);
-
-        DataSetIterator trainData = null;
-
-        DataSetIterator trainDataHr = null;
-
-        try {
-
-            trainData= DataSetUtils.getDataSetIterator(dataPath,batchSize,numPossibleLabels,imageHeight,imageWidth,imageChannel);
-
-            trainDataHr= DataSetUtils.getDataSetIterator(dataPath,batchSize,numPossibleLabels,imageHeightHr,imageWidthHr,imageChannelHr);
-
-        } catch (IOException e) {
-            log.info("",e);
-        }
         int iterationCounter = 0;
 
         while (true) {
 
-            trainData.reset();
+            srGanMultiDataSetIterator.reset();
 
-            while (trainData.hasNext()) {
+            while (srGanMultiDataSetIterator.hasNext()) {
 
                 iterationCounter++;
 
-                DataSet dataSet= trainData.next();
+                MultiDataSet dataSet= srGanMultiDataSetIterator.next();
 
-                DataSet dataSetHr= trainDataHr.next();
-
-                INDArray features = dataSet.getFeatures();
+                INDArray features = dataSet.getFeatures()[0];
 
                 dataNormalization.transform(features);
                 //256x256
-                INDArray label = dataSetHr.getLabels();
+                INDArray label = dataSet.getLabels()[0];
 
                 dataNormalization.transform(label);
 
