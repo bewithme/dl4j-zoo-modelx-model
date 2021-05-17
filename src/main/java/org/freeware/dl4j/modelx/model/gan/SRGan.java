@@ -361,7 +361,7 @@ public class SRGan extends AbsGan {
 
         String inputLayerName;
 
-        int outputUnit=32;
+        int outputUnit=64;
 
         List<GraphLayerItem> list0=convolution2D(moduleName,0,0,input,imageChannel,outputUnit,3,1,Boolean.FALSE,updater);
 
@@ -384,7 +384,7 @@ public class SRGan extends AbsGan {
 
 
         inputLayerName=getLastLayerName(list5);
-        List<GraphLayerItem> list6=convolution2D(moduleName,0,6,inputLayerName,outputUnit*4/2,outputUnit*8/2,3,1,Boolean.TRUE,updater);
+        List<GraphLayerItem> list6=convolution2D(moduleName,0,6,inputLayerName,outputUnit*4/2,outputUnit*8/2,3,2,Boolean.TRUE,updater);
 
         inputLayerName=getLastLayerName(list6);
         List<GraphLayerItem> list7=convolution2D(moduleName,0,7,inputLayerName,outputUnit*8/2,outputUnit*8/2,3,2,Boolean.TRUE,updater);
@@ -406,7 +406,6 @@ public class SRGan extends AbsGan {
 
         graphItemList.add(new GraphLayerItem(denseLayer0,
                 new DenseLayer.Builder()
-                        .nIn(131072)
                         .nOut(64)
                         .build(),
                 new String[]{inputLayerName}));
@@ -422,7 +421,6 @@ public class SRGan extends AbsGan {
 
         graphItemList.add(new GraphLayerItem(outputLayer0,
                 new OutputLayer.Builder(LossFunctions.LossFunction.XENT)
-                        .nIn(64)
                         .nOut(1)
                         .activation(Activation.SIGMOID)
                         .updater(updater).build(),
