@@ -361,31 +361,33 @@ public class SRGan extends AbsGan {
 
         String inputLayerName;
 
-        List<GraphLayerItem> list0=convolution2D(moduleName,0,0,input,imageChannel,64,3,1,Boolean.FALSE,updater);
+        int outputUnit=32;
+
+        List<GraphLayerItem> list0=convolution2D(moduleName,0,0,input,imageChannel,outputUnit,3,1,Boolean.FALSE,updater);
 
         inputLayerName=getLastLayerName(list0);
 
-        List<GraphLayerItem> list1=convolution2D(moduleName,0,1,inputLayerName,64,64,3,2,Boolean.TRUE,updater);
+        List<GraphLayerItem> list1=convolution2D(moduleName,0,1,inputLayerName,outputUnit,outputUnit,3,2,Boolean.TRUE,updater);
 
         inputLayerName=getLastLayerName(list1);
-        List<GraphLayerItem> list2=convolution2D(moduleName,0,2,inputLayerName,64,128,3,1,Boolean.TRUE,updater);
+        List<GraphLayerItem> list2=convolution2D(moduleName,0,2,inputLayerName,outputUnit,outputUnit*2,3,1,Boolean.TRUE,updater);
 
         inputLayerName=getLastLayerName(list2);
-        List<GraphLayerItem> list3=convolution2D(moduleName,0,3,inputLayerName,128,128,3,2,Boolean.TRUE,updater);
+        List<GraphLayerItem> list3=convolution2D(moduleName,0,3,inputLayerName,outputUnit*2,outputUnit*2,3,2,Boolean.TRUE,updater);
 
         inputLayerName=getLastLayerName(list3);
-        List<GraphLayerItem> list4=convolution2D(moduleName,0,4,inputLayerName,128,256,3,1,Boolean.TRUE,updater);
+        List<GraphLayerItem> list4=convolution2D(moduleName,0,4,inputLayerName,outputUnit*2,outputUnit*4/2,3,1,Boolean.TRUE,updater);
 
 
         inputLayerName=getLastLayerName(list4);
-        List<GraphLayerItem> list5=convolution2D(moduleName,0,5,inputLayerName,256,256,3,2,Boolean.TRUE,updater);
+        List<GraphLayerItem> list5=convolution2D(moduleName,0,5,inputLayerName,outputUnit*4/2,outputUnit*4/2,3,2,Boolean.TRUE,updater);
 
 
         inputLayerName=getLastLayerName(list5);
-        List<GraphLayerItem> list6=convolution2D(moduleName,0,6,inputLayerName,256,512,3,1,Boolean.TRUE,updater);
+        List<GraphLayerItem> list6=convolution2D(moduleName,0,6,inputLayerName,outputUnit*4/2,outputUnit*8/2,3,1,Boolean.TRUE,updater);
 
         inputLayerName=getLastLayerName(list6);
-        List<GraphLayerItem> list7=convolution2D(moduleName,0,7,inputLayerName,512,512,3,2,Boolean.TRUE,updater);
+        List<GraphLayerItem> list7=convolution2D(moduleName,0,7,inputLayerName,outputUnit*8/2,outputUnit*8/2,3,2,Boolean.TRUE,updater);
 
         inputLayerName=getLastLayerName(list7);
 
@@ -405,7 +407,7 @@ public class SRGan extends AbsGan {
         graphItemList.add(new GraphLayerItem(denseLayer0,
                 new DenseLayer.Builder()
                         .nIn(131072)
-                        .nOut(1024)
+                        .nOut(64)
                         .build(),
                 new String[]{inputLayerName}));
 
@@ -420,7 +422,7 @@ public class SRGan extends AbsGan {
 
         graphItemList.add(new GraphLayerItem(outputLayer0,
                 new OutputLayer.Builder(LossFunctions.LossFunction.XENT)
-                        .nIn(1024)
+                        .nIn(64)
                         .nOut(1)
                         .activation(Activation.SIGMOID)
                         .updater(updater).build(),
