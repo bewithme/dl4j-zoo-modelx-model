@@ -1,6 +1,6 @@
 # dl4j-zoo-modelx-model
 
-This project is extention of dl4j zoo.model 
+This project is extension of dl4j zoo.model 
 
 
 Available models are:
