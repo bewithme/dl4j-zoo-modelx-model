@@ -402,15 +402,24 @@ public class SRGan extends AbsGan {
 
         moduleName="dis-output";
 
+        String subSamplingLayerName=createLayerName(moduleName, SUB_SAMPLING_LAYER,0,0);
+
+        graphItemList.add(new GraphLayerItem(subSamplingLayerName,
+                new SubsamplingLayer.Builder(
+                        SubsamplingLayer.PoolingType.AVG,
+                        new int[]{16,16},
+                        new int[]{ 16,16})
+
+                        .build(),
+                new String[]{inputLayerName}));
+
         String denseLayer0=createLayerName(moduleName,DENSE_LAYER,0,0);
 
         graphItemList.add(new GraphLayerItem(denseLayer0,
                 new DenseLayer.Builder()
-                        //如果不写输入大小，会自动把上层的输入压平，如果写只能写与上层的nOut
-                        .nIn(512)
                         .nOut(1024)
                         .build(),
-                new String[]{inputLayerName}));
+                new String[]{subSamplingLayerName}));
 
 
         String actLayer0=createLayerName(moduleName,ACTIVATION,0,1);
