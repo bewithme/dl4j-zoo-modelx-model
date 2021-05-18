@@ -376,18 +376,18 @@ public class SRGan extends AbsGan {
         List<GraphLayerItem> list3=convolution2D(moduleName,0,3,inputLayerName,outputUnit*2,outputUnit*2,3,2,Boolean.TRUE,updater);
 
         inputLayerName=getLastLayerName(list3);
-        List<GraphLayerItem> list4=convolution2D(moduleName,0,4,inputLayerName,outputUnit*2,outputUnit*4/2,3,1,Boolean.TRUE,updater);
+        List<GraphLayerItem> list4=convolution2D(moduleName,0,4,inputLayerName,outputUnit*2,outputUnit*4,3,1,Boolean.TRUE,updater);
 
 
         inputLayerName=getLastLayerName(list4);
-        List<GraphLayerItem> list5=convolution2D(moduleName,0,5,inputLayerName,outputUnit*4/2,outputUnit*4/2,3,2,Boolean.TRUE,updater);
+        List<GraphLayerItem> list5=convolution2D(moduleName,0,5,inputLayerName,outputUnit*4,outputUnit*4,3,2,Boolean.TRUE,updater);
 
 
         inputLayerName=getLastLayerName(list5);
-        List<GraphLayerItem> list6=convolution2D(moduleName,0,6,inputLayerName,outputUnit*4/2,outputUnit*8/2,3,2,Boolean.TRUE,updater);
+        List<GraphLayerItem> list6=convolution2D(moduleName,0,6,inputLayerName,outputUnit*4,outputUnit*8,3,1,Boolean.TRUE,updater);
 
         inputLayerName=getLastLayerName(list6);
-        List<GraphLayerItem> list7=convolution2D(moduleName,0,7,inputLayerName,outputUnit*8/2,outputUnit*8/2,3,2,Boolean.TRUE,updater);
+        List<GraphLayerItem> list7=convolution2D(moduleName,0,7,inputLayerName,outputUnit*8,outputUnit*8,3,2,Boolean.TRUE,updater);
 
         inputLayerName=getLastLayerName(list7);
 
@@ -406,7 +406,8 @@ public class SRGan extends AbsGan {
 
         graphItemList.add(new GraphLayerItem(denseLayer0,
                 new DenseLayer.Builder()
-                        .nOut(64)
+                        .nIn(512)
+                        .nOut(1024)
                         .build(),
                 new String[]{inputLayerName}));
 
@@ -534,8 +535,6 @@ public class SRGan extends AbsGan {
 
             graphItemList.add(new GraphLayerItem(batchNormLayerName,
                     new BatchNormalization.Builder()
-                            .nIn(nOut)
-                            .nOut(nOut)
                             .updater(updater)
                             .build(),
                     new String[]{activationLayerName}));
