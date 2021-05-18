@@ -173,13 +173,13 @@ public class SRGan extends AbsGan {
         //学习率为0，即判别器不会被训练，只训练生成器
         List<GraphLayerItem> disLayerItems = buildDiscriminatorGraphLayerItems(genOutputs, UPDATER_ZERO);
 
-        addGraphItems(graph, disLayerItems, Boolean.FALSE);
+        addGraphItems(graph, disLayerItems, Boolean.TRUE);
 
         graph.addInputs(genInputs);
 
         List<GraphLayerItem> encoderGraphLayerItems =cae.buildEncoderGraphLayerItems(new String[]{genOutputs},UPDATER_ZERO);
 
-        addGraphItems(graph, encoderGraphLayerItems, Boolean.FALSE);
+        addGraphItems(graph, encoderGraphLayerItems, Boolean.TRUE);
 
         String encoderOutput=getLastLayerName(encoderGraphLayerItems);
 

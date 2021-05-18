@@ -3,9 +3,12 @@ package org.freeware.dl4j.modelx.model;
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
+import org.deeplearning4j.nn.conf.graph.FrozenVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.graph.ReshapeVertex;
+import org.deeplearning4j.nn.conf.layers.BaseOutputLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
+import org.deeplearning4j.nn.conf.layers.misc.FrozenLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.zoo.ZooModel;
 import org.freeware.dl4j.nn.GraphLayerItem;
@@ -59,26 +62,54 @@ public abstract class ZooModelX extends ZooModel {
             if(graphLayerItem.getLayerOrVertex() instanceof MergeVertex) {
 
                 MergeVertex mergeVertex=(MergeVertex)graphLayerItem.getLayerOrVertex();
+                if(frozen==Boolean.TRUE){
 
-                graphBuilder.addVertex(graphLayerItem.getLayerName(), mergeVertex, graphLayerItem.getLayerInputs());
+                    graphBuilder.addVertex(graphLayerItem.getLayerName(), new FrozenVertex(mergeVertex), graphLayerItem.getLayerInputs());
+
+                }else{
+                    graphBuilder.addVertex(graphLayerItem.getLayerName(), mergeVertex, graphLayerItem.getLayerInputs());
+                }
+
+
 
             } else if(graphLayerItem.getLayerOrVertex() instanceof ElementWiseVertex) {
 
                 ElementWiseVertex elementWiseVertex=(ElementWiseVertex)graphLayerItem.getLayerOrVertex();
 
-                graphBuilder.addVertex(graphLayerItem.getLayerName(), elementWiseVertex, graphLayerItem.getLayerInputs());
+                if(frozen==Boolean.TRUE){
+
+                    graphBuilder.addVertex(graphLayerItem.getLayerName(), new FrozenVertex(elementWiseVertex), graphLayerItem.getLayerInputs());
+
+                }else{
+                    graphBuilder.addVertex(graphLayerItem.getLayerName(), elementWiseVertex, graphLayerItem.getLayerInputs());
+                }
+
 
             }else if (graphLayerItem.getLayerOrVertex() instanceof ReshapeVertex){
 
                 ReshapeVertex reshapeVertex=(ReshapeVertex)graphLayerItem.getLayerOrVertex();
 
-                graphBuilder.addVertex(graphLayerItem.getLayerName(), reshapeVertex, graphLayerItem.getLayerInputs());
+                if(frozen==Boolean.TRUE){
+
+                    graphBuilder.addVertex(graphLayerItem.getLayerName(), new FrozenVertex(reshapeVertex), graphLayerItem.getLayerInputs());
+
+                }else{
+                    graphBuilder.addVertex(graphLayerItem.getLayerName(), reshapeVertex, graphLayerItem.getLayerInputs());
+                }
+
 
             }else if (graphLayerItem.getLayerOrVertex() instanceof Layer){
 
                 Layer layer=(Layer)graphLayerItem.getLayerOrVertex();
 
-                graphBuilder.addLayer(graphLayerItem.getLayerName(), layer, graphLayerItem.getLayerInputs());
+                if(frozen==Boolean.TRUE&&!(graphLayerItem.getLayerOrVertex() instanceof BaseOutputLayer)){
+
+                    graphBuilder.addLayer(graphLayerItem.getLayerName(), new FrozenLayer(layer), graphLayerItem.getLayerInputs());
+
+                }else{
+                    graphBuilder.addLayer(graphLayerItem.getLayerName(), layer, graphLayerItem.getLayerInputs());
+                }
+
 
             }
         }
