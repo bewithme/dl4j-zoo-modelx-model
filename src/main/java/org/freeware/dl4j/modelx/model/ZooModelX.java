@@ -41,7 +41,7 @@ public abstract class ZooModelX extends ZooModel {
 
     protected static String OUTPUT_LAYER="output-layer";
 
-    protected static String SUB_SAMPLE_LAYER= "subsampling-layer";
+    protected static String SUB_SAMPLING_LAYER = "subsampling-layer";
 
 
 
