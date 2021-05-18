@@ -406,6 +406,7 @@ public class SRGan extends AbsGan {
 
         graphItemList.add(new GraphLayerItem(denseLayer0,
                 new DenseLayer.Builder()
+                        //如果不写输入大小，会自动把上层的输入压平，如果写只能写与上层的nOut
                         .nIn(512)
                         .nOut(1024)
                         .build(),
