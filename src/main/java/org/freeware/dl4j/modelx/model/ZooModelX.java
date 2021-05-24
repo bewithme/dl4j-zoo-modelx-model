@@ -62,54 +62,58 @@ public abstract class ZooModelX extends ZooModel {
             if(graphLayerItem.getLayerOrVertex() instanceof MergeVertex) {
 
                 MergeVertex mergeVertex=(MergeVertex)graphLayerItem.getLayerOrVertex();
-                if(frozen==Boolean.TRUE){
+                /*if(frozen==Boolean.TRUE){
 
                     graphBuilder.addVertex(graphLayerItem.getLayerName(), new FrozenVertex(mergeVertex), graphLayerItem.getLayerInputs());
 
                 }else{
                     graphBuilder.addVertex(graphLayerItem.getLayerName(), mergeVertex, graphLayerItem.getLayerInputs());
-                }
-
-
+                }*/
+                graphBuilder.addVertex(graphLayerItem.getLayerName(), mergeVertex, graphLayerItem.getLayerInputs());
 
             } else if(graphLayerItem.getLayerOrVertex() instanceof ElementWiseVertex) {
 
                 ElementWiseVertex elementWiseVertex=(ElementWiseVertex)graphLayerItem.getLayerOrVertex();
 
-                if(frozen==Boolean.TRUE){
+                /*if(frozen==Boolean.TRUE){
 
                     graphBuilder.addVertex(graphLayerItem.getLayerName(), new FrozenVertex(elementWiseVertex), graphLayerItem.getLayerInputs());
 
                 }else{
                     graphBuilder.addVertex(graphLayerItem.getLayerName(), elementWiseVertex, graphLayerItem.getLayerInputs());
-                }
+                }*/
+
+                graphBuilder.addVertex(graphLayerItem.getLayerName(), elementWiseVertex, graphLayerItem.getLayerInputs());
+
 
 
             }else if (graphLayerItem.getLayerOrVertex() instanceof ReshapeVertex){
 
                 ReshapeVertex reshapeVertex=(ReshapeVertex)graphLayerItem.getLayerOrVertex();
 
-                if(frozen==Boolean.TRUE){
+                /*if(frozen==Boolean.TRUE){
 
                     graphBuilder.addVertex(graphLayerItem.getLayerName(), new FrozenVertex(reshapeVertex), graphLayerItem.getLayerInputs());
 
                 }else{
                     graphBuilder.addVertex(graphLayerItem.getLayerName(), reshapeVertex, graphLayerItem.getLayerInputs());
-                }
+                }*/
 
+                graphBuilder.addVertex(graphLayerItem.getLayerName(), reshapeVertex, graphLayerItem.getLayerInputs());
 
             }else if (graphLayerItem.getLayerOrVertex() instanceof Layer){
 
                 Layer layer=(Layer)graphLayerItem.getLayerOrVertex();
 
-                if(frozen==Boolean.TRUE&&!(graphLayerItem.getLayerOrVertex() instanceof BaseOutputLayer)){
+                /*if(frozen==Boolean.TRUE&&!(graphLayerItem.getLayerOrVertex() instanceof BaseOutputLayer)){
 
                     graphBuilder.addLayer(graphLayerItem.getLayerName(), new FrozenLayer(layer), graphLayerItem.getLayerInputs());
 
                 }else{
                     graphBuilder.addLayer(graphLayerItem.getLayerName(), layer, graphLayerItem.getLayerInputs());
-                }
+                }*/
 
+                graphBuilder.addLayer(graphLayerItem.getLayerName(), layer, graphLayerItem.getLayerInputs());
 
             }
         }
