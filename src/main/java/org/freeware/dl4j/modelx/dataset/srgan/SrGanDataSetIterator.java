@@ -39,7 +39,7 @@ public class SrGanDataSetIterator implements MultiDataSetIterator {
 
 	private  List<File> featureFiles;
 
-	private  List<File> labelFiles;
+
 
 	private NativeImageLoader nativeImageLoader ;
 
