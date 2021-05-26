@@ -245,12 +245,7 @@ public class CycleGanDataSetIterator implements MultiDataSetIterator {
 		
 	}
 
-	@Data
-	@AllArgsConstructor
-   class ImageAndBoundingBoxes {
-	   private INDArray image;
-	   private List<ImageObject> boundingBoxesList;
-   }
+
 
 
 
