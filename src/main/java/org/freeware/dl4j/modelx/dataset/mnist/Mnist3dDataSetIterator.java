@@ -2,6 +2,7 @@ package org.freeware.dl4j.modelx.dataset.mnist;
 
 import io.jhdf.HdfFile;
 import lombok.extern.slf4j.Slf4j;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.MultiDataSet;
 import org.nd4j.linalg.dataset.api.MultiDataSetPreProcessor;
@@ -60,12 +61,10 @@ public class Mnist3dDataSetIterator implements MultiDataSetIterator {
 
 			features=Nd4j.create (featuresArray);
 
-			labels= Nd4j.create ( labelsArray);
-
-			this.batchSize= batchSize;
+			labels=Nd4j.create(labelsArray,new long[]{labelsArray.length,1},DataType.INT32);
 
 		}
-
+		this.batchSize= batchSize;
 		//设置总的小批次数量
 		setTotalBatches(batchSize);
 
@@ -136,8 +135,7 @@ public class Mnist3dDataSetIterator implements MultiDataSetIterator {
 		INDArray[] labelsArray=new INDArray[] {batchLabels};
 
 		MultiDataSet multiDataSet=new MultiDataSet(featuresArray,labelsArray);
-
-        //小批量计数器加1
+		//小批量计数器加1
 		currentBatch++;
 
 		return multiDataSet;
