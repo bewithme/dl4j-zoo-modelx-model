@@ -1,11 +1,19 @@
 package org.freeware.dl4j.modelx.train.gan;
 
 import lombok.extern.slf4j.Slf4j;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
+import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
+import org.deeplearning4j.nn.conf.layers.objdetect.Yolo2OutputLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.nn.transferlearning.TransferLearning;
+import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.deeplearning4j.util.ModelSerializer;
 import org.freeware.dl4j.modelx.dataset.srgan.SrGanDataSetIterator;
 import org.freeware.dl4j.modelx.model.gan.SRGan;
 import org.freeware.dl4j.modelx.utils.*;
+import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.api.MultiDataSet;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
@@ -40,7 +48,7 @@ public class SRGanTrainer extends AbsGanTrainer{
 
     public static void main(String[] args) {
 
-        int batchSize=32;
+        int batchSize=1;
 
         int imageHeight =64;
 
@@ -80,6 +88,7 @@ public class SRGanTrainer extends AbsGanTrainer{
 
         setListeners(generator,discriminator,gan);
 
+        log.info(generator.summary());
         log.info(gan.summary());
 
         srgan.copyParamsWhenFromIsPartOfToByName(encoder,gan);
@@ -112,7 +121,7 @@ public class SRGanTrainer extends AbsGanTrainer{
 
                 srgan.copyParamsFromDiscriminatorToGanDiscriminatorByName(discriminator, gan);
 
-                INDArray mapFeature=encoder.output(label)[0];
+                INDArray mapFeature=encoder.output(false,label)[0];
 
                 trainGan(gan,realBatchSize,features,mapFeature);
 
